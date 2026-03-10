@@ -6,7 +6,7 @@
 #                              DEV EN LOCAL                                   #
 ###############################################################################
 
-required_packages <- c("shiny", "quanteda", "wordcloud", "RColorBrewer", "igraph", "dplyr", "htmltools", "remotes", "irlba", "markdown")
+required_packages <- c("shiny", "bslib", "quanteda", "wordcloud", "RColorBrewer", "igraph", "dplyr", "htmltools", "remotes", "irlba", "markdown")
 installed_packages <- rownames(installed.packages())
 missing_packages <- setdiff(required_packages, installed_packages)
 
@@ -109,6 +109,7 @@ source("iramuteqlite/afc_helpers_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/afc_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/ui_chd_stats_mode_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/ui_options_iramuteq.R", encoding = "UTF-8", local = TRUE)
+source("iramuteqlite/ui_explorateur_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/affichage_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/wordcloud_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("ui.R", encoding = "UTF-8", local = TRUE)
@@ -134,6 +135,13 @@ server <- function(input, output, session) {
 
   est_texte_non_vide <- function(x) {
     is.character(x) && length(x) > 0 && !is.na(x[[1]]) && nzchar(x[[1]])
+  }
+
+  zone_trace_disponible <- function(output_id, min_width = 120, min_height = 120) {
+    largeur <- suppressWarnings(as.numeric(session$clientData[[paste0("output_", output_id, "_width")]]))
+    hauteur <- suppressWarnings(as.numeric(session$clientData[[paste0("output_", output_id, "_height")]]))
+
+    is.finite(largeur) && is.finite(hauteur) && largeur >= min_width && hauteur >= min_height
   }
 
   creer_zip_depuis_dossier <- function(dossier_source, fichier_zip) {
@@ -210,6 +218,19 @@ server <- function(input, output, session) {
     output$logs <- renderText({ rv$logs })
   }
 
+  if (exists("server_explorateur_iramuteq", mode = "function", inherits = TRUE)) {
+    server_explorateur_iramuteq(
+      id = "explorer",
+      rv = rv,
+      nom_corpus_reactif = reactive({
+        if (!is.null(input$fichier_corpus$name) && nzchar(input$fichier_corpus$name)) {
+          return(as.character(input$fichier_corpus$name))
+        }
+        NULL
+      })
+    )
+  }
+
 
   output$ui_afc_statut <- renderUI({
     if (est_texte_non_vide(rv$afc_erreur)) {
@@ -246,6 +267,56 @@ server <- function(input, output, session) {
       })
     )
   })
+
+  output$nom_fichier_selectionne <- renderText({
+    if (!is.null(input$fichier_corpus$name) && nzchar(input$fichier_corpus$name)) {
+      return(as.character(input$fichier_corpus$name))
+    }
+    "Aucun fichier choisi"
+  })
+
+  ouvrir_modal_parametres <- function() {
+    showModal(modalDialog(
+      title = "Paramétrages de l'analyse",
+      easyClose = TRUE,
+      size = "m",
+      ui_form_parametres_analyse(),
+      footer = tagList(
+        modalButton("Fermer"),
+        actionButton("lancer", "Lancer l'analyse", class = "btn-primary")
+      )
+    ))
+  }
+
+  observeEvent(input$ouvrir_parametres, {
+    ouvrir_modal_parametres()
+  })
+
+  observeEvent(input$menu_importer_fichier, {
+    showModal(modalDialog(
+      title = "Importer un fichier corpus",
+      easyClose = TRUE,
+      size = "s",
+      fileInput("fichier_corpus", "Choisir un fichier .txt", accept = c(".txt")),
+      footer = modalButton("Fermer")
+    ))
+  })
+
+  observeEvent(input$menu_importer_fichier_sidebar, {
+    showModal(modalDialog(
+      title = "Importer un fichier corpus",
+      easyClose = TRUE,
+      size = "s",
+      fileInput("fichier_corpus", "Choisir un fichier .txt", accept = c(".txt")),
+      footer = modalButton("Fermer")
+    ))
+  })
+
+  observeEvent(input$fichier_corpus, {
+    req(input$fichier_corpus$datapath)
+    removeModal()
+    ouvrir_modal_parametres()
+  }, ignoreInit = TRUE)
 
   output$ui_corpus_preview <- renderUI({
     fichier <- input$fichier_corpus
@@ -331,6 +402,7 @@ server <- function(input, output, session) {
 
 
   output$plot_stats_zipf <- renderPlot({
+    req(zone_trace_disponible("plot_stats_zipf", min_width = 180, min_height = 180))
     req(rv$stats_zipf_df)
     df <- rv$stats_zipf_df
     if (is.null(df) || nrow(df) < 2) {
@@ -426,6 +498,7 @@ server <- function(input, output, session) {
   }, rownames = FALSE)
 
   output$plot_chd_iramuteq_dendro <- renderPlot({
+    req(zone_trace_disponible("plot_chd_iramuteq_dendro", min_width = 200, min_height = 180))
     if (is.null(rv$res) && is.null(rv$res_chd)) {
       plot.new()
       text(0.5, 0.5, "Dendrogramme CHD indisponible. Lance une analyse.", cex = 1.1)
@@ -453,6 +526,7 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
 
   output$plot_afc_classes <- renderPlot({
+    req(zone_trace_disponible("plot_afc_classes", min_width = 220, min_height = 220))
     if (est_texte_non_vide(rv$afc_erreur)) {
       plot.new()
       text(0.5, 0.5, "AFC indisponible (erreur).", cex = 1.1)
@@ -543,6 +617,7 @@ server <- function(input, output, session) {
   }
 
   output$plot_afc <- renderPlot({
+    req(zone_trace_disponible("plot_afc", min_width = 220, min_height = 220))
     if (est_texte_non_vide(rv$afc_erreur)) {
       plot.new()
       text(0.5, 0.5, "AFC indisponible (erreur).", cex = 1.1)
@@ -706,6 +781,7 @@ server <- function(input, output, session) {
   })
 
   output$plot_afc_vars <- renderPlot({
+    req(zone_trace_disponible("plot_afc_vars", min_width = 220, min_height = 220))
     if (est_texte_non_vide(rv$afc_vars_erreur)) {
       plot.new()
       text(0.5, 0.5, "AFC variables étoilées indisponible (erreur).", cex = 1.1)
