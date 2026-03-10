@@ -47,6 +47,12 @@ Uploadez un fichier texte au format IRaMuTeQ. L’app segmente, construit une ma
 - Donc "vide" signifie ici : **vide de termes conservés dans la DFM**, pas forcément vide dans le texte brut.
 - Ces segments sont supprimés avant la CHD.
 
+### Définitions IRaMuTeQ des effectifs (table CHD)
+
+- **Eff. s.t. (effectif des segments de texte)** : nombre de segments de texte de la classe qui contiennent au moins une fois la forme.
+- **Eff. total (effectif total des segments de texte)** : nombre de segments de texte dans tout le corpus classé qui contiennent au moins une fois la forme.
+- **Important** : ces deux colonnes sont des comptages de **segments contenant la forme** (présence/absence), pas des comptages d'occurrences.
+
 ### Paramètres de l’analyse (appliqués au calcul IRaMuTeQ-like)
 
 - **segment_size** : taille des segments pour la segmentation simple (valeur UI par défaut: 40).
