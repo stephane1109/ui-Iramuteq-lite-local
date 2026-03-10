@@ -53,6 +53,13 @@ Uploadez un fichier texte au format IRaMuTeQ. L’app segmente, construit une ma
 - **Eff. total (effectif total des segments de texte)** : nombre de segments de texte dans tout le corpus classé qui contiennent au moins une fois la forme.
 - **Important** : ces deux colonnes sont des comptages de **segments contenant la forme** (présence/absence), pas des comptages d'occurrences.
 
+### Segments non classés (Classe 0 / NA)
+
+- Un **segment non classé** est un segment qui n'est pas affecté à une classe terminale à l'issue de la CHD (valeur de classe `0` ou `NA`).
+- Dans l'application, ces segments sont **exclus des calculs CHD/AFC finaux** et des statistiques de classes.
+- Conséquence pratique : les effectifs `Eff. s.t.` et `Eff. total` sont calculés sur le **corpus classé** (segments avec classe `> 0`) et non sur l'ensemble brut des segments importés.
+- L'application journalise le nombre de segments non classés pour audit/reproductibilité.
+
 ### Paramètres de l’analyse (appliqués au calcul IRaMuTeQ-like)
 
 - **segment_size** : taille des segments pour la segmentation simple (valeur UI par défaut: 40).
