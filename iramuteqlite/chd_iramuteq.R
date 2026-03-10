@@ -518,11 +518,15 @@ construire_stats_classes_iramuteq <- function(dfm_obj, classes, max_p = 1, stats
       lr = as.numeric(lr),
       frequency = as.numeric(freq_cl),
       docprop = as.numeric(docprop_cl),
-      eff_st = as.numeric(freq_cl),
-      eff_total = as.numeric(occ_par_terme),
-      pourcentage = as.numeric(ifelse(occ_par_terme > 0, 100 * freq_cl / occ_par_terme, 0)),
+      # Alignement IRaMuTeQ: "eff. s.t." / "eff. total" sont des effectifs
+      # documentaires (nombre de segments contenant le terme), pas des occurrences.
+      eff_st = as.numeric(docs_terme_cl),
+      eff_total = as.numeric(docs_par_terme),
+      pourcentage = as.numeric(ifelse(docs_par_terme > 0, 100 * docs_terme_cl / docs_par_terme, 0)),
       eff_docs_st = as.numeric(docs_terme_cl),
       eff_docs_total = as.numeric(docs_par_terme),
+      occ_st = as.numeric(freq_cl),
+      occ_total = as.numeric(occ_par_terme),
       p = as.numeric(chi_p$p),
       Classe = as.integer(cl),
       stringsAsFactors = FALSE
