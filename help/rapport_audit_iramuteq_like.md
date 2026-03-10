@@ -1,4 +1,4 @@
-# Audit technique détaillé — pipeline IRaMuTeQ-like (tokenisation + découpage)
+# Audit technique détaillé — pipeline IRaMuTeQ-lite (tokenisation + découpage)
 
 ## 1) Ce que fait exactement le pipeline actuel
 
