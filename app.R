@@ -137,6 +137,13 @@ server <- function(input, output, session) {
     is.character(x) && length(x) > 0 && !is.na(x[[1]]) && nzchar(x[[1]])
   }
 
+  zone_trace_disponible <- function(output_id, min_width = 120, min_height = 120) {
+    largeur <- suppressWarnings(as.numeric(session$clientData[[paste0("output_", output_id, "_width")]]))
+    hauteur <- suppressWarnings(as.numeric(session$clientData[[paste0("output_", output_id, "_height")]]))
+
+    is.finite(largeur) && is.finite(hauteur) && largeur >= min_width && hauteur >= min_height
+  }
+
   creer_zip_depuis_dossier <- function(dossier_source, fichier_zip) {
     if (!dir.exists(dossier_source)) {
       stop("Dossier d'exports introuvable.")
@@ -261,6 +268,56 @@ server <- function(input, output, session) {
     )
   })
 
+  output$nom_fichier_selectionne <- renderText({
+    if (!is.null(input$fichier_corpus$name) && nzchar(input$fichier_corpus$name)) {
+      return(as.character(input$fichier_corpus$name))
+    }
+    "Aucun fichier choisi"
+  })
+
+  ouvrir_modal_parametres <- function() {
+    showModal(modalDialog(
+      title = "Paramétrages de l'analyse",
+      easyClose = TRUE,
+      size = "m",
+      ui_form_parametres_analyse(),
+      footer = tagList(
+        modalButton("Fermer"),
+        actionButton("lancer", "Lancer l'analyse", class = "btn-primary")
+      )
+    ))
+  }
+
+  observeEvent(input$ouvrir_parametres, {
+    ouvrir_modal_parametres()
+  })
+
+  observeEvent(input$menu_importer_fichier, {
+    showModal(modalDialog(
+      title = "Importer un fichier corpus",
+      easyClose = TRUE,
+      size = "s",
+      fileInput("fichier_corpus", "Choisir un fichier .txt", accept = c(".txt")),
+      footer = modalButton("Fermer")
+    ))
+  })
+
+  observeEvent(input$menu_importer_fichier_sidebar, {
+    showModal(modalDialog(
+      title = "Importer un fichier corpus",
+      easyClose = TRUE,
+      size = "s",
+      fileInput("fichier_corpus", "Choisir un fichier .txt", accept = c(".txt")),
+      footer = modalButton("Fermer")
+    ))
+  })
+
+  observeEvent(input$fichier_corpus, {
+    req(input$fichier_corpus$datapath)
+    removeModal()
+    ouvrir_modal_parametres()
+  }, ignoreInit = TRUE)
+
   output$ui_corpus_preview <- renderUI({
     fichier <- input$fichier_corpus
     if (is.null(fichier) || is.null(fichier$datapath) || !file.exists(fichier$datapath)) {
@@ -345,6 +402,7 @@ server <- function(input, output, session) {
 
 
   output$plot_stats_zipf <- renderPlot({
+    req(zone_trace_disponible("plot_stats_zipf", min_width = 180, min_height = 180))
     req(rv$stats_zipf_df)
     df <- rv$stats_zipf_df
     if (is.null(df) || nrow(df) < 2) {
@@ -440,6 +498,7 @@ server <- function(input, output, session) {
   }, rownames = FALSE)
 
   output$plot_chd_iramuteq_dendro <- renderPlot({
+    req(zone_trace_disponible("plot_chd_iramuteq_dendro", min_width = 200, min_height = 180))
     if (is.null(rv$res) && is.null(rv$res_chd)) {
       plot.new()
       text(0.5, 0.5, "Dendrogramme CHD indisponible. Lance une analyse.", cex = 1.1)
@@ -457,7 +516,7 @@ Installez-le puis relancez l'analyse.", cex = 1.0)
       rv = rv,
       top_n_terms = 4,
       orientation = "horizontal",
-      style_affichage = "factoextra"
+      style_affichage = style_dendro
     )
   })
 
@@ -468,6 +527,7 @@ Installez-le puis relancez l'analyse.", cex = 1.0)
   }, ignoreInit = TRUE)
 
   output$plot_afc_classes <- renderPlot({
+    req(zone_trace_disponible("plot_afc_classes", min_width = 220, min_height = 220))
     if (est_texte_non_vide(rv$afc_erreur)) {
       plot.new()
       text(0.5, 0.5, "AFC indisponible (erreur).", cex = 1.1)
@@ -558,6 +618,7 @@ Installez-le puis relancez l'analyse.", cex = 1.0)
   }
 
   output$plot_afc <- renderPlot({
+    req(zone_trace_disponible("plot_afc", min_width = 220, min_height = 220))
     if (est_texte_non_vide(rv$afc_erreur)) {
       plot.new()
       text(0.5, 0.5, "AFC indisponible (erreur).", cex = 1.1)
@@ -721,6 +782,7 @@ Installez-le puis relancez l'analyse.", cex = 1.0)
   })
 
   output$plot_afc_vars <- renderPlot({
+    req(zone_trace_disponible("plot_afc_vars", min_width = 220, min_height = 220))
     if (est_texte_non_vide(rv$afc_vars_erreur)) {
       plot.new()
       text(0.5, 0.5, "AFC variables étoilées indisponible (erreur).", cex = 1.1)
