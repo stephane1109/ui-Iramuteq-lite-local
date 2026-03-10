@@ -2,6 +2,7 @@
 # ui.R
 
 library(shiny)
+library(bslib)
 library(htmltools)
 
 
@@ -61,7 +62,15 @@ if (!exists("REGEX_CARACTERES_A_SUPPRIMER", inherits = TRUE)) {
   REGEX_CARACTERES_A_SUPPRIMER <- paste0("[^", REGEX_CARACTERES_AUTORISES, "]")
 }
 
-ui <- fluidPage(
+ui <- page_navbar(
+  title = div(
+    style = "display:flex; align-items:center; gap:8px;",
+    span("IRaMuTeQ-Lite", style = "font-weight:700;"),
+    tags$span("beta 0.4", class = "badge bg-light text-dark")
+  ),
+  theme = bs_theme(version = 5, bootswatch = "flatly"),
+  fillable = FALSE,
+
   tags$head(
     tags$style(HTML("
       #shiny-modal .modal-dialog {
@@ -79,26 +88,24 @@ ui <- fluidPage(
         margin-top: 12px;
         margin-bottom: 6px;
       }
+      .app-intro {
+        font-size: 0.95rem;
+        margin-bottom: 0.8rem;
+        color: #2c3e50;
+      }
       small {
         color: #842029 !important;
       }
     "))
   ),
 
-  tags$h2(
-    style = "color: #1e5aa8;",
-    "IRaMuTeQ-Lite"
-  ),
-  tags$p(
-    style = "font-size: 14px;",
-    "Tentaive de reproduction de la CHD du logiciel IRaMuTeQ (Pierre Ratinaud - LERASS)",
-    tags$br(),
-    "Plus de scripts/appli ? vous pouvez consulter mon site : www.codeandcortex.fr",
-    tags$br(),
-    "version beta 0.4 - 18-02-2026"
-  ),
-
-  sidebarLayout(
+  nav_panel(
+    "Analyse",
+    tags$p(
+      class = "app-intro",
+      "Tentative de reproduction de la CHD du logiciel IRaMuTeQ (Pierre Ratinaud - LERASS)."
+    ),
+    sidebarLayout(
     sidebarPanel(
       fileInput("fichier_corpus", "Uploader un corpus IRaMuTeQ (.txt)", accept = c(".txt")),
 
@@ -234,71 +241,65 @@ ui <- fluidPage(
     ),
 
     mainPanel(
-      tabsetPanel(
-        id = "onglets_principaux",
-
-        tabPanel(
-          "Analyse",
-          tags$h3("Statut"),
-          textOutput("statut"),
-          tags$h3("Journal"),
-          tags$pre(style = "white-space: pre-wrap;", textOutput("logs")),
-          tags$h3("Analyse du corpus"),
-          uiOutput("ui_table_stats_corpus"),
-          tags$div(
-            style = "width: 600px;",
-            plotOutput("plot_stats_zipf", height = "600px", width = "600px")
-          ),
-          tags$h3("Répartition des classes"),
-          tableOutput("table_classes")
-        ),
-
-        ui_resultats_chd_iramuteq(),
-
-        tabPanel(
-          "Affichage corpus",
-          tags$h3("Corpus importé"),
-          uiOutput("ui_corpus_preview")
-        ),
-
-        
-        tabPanel(
-          "AFC",
-          tags$h3("AFC"),
-          uiOutput("ui_afc_statut"),
-          uiOutput("ui_afc_erreurs"),
-
-          tags$h4("AFC des classes"),
-          plotOutput("plot_afc_classes", height = "620px"),
-
-          tags$h4("AFC des termes"),
-          tags$p("Les mots sont colorés selon la classe où ils sont le plus surreprésentés (résidus standardisés) et leur taille est proportionnelle à leur fréquence globale ou chi2 (selon le choix)."),
-          tags$div(
-            style = "display:flex; gap:8px; align-items:center; margin-bottom:8px;",
-            actionButton("afc_zoom_in", "Zoom +"),
-            actionButton("afc_zoom_out", "Zoom -"),
-            actionButton("afc_zoom_reset", "Réinitialiser le zoom AFC termes"),
-            tags$small("Astuce: cliquer-glisser sur le graphique pour zoomer.")
-          ),
-          plotOutput("plot_afc", height = "720px", brush = brushOpts(id = "afc_brush", resetOnNew = TRUE)),
-          tags$h4("Table des mots projetés (fréquence, chi2, p-value, segment exemple)"),
-          uiOutput("ui_table_afc_mots_par_classe"),
-
-          tags$h4("AFC des variables étoilées"),
-          plotOutput("plot_afc_vars", height = "720px"),
-          tags$h4("Table des modalités projetées"),
-          tableOutput("table_afc_vars"),
-
-          tags$h4("Valeurs propres"),
-          tableOutput("table_afc_eig")
-        ),
-        
-        tabPanel(
-          "Aide",
-          ui_aide_huggingface()
-        )
-
-      )
+      tags$h3("Statut"),
+      textOutput("statut"),
+      tags$h3("Journal"),
+      tags$pre(style = "white-space: pre-wrap;", textOutput("logs")),
+      tags$h3("Analyse du corpus"),
+      uiOutput("ui_table_stats_corpus"),
+      tags$div(
+        style = "width: 600px;",
+        plotOutput("plot_stats_zipf", height = "600px", width = "600px")
+      ),
+      tags$h3("Répartition des classes"),
+      tableOutput("table_classes")
     )
+  )),
+
+  nav_panel(
+    "Résultats CHD",
+    ui_resultats_chd_iramuteq()
+  ),
+
+  nav_panel(
+    "Corpus",
+    tags$h3("Corpus importé"),
+    uiOutput("ui_corpus_preview")
+  ),
+
+  nav_panel(
+    "AFC",
+    tags$h3("AFC"),
+    uiOutput("ui_afc_statut"),
+    uiOutput("ui_afc_erreurs"),
+
+    tags$h4("AFC des classes"),
+    plotOutput("plot_afc_classes", height = "620px"),
+
+    tags$h4("AFC des termes"),
+    tags$p("Les mots sont colorés selon la classe où ils sont le plus surreprésentés (résidus standardisés) et leur taille est proportionnelle à leur fréquence globale ou chi2 (selon le choix)."),
+    tags$div(
+      style = "display:flex; gap:8px; align-items:center; margin-bottom:8px;",
+      actionButton("afc_zoom_in", "Zoom +"),
+      actionButton("afc_zoom_out", "Zoom -"),
+      actionButton("afc_zoom_reset", "Réinitialiser le zoom AFC termes"),
+      tags$small("Astuce: cliquer-glisser sur le graphique pour zoomer.")
+    ),
+    plotOutput("plot_afc", height = "720px", brush = brushOpts(id = "afc_brush", resetOnNew = TRUE)),
+    tags$h4("Table des mots projetés (fréquence, chi2, p-value, segment exemple)"),
+    uiOutput("ui_table_afc_mots_par_classe"),
+
+    tags$h4("AFC des variables étoilées"),
+    plotOutput("plot_afc_vars", height = "720px"),
+    tags$h4("Table des modalités projetées"),
+    tableOutput("table_afc_vars"),
+
+    tags$h4("Valeurs propres"),
+    tableOutput("table_afc_eig")
+  ),
+
+  nav_panel(
+    "Aide",
+    ui_aide_huggingface()
   )
 )
