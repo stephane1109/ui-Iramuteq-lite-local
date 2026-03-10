@@ -100,6 +100,8 @@ preparer_entrees_chd_iramuteq <- function(
   # CHD : contrairement à l'AFC classes × termes, il n'y a pas ici de plafond
   # global type "top 400". Le vocabulaire est conservé selon les filtres amont
   # (nettoyage, stopwords éventuels, puis min_docfreq appliqué ailleurs dans le pipeline).
+  # NB: la p-value n'intervient pas dans l'algorithme de partition CHD historique;
+  # elle est calculée ensuite dans les statistiques classe × terme pour filtrage/affichage.
   list(textes = textes_prep, tok = tok, dfm = dfm_obj, options = opts)
 }
 
@@ -527,6 +529,7 @@ construire_stats_classes_iramuteq <- function(dfm_obj, classes, max_p = 1, stats
     )
 
     df <- df[is.finite(df$chi2) & !is.na(df$chi2), , drop = FALSE]
+    # Filtrage p-value appliqué aux sorties statistiques uniquement (post-CHD).
     if (is.finite(max_p) && !is.na(max_p) && max_p < 1) {
       df <- df[df$p <= max_p, , drop = FALSE]
     }
