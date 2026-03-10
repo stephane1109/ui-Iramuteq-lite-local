@@ -502,6 +502,8 @@ Installez-le puis relancez l'analyse.", cex = 1.0)
       return(invisible(NULL))
     }
 
+    style_dendro <- "factoextra"
+
     tracer_dendrogramme_iramuteq_ui(
       rv = rv,
       top_n_terms = 4,
