@@ -448,7 +448,8 @@ server <- function(input, output, session) {
 
     if (!requireNamespace("factoextra", quietly = TRUE)) {
       plot.new()
-      text(0.5, 0.5, "Le package 'factoextra' est requis pour afficher le dendrogramme.\nInstallez-le puis relancez l'analyse.", cex = 1.0)
+      text(0.5, 0.5, "Le package 'factoextra' est requis pour afficher le dendrogramme.
+Installez-le puis relancez l'analyse.", cex = 1.0)
       return(invisible(NULL))
     }
 
