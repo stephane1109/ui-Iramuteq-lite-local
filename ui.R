@@ -27,6 +27,16 @@ if (!exists("ui_resultats_chd_iramuteq", mode = "function", inherits = TRUE)) {
   }
 }
 
+if (!exists("ui_explorateur_iramuteq", mode = "function", inherits = TRUE)) {
+  app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
+  if (is.null(app_dir) || !nzchar(app_dir)) app_dir <- getwd()
+  chemin_explorateur_iramuteq <- file.path(app_dir, "iramuteqlite", "ui_explorateur_iramuteq.R")
+
+  if (file.exists(chemin_explorateur_iramuteq)) {
+    source(chemin_explorateur_iramuteq, encoding = "UTF-8", local = TRUE)
+  }
+}
+
 if (!exists("ui_aide_huggingface", mode = "function")) {
   if (file.exists("help/help.md")) {
     ui_aide_huggingface <- function() {
@@ -63,6 +73,7 @@ if (!exists("REGEX_CARACTERES_A_SUPPRIMER", inherits = TRUE)) {
 }
 
 ui <- page_navbar(
+  id = "nav_principal",
   title = div(
     style = "display:flex; align-items:center; gap:8px;",
     span("IRaMuTeQ-Lite", style = "font-weight:700;"),
@@ -101,6 +112,7 @@ ui <- page_navbar(
 
   nav_panel(
     "Analyse",
+    value = "analyse",
     tags$p(
       class = "app-intro",
       "Tentative de reproduction de la CHD du logiciel IRaMuTeQ (Pierre Ratinaud - LERASS)."
@@ -241,34 +253,46 @@ ui <- page_navbar(
     ),
 
     mainPanel(
-      tags$h3("Statut"),
-      textOutput("statut"),
-      tags$h3("Journal"),
-      tags$pre(style = "white-space: pre-wrap;", textOutput("logs")),
-      tags$h3("Analyse du corpus"),
-      uiOutput("ui_table_stats_corpus"),
-      tags$div(
-        style = "width: 600px;",
-        plotOutput("plot_stats_zipf", height = "600px", width = "600px")
-      ),
-      tags$h3("Répartition des classes"),
-      tableOutput("table_classes")
+      fluidRow(
+        column(
+          width = 4,
+          ui_explorateur_iramuteq("explorer")
+        ),
+        column(
+          width = 8,
+          tags$h3("Statut"),
+          textOutput("statut"),
+          tags$h3("Journal"),
+          tags$pre(style = "white-space: pre-wrap;", textOutput("logs")),
+          tags$h3("Analyse du corpus"),
+          uiOutput("ui_table_stats_corpus"),
+          tags$div(
+            style = "width: 600px;",
+            plotOutput("plot_stats_zipf", height = "600px", width = "600px")
+          ),
+          tags$h3("Répartition des classes"),
+          tableOutput("table_classes")
+        )
+      )
     )
   )),
 
   nav_panel(
     "Résultats CHD",
+    value = "resultats_chd",
     ui_resultats_chd_iramuteq()
   ),
 
   nav_panel(
     "Corpus",
+    value = "corpus",
     tags$h3("Corpus importé"),
     uiOutput("ui_corpus_preview")
   ),
 
   nav_panel(
     "AFC",
+    value = "afc",
     tags$h3("AFC"),
     uiOutput("ui_afc_statut"),
     uiOutput("ui_afc_erreurs"),
@@ -300,6 +324,7 @@ ui <- page_navbar(
 
   nav_panel(
     "Aide",
+    value = "aide",
     ui_aide_huggingface()
   )
 )
