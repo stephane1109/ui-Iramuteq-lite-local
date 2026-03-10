@@ -52,7 +52,6 @@ ui_options_iramuteq <- function() {
       "Calcul des statistiques CHD",
       choices = choix_mode_stats_chd_iramuteq(),
       selected = "vectorise"
-    ),
-    tags$small("Le dendrogramme est affiché en mode Factoextra.")
+    )
   )
 }
