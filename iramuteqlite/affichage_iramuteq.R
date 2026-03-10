@@ -6,11 +6,6 @@ ui_resultats_chd_iramuteq <- function() {
     tabPanel(
       "Dendrogramme",
       tags$h3("Dendrogramme CHD (IRaMuTeQ-lite)"),
-      checkboxInput(
-        "dendro_barres_proportionnelles",
-        "Afficher des barres proportionnelles aux classes",
-        value = FALSE
-      ),
       plotOutput("plot_chd_iramuteq_dendro", height = "420px")
     ),
     tabPanel(

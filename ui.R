@@ -172,7 +172,19 @@ ui <- page_navbar(
     "Analyse",
     value = "analyse",
     fluidRow(
-      column(width = 3, ui_explorateur_iramuteq("explorer")),
+      column(
+        width = 3,
+        bslib::card(
+          bslib::card_header(tags$strong("Fichier")),
+          bslib::card_body(
+            actionButton("menu_importer_fichier_sidebar", "Importer le fichier texte", class = "btn-primary"),
+            tags$div(style = "margin-top: 10px;"),
+            tags$strong("Nom du fichier :"),
+            tags$div(textOutput("nom_fichier_selectionne"), style = "margin-bottom: 12px;"),
+            downloadButton("dl_zip", "Télécharger les résultats")
+          )
+        )
+      ),
       column(
         width = 9,
         actionButton("ouvrir_parametres", "Paramétrer l'analyse", class = "btn-secondary"),
@@ -181,9 +193,7 @@ ui <- page_navbar(
         tags$h3("Journal"), tags$pre(style = "white-space: pre-wrap;", textOutput("logs")),
         tags$h3("Analyse du corpus"), uiOutput("ui_table_stats_corpus"),
         tags$div(style = "width: 600px;", plotOutput("plot_stats_zipf", height = "600px", width = "600px")),
-        tags$h3("Répartition des classes"), tableOutput("table_classes"),
-        tags$hr(),
-        downloadButton("dl_zip", "Télécharger export iramuteq-lite (zip)")
+        tags$h3("Répartition des classes"), tableOutput("table_classes")
       )
     )
   ),
