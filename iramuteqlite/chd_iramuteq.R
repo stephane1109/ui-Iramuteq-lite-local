@@ -662,14 +662,16 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
     return(invisible(NULL))
   }
 
+  if (identical(style_affichage, "factoextra")) {
+    plot.new()
+    text(0.5, 0.5, "Impossible de tracer le dendrogramme avec factoextra.", cex = 1.0)
+    return(invisible(NULL))
+  }
+
   # Option 2: rendu CHD natif (arbre historique list_mere/list_fille).
   if (!isTRUE(has_chd_tree)) {
     plot.new()
-    if (identical(style_affichage, "factoextra")) {
-      text(0.5, 0.5, "Impossible de tracer le dendrogramme avec factoextra.", cex = 1.0)
-    } else {
-      text(0.5, 0.5, "Dendrogramme CHD indisponible.", cex = 1.0)
-    }
+    text(0.5, 0.5, "Dendrogramme CHD indisponible.", cex = 1.0)
     return(invisible(NULL))
   }
 

@@ -505,8 +505,12 @@ server <- function(input, output, session) {
       return(invisible(NULL))
     }
 
-    afficher_barres <- isTRUE(input$dendro_barres_proportionnelles)
-    style_dendro <- if (afficher_barres) "iramuteq_bars" else "classique"
+    if (!requireNamespace("factoextra", quietly = TRUE)) {
+      plot.new()
+      text(0.5, 0.5, "Le package 'factoextra' est requis pour afficher le dendrogramme.
+Installez-le puis relancez l'analyse.", cex = 1.0)
+      return(invisible(NULL))
+    }
 
     tracer_dendrogramme_iramuteq_ui(
       rv = rv,
