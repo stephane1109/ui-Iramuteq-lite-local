@@ -55,6 +55,79 @@ if (!exists("ui_aide_huggingface", mode = "function")) {
   }
 }
 
+ui_form_parametres_analyse <- function() {
+  tagList(
+    radioButtons(
+      "modele_chd",
+      "Méthode Iramuteq-like",
+      choices = c("IRaMuTeQ-lite" = "iramuteq"),
+      selected = "iramuteq",
+      inline = FALSE
+    ),
+
+    tags$div(class = "sidebar-section-title", "Paramètres généraux CHD"),
+    numericInput("segment_size", "segment_size", value = 40, min = 5, step = 1),
+    numericInput("min_docfreq", "Fréquence minimale des termes (min_docfreq)", value = 3, min = 1, step = 1),
+    numericInput("max_p", "max_p (p-value)", value = 0.05, min = 0, max = 1, step = 0.01),
+    checkboxInput("filtrer_affichage_pvalue", "Filtrer l'affichage des résultats par p-value (p ≤ max_p)", value = TRUE),
+
+    conditionalPanel(
+      condition = "input.modele_chd == 'iramuteq'",
+      ui_options_iramuteq()
+    ),
+
+    tags$div(class = "sidebar-section-title", "Dictionnaire"),
+    radioButtons(
+      "source_dictionnaire",
+      "Source de lemmatisation",
+      choices = c("Lexique (fr)" = "lexique_fr"),
+      selected = "lexique_fr",
+      inline = FALSE
+    ),
+    conditionalPanel(
+      condition = "input.source_dictionnaire == 'lexique_fr'",
+      checkboxInput("lexique_utiliser_lemmes", "Lemmatisation via les lemmes de lexique_fr (forme → c_lemme)", value = TRUE)
+    ),
+    checkboxInput("expression_utiliser_dictionnaire", "Utiliser le dictionnaire d'expression (dic_mot → dic_norm)", value = FALSE),
+
+    tags$div(class = "sidebar-section-title", "Nettoyage"),
+    checkboxInput("nettoyage_caracteres", "Nettoyage caractères (regex)", value = FALSE),
+    checkboxInput("supprimer_ponctuation", "Supprimer la ponctuation", value = FALSE),
+    checkboxInput("supprimer_chiffres", "Supprimer les chiffres (0-9)", value = FALSE),
+    checkboxInput("supprimer_apostrophes", "Traiter les élisions FR (c'est→est, m'écrire→écrire)", value = FALSE),
+    checkboxInput("remplacer_tirets_espaces", "Remplacer les tirets (-) par des espaces", value = FALSE),
+    checkboxInput("retirer_stopwords", "Retirer les stopwords (liste française quanteda)", value = FALSE),
+    checkboxInput("filtrage_morpho", "Filtrage morphosyntaxique", value = FALSE),
+    conditionalPanel(
+      condition = "input.filtrage_morpho == true && input.source_dictionnaire == 'lexique_fr'",
+      selectizeInput(
+        "pos_lexique_a_conserver",
+        "Catégories c_morpho à conserver (lexique_fr)",
+        choices = c(
+          "NOM", "VER", "AUX", "ADJ", "ADV", "PRE", "CON", "ONO",
+          "ADJ:NUM", "ADJ:POS", "ADJ:IND", "ADJ:INT", "ADJ:DEM",
+          "PRO:PER", "PRO:POS", "PRO:DEM", "PRO:IND", "PRO:REL", "PRO:INT",
+          "ART:DEF", "ART:IND"
+        ),
+        selected = c("NOM", "VER", "ADJ"),
+        multiple = TRUE,
+        options = list(plugins = list("remove_button"))
+      )
+    ),
+
+    tags$div(class = "sidebar-section-title", "Paramètres AFC"),
+    checkboxInput("afc_reduire_chevauchement", "Réduire les chevauchements des mots (AFC)", value = FALSE),
+    radioButtons(
+      "afc_taille_mots",
+      "Taille des mots (AFC termes)",
+      choices = c("Fréquence" = "frequency", "Chi2" = "chi2"),
+      selected = "frequency",
+      inline = FALSE
+    ),
+    numericInput("top_n", "Top N mots par classe (nuages)", value = 20, min = 5, step = 1)
+  )
+}
+
 if (!exists("REGEX_CARACTERES_A_SUPPRIMER", inherits = TRUE)) {
   app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
   if (is.null(app_dir) || !nzchar(app_dir)) app_dir <- getwd()
@@ -66,265 +139,80 @@ if (!exists("REGEX_CARACTERES_A_SUPPRIMER", inherits = TRUE)) {
 }
 
 if (!exists("REGEX_CARACTERES_A_SUPPRIMER", inherits = TRUE)) {
-  # Fallback explicite : évite d'afficher un message d'erreur permanent dans l'UI
-  # quand le fichier iramuteqlite/nettoyage_iramuteq.R n'a pas pu être sourcé dans cet environnement.
   REGEX_CARACTERES_AUTORISES <- "a-zA-Z0-9àÀâÂäÄáÁåÅãéÉèÈêÊëËìÌîÎïÏíÍóÓòÒôÔöÖõÕøØùÙûÛüÜúÚçÇßœŒ’ñÑ\\.:,;!\\?'"
   REGEX_CARACTERES_A_SUPPRIMER <- paste0("[^", REGEX_CARACTERES_AUTORISES, "]")
 }
 
 ui <- page_navbar(
   id = "nav_principal",
-  title = div(
-    style = "display:flex; align-items:center; gap:8px;",
-    span("IRaMuTeQ-Lite", style = "font-weight:700;"),
-    tags$span("beta 0.4", class = "badge bg-light text-dark")
-  ),
+  title = "IRaMuTeQ-Lite",
   theme = bs_theme(version = 5, bootswatch = "flatly"),
   fillable = FALSE,
 
   tags$head(
-    tags$style(HTML("
-      #shiny-modal .modal-dialog {
-        width: 96vw !important;
-        max-width: 96vw !important;
-      }
-      #shiny-modal .modal-body {
-        max-height: 88vh !important;
-        overflow-y: auto !important;
-      }
-      .sidebar-section-title {
-        font-weight: 700;
-        font-size: 18px !important;
-        color: #1e5aa8 !important;
-        margin-top: 12px;
-        margin-bottom: 6px;
-      }
-      .app-intro {
-        font-size: 0.95rem;
-        margin-bottom: 0.8rem;
-        color: #2c3e50;
-      }
-      small {
-        color: #842029 !important;
-      }
+    tags$style(HTML(" 
+      #shiny-modal .modal-dialog { max-width: 760px; margin-top: 6vh; }
+      #shiny-modal .modal-body { max-height: 70vh; overflow-y: auto; }
+      .sidebar-section-title { font-weight:700; color:#1e5aa8; margin-top:10px; }
+    ")),
+    tags$script(HTML(" 
+      $(document).on('click', '#menu_importer_fichier', function(){
+        $('#fichier_corpus input[type=file]').trigger('click');
+      });
     "))
+  ),
+
+  nav_panel(
+    "Fichier",
+    value = "fichier",
+    tags$h3("Fichier"),
+    tags$p("Sous-menu : importer un fichier puis paramétrer l'analyse."),
+    actionButton("menu_importer_fichier", "Importer un fichier", class = "btn-primary"),
+    tags$div(style = "display:none;", fileInput("fichier_corpus", "Importer un corpus", accept = c(".txt"))),
+    tags$hr(),
+    tags$h4("Fichier sélectionné"),
+    textOutput("nom_fichier_selectionne")
   ),
 
   nav_panel(
     "Analyse",
     value = "analyse",
-    tags$p(
-      class = "app-intro",
-      "Tentative de reproduction de la CHD du logiciel IRaMuTeQ (Pierre Ratinaud - LERASS)."
-    ),
-    sidebarLayout(
-    sidebarPanel(
-      fileInput("fichier_corpus", "Uploader un corpus IRaMuTeQ (.txt)", accept = c(".txt")),
-
-      radioButtons(
-        "modele_chd",
-        "Méthode Iramuteq-like",
-        choices = c(
-          "IRaMuTeQ-lite" = "iramuteq"
-        ),
-        selected = "iramuteq",
-        inline = FALSE
-      ),
-
-      tags$div(class = "sidebar-section-title", "Paramètres généraux CHD"),
-      numericInput("segment_size", "segment_size", value = 40, min = 5, step = 1),
-      numericInput(
-        "min_docfreq",
-        "Fréquence minimale des termes (min_docfreq)",
-        value = 3,
-        min = 1,
-        step = 1
-      ),
-      tags$p(
-        style = "color: #d32f2f; font-size: 12px; margin-top: -8px;",
-        "Dans le logiciel IRaMuTeQ une forme doit avoir au minimum une fréquence de 3 pour être retenue",
-        "Plus la valeur est élevée, plus les termes rares sont exclus de l'analyse."
-      ),
-      numericInput("max_p", "max_p (p-value)", value = 0.05, min = 0, max = 1, step = 0.01),
-      checkboxInput(
-        "filtrer_affichage_pvalue",
-        "Filtrer l'affichage des résultats par p-value (p ≤ max_p)",
-        value = TRUE
-      ),
-
-      conditionalPanel(
-        condition = "input.modele_chd == 'iramuteq'",
-        ui_options_iramuteq()
-      ),
-
-      tags$div(class = "sidebar-section-title", "Dictionnaire"),
-      radioButtons(
-        "source_dictionnaire",
-        "Source de lemmatisation",
-        choices = c("Lexique (fr)" = "lexique_fr"),
-        selected = "lexique_fr",
-        inline = FALSE
-      ),
-      conditionalPanel(
-        condition = "input.source_dictionnaire == 'lexique_fr'",
-        checkboxInput("lexique_utiliser_lemmes", "Lemmatisation via les lemmes de lexique_fr (forme → c_lemme)", value = TRUE)
-      ),
-      checkboxInput(
-        "expression_utiliser_dictionnaire",
-        "Utiliser le dictionnaire d'expression (dic_mot → dic_norm)",
-        value = FALSE
-      ),
-
-      tags$div(class = "sidebar-section-title", "Nettoyage"),
-
-      conditionalPanel(
-        condition = "input.modele_chd == 'iramuteq'",
-        tags$div(
-          style = "margin: 0 0 8px 0; padding: 8px; background: #f7fbff; border-left: 3px solid #1e5aa8;",
-          tags$strong("Options IRaMuTeQ-lite (iramuteqlite/nettoyage_iramuteq.R)"),
-          tags$br(),
-          tags$small("Ces options pilotent la préparation du texte avant la tokenisation en mode IRaMuTeQ-like."),
-          tags$br()
-      ),
-
-      checkboxInput("nettoyage_caracteres", "Nettoyage caractères (regex)", value = FALSE),
-      checkboxInput("supprimer_ponctuation", "Supprimer la ponctuation", value = FALSE),
-      tags$small("Supprime la ponctuation à la tokenisation quanteda (remove_punct), par ex. . , ; : ! ? ' ’ \" - ( ) [ ] …"),
-      checkboxInput("supprimer_chiffres", "Supprimer les chiffres (0-9)", value = FALSE),
-      checkboxInput("supprimer_apostrophes", "Traiter les élisions FR (c'est→est, m'écrire→écrire)", value = FALSE),
-      checkboxInput("remplacer_tirets_espaces", "Remplacer les tirets (-) par des espaces", value = FALSE),
-      checkboxInput("retirer_stopwords", "Retirer les stopwords (liste française quanteda)", value = FALSE),
-      tags$small("La normalisation en minuscules est appliquée automatiquement avant la construction du DFM."),
-      checkboxInput("filtrage_morpho", "Filtrage morphosyntaxique", value = FALSE),
-      tags$small("Le filtrage morphosyntaxique s'applique à lexique_fr."),
-      conditionalPanel(
-        condition = "input.filtrage_morpho == true",
-        conditionalPanel(
-          condition = "input.source_dictionnaire == 'lexique_fr'",
-          selectizeInput(
-            "pos_lexique_a_conserver",
-            "Catégories c_morpho à conserver (lexique_fr)",
-            choices = c(
-              "NOM", "VER", "AUX", "ADJ", "ADV", "PRE", "CON", "ONO",
-              "ADJ:NUM", "ADJ:POS", "ADJ:IND", "ADJ:INT", "ADJ:DEM",
-              "PRO:PER", "PRO:POS", "PRO:DEM", "PRO:IND", "PRO:REL", "PRO:INT",
-              "ART:DEF", "ART:IND"
-            ),
-            selected = c("NOM", "VER", "ADJ"),
-            multiple = TRUE,
-            options = list(plugins = list("remove_button"))
-          )
-        )
-      ),
-      ),
-
-      tags$hr(),
-
-      tags$div(class = "sidebar-section-title", "Paramètres AFC"),
-
-      checkboxInput("afc_reduire_chevauchement", "Réduire les chevauchements des mots (AFC)", value = FALSE),
-
-      radioButtons(
-        "afc_taille_mots",
-        "Taille des mots (AFC termes)",
-        choices = c("Fréquence" = "frequency", "Chi2" = "chi2"),
-        selected = "frequency",
-        inline = FALSE
-      ),
-
-      numericInput(
-        "top_n",
-        "Top N mots par classe (nuages)",
-        value = 20,
-        min = 5,
-        step = 1
-      ),
-
-      tags$hr(),
-
-      tags$div(
-        style = "display: flex; gap: 8px; flex-wrap: wrap; align-items: center;",
-        actionButton("lancer", "Lancer l'analyse")
-      ),
-
-      tags$hr(),
-
-      downloadButton("dl_zip", "Télécharger export iramuteq-lite (zip)")
-    ),
-
-    mainPanel(
-      fluidRow(
-        column(
-          width = 4,
-          ui_explorateur_iramuteq("explorer")
-        ),
-        column(
-          width = 8,
-          tags$h3("Statut"),
-          textOutput("statut"),
-          tags$h3("Journal"),
-          tags$pre(style = "white-space: pre-wrap;", textOutput("logs")),
-          tags$h3("Analyse du corpus"),
-          uiOutput("ui_table_stats_corpus"),
-          tags$div(
-            style = "width: 600px;",
-            plotOutput("plot_stats_zipf", height = "600px", width = "600px")
-          ),
-          tags$h3("Répartition des classes"),
-          tableOutput("table_classes")
-        )
+    fluidRow(
+      column(width = 3, ui_explorateur_iramuteq("explorer")),
+      column(
+        width = 9,
+        actionButton("ouvrir_parametres", "Paramétrer l'analyse", class = "btn-secondary"),
+        tags$br(), tags$br(),
+        tags$h3("Statut"), textOutput("statut"),
+        tags$h3("Journal"), tags$pre(style = "white-space: pre-wrap;", textOutput("logs")),
+        tags$h3("Analyse du corpus"), uiOutput("ui_table_stats_corpus"),
+        tags$div(style = "width: 600px;", plotOutput("plot_stats_zipf", height = "600px", width = "600px")),
+        tags$h3("Répartition des classes"), tableOutput("table_classes"),
+        tags$hr(),
+        downloadButton("dl_zip", "Télécharger export iramuteq-lite (zip)")
       )
     )
-  )),
-
-  nav_panel(
-    "Résultats CHD",
-    value = "resultats_chd",
-    ui_resultats_chd_iramuteq()
   ),
 
+  nav_panel("Résultats CHD", value = "resultats_chd", ui_resultats_chd_iramuteq()),
+  nav_panel("Corpus", value = "corpus", tags$h3("Corpus importé"), uiOutput("ui_corpus_preview")),
   nav_panel(
-    "Corpus",
-    value = "corpus",
-    tags$h3("Corpus importé"),
-    uiOutput("ui_corpus_preview")
-  ),
-
-  nav_panel(
-    "AFC",
-    value = "afc",
-    tags$h3("AFC"),
-    uiOutput("ui_afc_statut"),
-    uiOutput("ui_afc_erreurs"),
-
-    tags$h4("AFC des classes"),
-    plotOutput("plot_afc_classes", height = "620px"),
-
+    "AFC", value = "afc",
+    tags$h3("AFC"), uiOutput("ui_afc_statut"), uiOutput("ui_afc_erreurs"),
+    tags$h4("AFC des classes"), plotOutput("plot_afc_classes", height = "620px"),
     tags$h4("AFC des termes"),
-    tags$p("Les mots sont colorés selon la classe où ils sont le plus surreprésentés (résidus standardisés) et leur taille est proportionnelle à leur fréquence globale ou chi2 (selon le choix)."),
-    tags$div(
-      style = "display:flex; gap:8px; align-items:center; margin-bottom:8px;",
+    tags$div(style = "display:flex; gap:8px; align-items:center; margin-bottom:8px;",
       actionButton("afc_zoom_in", "Zoom +"),
       actionButton("afc_zoom_out", "Zoom -"),
       actionButton("afc_zoom_reset", "Réinitialiser le zoom AFC termes"),
       tags$small("Astuce: cliquer-glisser sur le graphique pour zoomer.")
     ),
     plotOutput("plot_afc", height = "720px", brush = brushOpts(id = "afc_brush", resetOnNew = TRUE)),
-    tags$h4("Table des mots projetés (fréquence, chi2, p-value, segment exemple)"),
-    uiOutput("ui_table_afc_mots_par_classe"),
-
-    tags$h4("AFC des variables étoilées"),
-    plotOutput("plot_afc_vars", height = "720px"),
-    tags$h4("Table des modalités projetées"),
-    tableOutput("table_afc_vars"),
-
-    tags$h4("Valeurs propres"),
-    tableOutput("table_afc_eig")
+    tags$h4("Table des mots projetés"), uiOutput("ui_table_afc_mots_par_classe"),
+    tags$h4("AFC des variables étoilées"), plotOutput("plot_afc_vars", height = "720px"),
+    tags$h4("Table des modalités projetées"), tableOutput("table_afc_vars"),
+    tags$h4("Valeurs propres"), tableOutput("table_afc_eig")
   ),
 
-  nav_panel(
-    "Aide",
-    value = "aide",
-    ui_aide_huggingface()
-  )
+  nav_panel("Aide", value = "aide", ui_aide_huggingface())
 )

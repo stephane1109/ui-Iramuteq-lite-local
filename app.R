@@ -261,6 +261,35 @@ server <- function(input, output, session) {
     )
   })
 
+  output$nom_fichier_selectionne <- renderText({
+    if (!is.null(input$fichier_corpus$name) && nzchar(input$fichier_corpus$name)) {
+      return(as.character(input$fichier_corpus$name))
+    }
+    "Aucun fichier choisi"
+  })
+
+  ouvrir_modal_parametres <- function() {
+    showModal(modalDialog(
+      title = "Paramétrages de l'analyse",
+      easyClose = TRUE,
+      size = "m",
+      ui_form_parametres_analyse(),
+      footer = tagList(
+        modalButton("Fermer"),
+        actionButton("lancer", "Lancer l'analyse", class = "btn-primary")
+      )
+    ))
+  }
+
+  observeEvent(input$ouvrir_parametres, {
+    ouvrir_modal_parametres()
+  })
+
+  observeEvent(input$fichier_corpus, {
+    req(input$fichier_corpus$datapath)
+    ouvrir_modal_parametres()
+  }, ignoreInit = TRUE)
+
   output$ui_corpus_preview <- renderUI({
     fichier <- input$fichier_corpus
     if (is.null(fichier) || is.null(fichier$datapath) || !file.exists(fichier$datapath)) {
