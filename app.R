@@ -285,8 +285,19 @@ server <- function(input, output, session) {
     ouvrir_modal_parametres()
   })
 
+  observeEvent(input$menu_importer_fichier, {
+    showModal(modalDialog(
+      title = "Importer un fichier corpus",
+      easyClose = TRUE,
+      size = "s",
+      fileInput("fichier_corpus", "Choisir un fichier .txt", accept = c(".txt")),
+      footer = modalButton("Fermer")
+    ))
+  })
+
   observeEvent(input$fichier_corpus, {
     req(input$fichier_corpus$datapath)
+    removeModal()
     ouvrir_modal_parametres()
   }, ignoreInit = TRUE)
 

@@ -154,11 +154,6 @@ ui <- page_navbar(
       #shiny-modal .modal-dialog { max-width: 760px; margin-top: 6vh; }
       #shiny-modal .modal-body { max-height: 70vh; overflow-y: auto; }
       .sidebar-section-title { font-weight:700; color:#1e5aa8; margin-top:10px; }
-    ")),
-    tags$script(HTML(" 
-      $(document).on('click', '#menu_importer_fichier', function(){
-        $('#fichier_corpus input[type=file]').trigger('click');
-      });
     "))
   ),
 
@@ -168,7 +163,6 @@ ui <- page_navbar(
     tags$h3("Fichier"),
     tags$p("Sous-menu : importer un fichier puis paramétrer l'analyse."),
     actionButton("menu_importer_fichier", "Importer un fichier", class = "btn-primary"),
-    tags$div(style = "display:none;", fileInput("fichier_corpus", "Importer un corpus", accept = c(".txt"))),
     tags$hr(),
     tags$h4("Fichier sélectionné"),
     textOutput("nom_fichier_selectionne")
