@@ -6,7 +6,7 @@
 #                              DEV EN LOCAL                                   #
 ###############################################################################
 
-required_packages <- c("shiny", "quanteda", "wordcloud", "RColorBrewer", "igraph", "dplyr", "htmltools", "remotes", "irlba", "markdown")
+required_packages <- c("shiny", "bslib", "quanteda", "wordcloud", "RColorBrewer", "igraph", "dplyr", "htmltools", "remotes", "irlba", "markdown")
 installed_packages <- rownames(installed.packages())
 missing_packages <- setdiff(required_packages, installed_packages)
 
@@ -109,6 +109,7 @@ source("iramuteqlite/afc_helpers_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/afc_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/ui_chd_stats_mode_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/ui_options_iramuteq.R", encoding = "UTF-8", local = TRUE)
+source("iramuteqlite/ui_explorateur_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/affichage_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/wordcloud_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("ui.R", encoding = "UTF-8", local = TRUE)
@@ -210,6 +211,19 @@ server <- function(input, output, session) {
     output$logs <- renderText({ rv$logs })
   }
 
+  if (exists("server_explorateur_iramuteq", mode = "function", inherits = TRUE)) {
+    server_explorateur_iramuteq(
+      id = "explorer",
+      rv = rv,
+      nom_corpus_reactif = reactive({
+        if (!is.null(input$fichier_corpus$name) && nzchar(input$fichier_corpus$name)) {
+          return(as.character(input$fichier_corpus$name))
+        }
+        NULL
+      })
+    )
+  }
+
 
   output$ui_afc_statut <- renderUI({
     if (est_texte_non_vide(rv$afc_erreur)) {
@@ -246,6 +260,35 @@ server <- function(input, output, session) {
       })
     )
   })
+
+  output$nom_fichier_selectionne <- renderText({
+    if (!is.null(input$fichier_corpus$name) && nzchar(input$fichier_corpus$name)) {
+      return(as.character(input$fichier_corpus$name))
+    }
+    "Aucun fichier choisi"
+  })
+
+  ouvrir_modal_parametres <- function() {
+    showModal(modalDialog(
+      title = "Paramétrages de l'analyse",
+      easyClose = TRUE,
+      size = "m",
+      ui_form_parametres_analyse(),
+      footer = tagList(
+        modalButton("Fermer"),
+        actionButton("lancer", "Lancer l'analyse", class = "btn-primary")
+      )
+    ))
+  }
+
+  observeEvent(input$ouvrir_parametres, {
+    ouvrir_modal_parametres()
+  })
+
+  observeEvent(input$fichier_corpus, {
+    req(input$fichier_corpus$datapath)
+    ouvrir_modal_parametres()
+  }, ignoreInit = TRUE)
 
   output$ui_corpus_preview <- renderUI({
     fichier <- input$fichier_corpus
