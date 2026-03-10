@@ -651,20 +651,27 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
   list_fille <- chd_obj$list_fille
   has_chd_tree <- !is.null(n1) && is.list(list_fille) && length(list_fille) > 0
 
-  # Rendu unique demandé: factoextra via hclust Classe × Termes (pas de tracé CHD legacy).
+  # Option 1: rendu hclust/factoextra (si disponible et demandé).
   if (.tracer_dendrogramme_hclust(
     res_stats_df = res_stats_df,
     classes = classes,
     top_n_terms = top_n_terms,
     orientation = orientation,
-    style_affichage = "factoextra"
+    style_affichage = style_affichage
   )) {
     return(invisible(NULL))
   }
 
-  plot.new()
-  text(0.5, 0.5, "Impossible de tracer le dendrogramme avec factoextra.", cex = 1.0)
-  return(invisible(NULL))
+  # Option 2: rendu CHD natif (arbre historique list_mere/list_fille).
+  if (!isTRUE(has_chd_tree)) {
+    plot.new()
+    if (identical(style_affichage, "factoextra")) {
+      text(0.5, 0.5, "Impossible de tracer le dendrogramme avec factoextra.", cex = 1.0)
+    } else {
+      text(0.5, 0.5, "Dendrogramme CHD indisponible.", cex = 1.0)
+    }
+    return(invisible(NULL))
+  }
 
   noms <- names(list_fille)
   if (is.null(noms) || any(!nzchar(noms))) noms <- as.character(seq_along(list_fille))
@@ -987,7 +994,7 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
 
     tree_xmax <- max_depth + 0.35
     bar_left <- tree_xmax + 1.2
-    bar_max <- max(3.8, 4.8 * max(pct_tip, na.rm = TRUE) / 100)
+    bar_max <- 4.8
     x_right <- bar_left + bar_max + 0.8
 
     plot(0, 0,
@@ -1028,7 +1035,7 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
       text(tree_xmax + 0.08, xy[["x"]], labels = classe_txt, cex = 1.1, pos = 4, xpd = TRUE,
         col = col_bar, font = 3)
 
-      width <- if (max(pct_tip, na.rm = TRUE) > 0) bar_max * (pct / max(pct_tip, na.rm = TRUE)) else 0
+      width <- bar_max * (pct / 100)
       rect(
         xleft = bar_left,
         ybottom = xy[["x"]] - 0.42,
