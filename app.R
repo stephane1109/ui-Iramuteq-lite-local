@@ -448,15 +448,18 @@ server <- function(input, output, session) {
 
     if (!requireNamespace("factoextra", quietly = TRUE)) {
       plot.new()
-      text(0.5, 0.5, "Le package 'factoextra' est requis pour afficher le dendrogramme.\nInstallez-le puis relancez l'analyse.", cex = 1.0)
+      text(0.5, 0.5, "Le package 'factoextra' est requis pour afficher le dendrogramme.
+Installez-le puis relancez l'analyse.", cex = 1.0)
       return(invisible(NULL))
     }
+
+    style_dendro <- "factoextra"
 
     tracer_dendrogramme_iramuteq_ui(
       rv = rv,
       top_n_terms = 4,
       orientation = "horizontal",
-      style_affichage = "factoextra"
+      style_affichage = style_dendro
     )
   })
 
