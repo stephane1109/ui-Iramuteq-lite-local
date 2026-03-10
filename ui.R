@@ -148,6 +148,16 @@ ui <- page_navbar(
   title = "IRaMuTeQ-Lite",
   theme = bs_theme(version = 5, bootswatch = "flatly"),
   fillable = FALSE,
+  sidebar = sidebar(
+    width = 320,
+    open = "always",
+    title = "Fichier",
+    actionButton("menu_importer_fichier_sidebar", "Importer le fichier texte", class = "btn-primary"),
+    tags$div(style = "margin-top: 10px;"),
+    tags$strong("Nom du fichier :"),
+    tags$div(textOutput("nom_fichier_selectionne"), style = "margin-bottom: 12px;"),
+    downloadButton("dl_zip", "Télécharger les résultats")
+  ),
 
   tags$head(
     tags$style(HTML(" 
@@ -158,35 +168,11 @@ ui <- page_navbar(
   ),
 
   nav_panel(
-    "Fichier",
-    value = "fichier",
-    tags$h3("Fichier"),
-    tags$p("Sous-menu : importer un fichier puis paramétrer l'analyse."),
-    actionButton("menu_importer_fichier", "Importer un fichier", class = "btn-primary"),
-    tags$hr(),
-    tags$h4("Fichier sélectionné"),
-    textOutput("nom_fichier_selectionne")
-  ),
-
-  nav_panel(
     "Analyse",
     value = "analyse",
     fluidRow(
       column(
-        width = 3,
-        bslib::card(
-          bslib::card_header(tags$strong("Fichier")),
-          bslib::card_body(
-            actionButton("menu_importer_fichier_sidebar", "Importer le fichier texte", class = "btn-primary"),
-            tags$div(style = "margin-top: 10px;"),
-            tags$strong("Nom du fichier :"),
-            tags$div(textOutput("nom_fichier_selectionne"), style = "margin-bottom: 12px;"),
-            downloadButton("dl_zip", "Télécharger les résultats")
-          )
-        )
-      ),
-      column(
-        width = 9,
+        width = 12,
         actionButton("ouvrir_parametres", "Paramétrer l'analyse", class = "btn-secondary"),
         tags$br(), tags$br(),
         tags$h3("Statut"), textOutput("statut"),
