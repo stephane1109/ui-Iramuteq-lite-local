@@ -137,6 +137,13 @@ server <- function(input, output, session) {
     is.character(x) && length(x) > 0 && !is.na(x[[1]]) && nzchar(x[[1]])
   }
 
+  zone_trace_disponible <- function(output_id, min_width = 120, min_height = 120) {
+    largeur <- suppressWarnings(as.numeric(session$clientData[[paste0("output_", output_id, "_width")]]))
+    hauteur <- suppressWarnings(as.numeric(session$clientData[[paste0("output_", output_id, "_height")]]))
+
+    is.finite(largeur) && is.finite(hauteur) && largeur >= min_width && hauteur >= min_height
+  }
+
   creer_zip_depuis_dossier <- function(dossier_source, fichier_zip) {
     if (!dir.exists(dossier_source)) {
       stop("Dossier d'exports introuvable.")
@@ -385,6 +392,7 @@ server <- function(input, output, session) {
 
 
   output$plot_stats_zipf <- renderPlot({
+    req(zone_trace_disponible("plot_stats_zipf", min_width = 180, min_height = 180))
     req(rv$stats_zipf_df)
     df <- rv$stats_zipf_df
     if (is.null(df) || nrow(df) < 2) {
@@ -480,6 +488,7 @@ server <- function(input, output, session) {
   }, rownames = FALSE)
 
   output$plot_chd_iramuteq_dendro <- renderPlot({
+    req(zone_trace_disponible("plot_chd_iramuteq_dendro", min_width = 200, min_height = 180))
     if (is.null(rv$res) && is.null(rv$res_chd)) {
       plot.new()
       text(0.5, 0.5, "Dendrogramme CHD indisponible. Lance une analyse.", cex = 1.1)
@@ -507,6 +516,7 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
 
   output$plot_afc_classes <- renderPlot({
+    req(zone_trace_disponible("plot_afc_classes", min_width = 220, min_height = 220))
     if (est_texte_non_vide(rv$afc_erreur)) {
       plot.new()
       text(0.5, 0.5, "AFC indisponible (erreur).", cex = 1.1)
@@ -597,6 +607,7 @@ server <- function(input, output, session) {
   }
 
   output$plot_afc <- renderPlot({
+    req(zone_trace_disponible("plot_afc", min_width = 220, min_height = 220))
     if (est_texte_non_vide(rv$afc_erreur)) {
       plot.new()
       text(0.5, 0.5, "AFC indisponible (erreur).", cex = 1.1)
@@ -760,6 +771,7 @@ server <- function(input, output, session) {
   })
 
   output$plot_afc_vars <- renderPlot({
+    req(zone_trace_disponible("plot_afc_vars", min_width = 220, min_height = 220))
     if (est_texte_non_vide(rv$afc_vars_erreur)) {
       plot.new()
       text(0.5, 0.5, "AFC variables étoilées indisponible (erreur).", cex = 1.1)
