@@ -450,7 +450,7 @@ register_events_lancer <- function(input, output, session, rv) {
 
     executer_pipeline_iramuteq <- function(input, rv, textes_chd) {
       if (is.null(textes_chd)) {
-        stop("IRaMuTeQ-like: textes_chd manquant pour la préparation du pipeline.")
+        stop("IRaMuTeQ-lite: textes_chd manquant pour la préparation du pipeline.")
       }
 
       textes_chr <- as.character(textes_chd)
@@ -562,7 +562,7 @@ register_events_lancer <- function(input, output, session, rv) {
 
       min_docfreq_val <- lire_min_docfreq_manuel(input$min_docfreq, valeur_defaut = 3L)
       rv$min_docfreq_applique <- min_docfreq_val
-      ajouter_log(rv, paste0("min_docfreq appliqué (IRaMuTeQ-like) = ", min_docfreq_val, " (manuel)."))
+      ajouter_log(rv, paste0("min_docfreq appliqué (IRaMuTeQ-lite) = ", min_docfreq_val, " (manuel)."))
 
       dfm_obj <- quanteda::dfm_trim(dfm_obj, min_docfreq = min_docfreq_val)
       if (quanteda::nfeat(dfm_obj) < 1L) {
@@ -685,7 +685,7 @@ register_events_lancer <- function(input, output, session, rv) {
         full.names = FALSE
       )
       if (length(wc_files) == 0) {
-        mode_label <- if (identical(rv$res_type, "iramuteq")) "IRaMuTeQ-like" else "analyse"
+        mode_label <- if (identical(rv$res_type, "iramuteq")) "IRaMuTeQ-lite" else "analyse"
         return(tags$p(paste0("Aucun nuage de mots disponible (", mode_label, ").")))
       }
 
@@ -856,7 +856,7 @@ register_events_lancer <- function(input, output, session, rv) {
 
           # Stats corpus: calculées sur la segmentation brute (sans filtres CHD).
           # Le comptage lexical est ensuite fait sur les textes préparés pour
-          # éviter un écart entre statistiques affichées et pipeline IRaMuTeQ-like.
+          # éviter un écart entre statistiques affichées et pipeline IRaMuTeQ-lite.
           corpus_stats <- split_segments(
             corpus_importe,
             segment_size = segment_size,
@@ -968,8 +968,8 @@ register_events_lancer <- function(input, output, session, rv) {
             rv$stats_corpus_df <- stats_corpus$table
             rv$stats_zipf_df <- stats_corpus$zipf
           }
-          ajouter_log(rv, "IRaMuTeQ-like: préparation texte exécutée via iramuteqlite/nettoyage_iramuteq.R")
-          ajouter_log(rv, "IRaMuTeQ-like: paramètres CHD/DFM (min_docfreq, stopwords, ponctuation, dictionnaire) appliqués dans iramuteqlite/server_events_lancer_iramuteq.R")
+          ajouter_log(rv, "IRaMuTeQ-lite: préparation texte exécutée via iramuteqlite/nettoyage_iramuteq.R")
+          ajouter_log(rv, "IRaMuTeQ-lite: paramètres CHD/DFM (min_docfreq, stopwords, ponctuation, dictionnaire) appliqués dans iramuteqlite/server_events_lancer_iramuteq.R")
 
           source_dictionnaire <- "lexique_fr"
 
@@ -1081,11 +1081,11 @@ register_events_lancer <- function(input, output, session, rv) {
           rv$textes_indexation <- vapply(as.list(tok), function(x) paste(x, collapse = " "), FUN.VALUE = character(1))
           names(rv$textes_indexation) <- quanteda::docnames(dfm_obj)
 
-          avancer(0.52, "Classification CHD IRaMuTeQ-like")
+          avancer(0.52, "Classification CHD IRaMuTeQ-lite")
           rv$statut <- "Classification en cours..."
 
           rv$res_type <- "iramuteq"
-          ajouter_log(rv, "Mode : classification IRaMuTeQ-like.")
+          ajouter_log(rv, "Mode : classification IRaMuTeQ-lite.")
 
           groupes <- NULL
           res_final <- NULL
@@ -1113,7 +1113,7 @@ register_events_lancer <- function(input, output, session, rv) {
           ajouter_log(
             rv,
             paste0(
-              "Paramètres IRaMuTeQ-like : k=", k_iramuteq,
+              "Paramètres IRaMuTeQ-lite : k=", k_iramuteq,
               " | mincl_mode=", mincl_mode_iramuteq,
               if (identical(mincl_mode_iramuteq, "manuel")) paste0(" | mincl=", mincl_iramuteq) else "",
               " | classif_mode=", classif_mode_iramuteq,
@@ -1165,7 +1165,7 @@ register_events_lancer <- function(input, output, session, rv) {
 
           groupes <- as.integer(res_ira$classes)
           if (all(is.na(groupes)) || length(unique(groupes[groupes > 0])) < 2) {
-            stop("IRaMuTeQ-like n'a pas pu produire au moins 2 classes exploitables.")
+            stop("IRaMuTeQ-lite n'a pas pu produire au moins 2 classes exploitables.")
           }
 
           res_final <- res_ira
@@ -1216,7 +1216,7 @@ register_events_lancer <- function(input, output, session, rv) {
           segments_file <- file.path(rv$export_dir, "segments_par_classe.txt")
           writeLines(unlist(lapply(names(segments_by_class), function(cl) c(paste0("Classe ", cl, ":"), unname(segments_by_class[[cl]]), ""))), segments_file)
 
-          ajouter_log(rv, "Statistiques CHD : calcul IRaMuTeQ-like (contingence classe × terme).")
+          ajouter_log(rv, "Statistiques CHD : calcul IRaMuTeQ-lite (contingence classe × terme).")
           res_stats_df <- construire_stats_classes_iramuteq(
             dfm_obj = dfm_ok,
             classes = quanteda::docvars(filtered_corpus_ok)$Classes,
@@ -1467,7 +1467,7 @@ register_events_lancer <- function(input, output, session, rv) {
 
             }
 
-            # Cooccurrences Explor retirées du pipeline IRaMuTeQ-like.
+            # Cooccurrences Explor retirées du pipeline IRaMuTeQ-lite.
           } else {
             generer_wordclouds_iramuteq(
               res_stats_df = res_stats_df,
@@ -1477,7 +1477,7 @@ register_events_lancer <- function(input, output, session, rv) {
               filtrer_pvalue = isTRUE(input$filtrer_affichage_pvalue),
               max_p = input$max_p
             )
-            ajouter_log(rv, "Mode IRaMuTeQ-like : nuages de mots générés via wordcloud_iramuteq.R.")
+            ajouter_log(rv, "Mode IRaMuTeQ-lite : nuages de mots générés via wordcloud_iramuteq.R.")
           }
 
           explor_assets <- NULL
@@ -1523,7 +1523,7 @@ register_events_lancer <- function(input, output, session, rv) {
             rv = rv
           )
 
-          # Priorité explicite au concordancier IRaMuTeQ-like lorsque le mode
+          # Priorité explicite au concordancier IRaMuTeQ-lite lorsque le mode
           # IRaMuTeQ est sélectionné dans l'UI (même si rv$res_type est désynchronisé).
           mode_iramuteq_actif <- identical(as.character(input$modele_chd), "iramuteq") ||
             identical(rv$res_type, "iramuteq")
