@@ -1,0 +1,35 @@
+input_id,criticite,zone_cible_ui_v2
+fichier_corpus,haute,Navbar>Corpus (zone centrale)
+modele_chd,haute,Modal Paramètres CHD > Général
+segment_size,haute,Modal Paramètres CHD > Général
+min_docfreq,haute,Modal Paramètres CHD > Général
+max_p,haute,Modal Paramètres CHD > Significativité
+filtrer_affichage_pvalue,moyenne,Modal Paramètres CHD > Significativité
+source_dictionnaire,moyenne,Modal Dictionnaire
+lexique_utiliser_lemmes,moyenne,Modal Dictionnaire
+expression_utiliser_dictionnaire,moyenne,Modal Dictionnaire
+nettoyage_caracteres,moyenne,Modal Nettoyage
+supprimer_ponctuation,moyenne,Modal Nettoyage
+supprimer_chiffres,moyenne,Modal Nettoyage
+supprimer_apostrophes,moyenne,Modal Nettoyage
+remplacer_tirets_espaces,moyenne,Modal Nettoyage
+retirer_stopwords,moyenne,Modal Nettoyage
+filtrage_morpho,moyenne,Modal Nettoyage
+pos_lexique_a_conserver,moyenne,Modal Nettoyage (conditionnel)
+afc_reduire_chevauchement,moyenne,Modal Paramètres AFC
+afc_taille_mots,moyenne,Modal Paramètres AFC
+top_n,moyenne,Modal Paramètres AFC (nuages)
+lancer,haute,Header sticky > CTA principal
+k_iramuteq,haute,Modal Paramètres CHD (Avancé IRaMuTeQ)
+iramuteq_max_formes,moyenne,Modal Paramètres CHD (Avancé IRaMuTeQ)
+iramuteq_mincl_mode,haute,Modal Paramètres CHD (Avancé IRaMuTeQ)
+iramuteq_mincl,moyenne,Modal Paramètres CHD (Avancé IRaMuTeQ)
+iramuteq_classif_mode,haute,Modal Paramètres CHD (Avancé IRaMuTeQ)
+iramuteq_rst1,moyenne,Modal Paramètres CHD (Avancé IRaMuTeQ)
+iramuteq_rst2,moyenne,Modal Paramètres CHD (Avancé IRaMuTeQ)
+iramuteq_svd_method,moyenne,Modal Paramètres CHD (Avancé IRaMuTeQ)
+iramuteq_stats_mode,moyenne,Modal Paramètres CHD (Avancé IRaMuTeQ)
+afc_zoom_in,moyenne,Onglet AFC > barre d’outils graphique
+afc_zoom_out,moyenne,Onglet AFC > barre d’outils graphique
+afc_zoom_reset,moyenne,Onglet AFC > barre d’outils graphique
+dl_zip,basse,Header/toolbar > Export
