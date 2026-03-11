@@ -56,6 +56,35 @@ if (!exists("ui_aide_huggingface", mode = "function")) {
 }
 
 ui_form_parametres_analyse <- function() {
+  lexique_path <- file.path(getwd(), "dictionnaires", "lexique_fr.csv")
+  morpho_choices <- c(
+    "NOM", "NOM_SUP", "VER", "VER_SUP", "AUX",
+    "ADJ", "ADJ_SUP", "ADJ_DEM", "ADJ_IND", "ADJ_INT", "ADJ_NUM", "ADJ_POS",
+    "ADV", "ADV_SUP", "PRE", "CON", "ONO",
+    "PRO_PER", "PRO_POS", "PRO_DEM", "PRO_IND", "PRO_REL",
+    "ART_DEF", "ART_IND"
+  )
+
+  if (file.exists(lexique_path)) {
+    lexique_df <- tryCatch(
+      utils::read.csv2(lexique_path, stringsAsFactors = FALSE),
+      error = function(e) NULL
+    )
+
+    if (is.data.frame(lexique_df) && "c_morpho" %in% names(lexique_df)) {
+      morpho_from_lexique <- unique(toupper(trimws(as.character(lexique_df$c_morpho))))
+      morpho_from_lexique <- morpho_from_lexique[nzchar(morpho_from_lexique)]
+      if (length(morpho_from_lexique) > 0) {
+        morpho_choices <- sort(unique(morpho_from_lexique))
+      }
+    }
+  }
+
+  morpho_choices_labels <- stats::setNames(morpho_choices, morpho_choices)
+  if ("VER_SUP" %in% names(morpho_choices_labels)) {
+    morpho_choices_labels[["VER_SUP"]] <- "VER_SUP (verbe supplémentaire)"
+  }
+
   tagList(
     radioButtons(
       "modele_chd",
@@ -115,12 +144,7 @@ ui_form_parametres_analyse <- function() {
       selectizeInput(
         "pos_lexique_a_conserver",
         "Catégories c_morpho à conserver (lexique_fr)",
-        choices = c(
-          "NOM", "VER", "AUX", "ADJ", "ADV", "PRE", "CON", "ONO",
-          "ADJ:NUM", "ADJ:POS", "ADJ:IND", "ADJ:INT", "ADJ:DEM",
-          "PRO:PER", "PRO:POS", "PRO:DEM", "PRO:IND", "PRO:REL", "PRO:INT",
-          "ART:DEF", "ART:IND"
-        ),
+        choices = morpho_choices_labels,
         selected = c("NOM", "VER", "ADJ"),
         multiple = TRUE,
         options = list(plugins = list("remove_button"))

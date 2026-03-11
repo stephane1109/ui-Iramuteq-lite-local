@@ -44,7 +44,7 @@ Noms des catégories de Lexique_fr
 - **NOM** : nom commun
 - **NOM_SUP** : nom
 - **VER** : verbe
-- **VER_SUP** : verbe
+- **VER_SUP** : verbe supplémentaire
 - **AUX** : auxiliaire
 - **ADJ** : adjectif
 - **ADJ_SUP** : adjectif
@@ -66,6 +66,25 @@ Noms des catégories de Lexique_fr
 - **PRO_REL** : pronom relatif
 - **ONO** : onomatopée
 
+### Et le dictionnaire d'expressions (`dic_mot` -> `dic_norm`) ?
+
+Le dictionnaire `expression_fr.csv` est appliqué **avant** la tokenisation/lemmatisation.
+
+- `dic_mot` : forme (ou expression) à rechercher dans le texte,
+- `dic_norm` : forme normalisée qui remplacera `dic_mot`.
+
+Exemple pour ton cas :
+
+```csv
+dic_mot;dic_norm
+darmanin;gerald_darmanin
+```
+
+Puis dans l'interface, activer **"Utiliser le dictionnaire d'expression (dic_mot → dic_norm)"**.
+
+Interaction avec le filtrage morphosyntaxique :
+- le remplacement `dic_mot -> dic_norm` est appliqué avant la tokenisation,
+- ensuite le filtrage conserve uniquement les formes correspondant aux catégories `c_morpho` sélectionnées dans `lexique_fr`.
 
 Flux technique (mode "Lexique_fr"):
 1. tokenisation locale (quanteda),

@@ -527,6 +527,7 @@ register_events_lancer <- function(input, output, session, rv) {
         if (length(morpho_selection) > 0) {
           lex <- rv$lexique_fr_df
           lex_morpho <- toupper(trimws(as.character(lex$c_morpho)))
+
           idx <- nzchar(lex_morpho) & lex_morpho %in% morpho_selection
           termes_autorises <- unique(c(
             tolower(trimws(as.character(lex$c_mot[idx]))),
