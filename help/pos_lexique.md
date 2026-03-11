@@ -6,7 +6,7 @@
 
 Le dictionnaire **lexique_fr** utilisé ici est celui d’**IRaMuTeQ**, et il semble lui-même issu d’**OpenLexicon**.
 
-> Contrairement au logiciel IRaMuTeQ (où les niveaux sont généralement interprétés comme `1 = active` et `2 = supplémentaire`), le filtrage proposé ici est **binaire** et configurable de plusieurs façons.
+> Contrairement au logiciel IRaMuTeQ (où les catégories des formes sont interprétés comme `1 = active` et `2 = supplémentaire`), le filtrage proposé ici est **binaire**.
 
 ![Exemple : clés d'analyse logiciel IRaMuTeQ](cles_analyse_iramuteq.png)
 
