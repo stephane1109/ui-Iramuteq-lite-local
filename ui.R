@@ -158,9 +158,10 @@ if (!exists("REGEX_CARACTERES_A_SUPPRIMER", inherits = TRUE)) {
 ui <- page_navbar(
   id = "nav_principal",
   title = tags$div(
-    tags$div("IRaMuTeQ-Lite"),
+    style = "color: #ffffff;",
+    tags$div(style = "font-weight: 700;", "IRaMuTeQ-Lite"),
     tags$small(
-      style = "display:block; font-size: 0.75rem; line-height: 1.35; font-weight: 400; color: #4f5b66; margin-top: 2px;",
+      style = "display:block; font-size: 0.75rem; line-height: 1.35; font-weight: 400; color: #ffffff; margin-top: 2px;",
       "Tentative de reproduction de la CHD du logiciel IRaMuTeQ (IRaMuTeQ - Pierre Ratinaud - LERASS)",
       tags$br(),
       "Pour d'autres scripts/appli, vous pouvez consulter mon site : www.codeandcortex.fr",
@@ -186,6 +187,10 @@ ui <- page_navbar(
       #shiny-modal .modal-dialog { max-width: 760px; margin-top: 6vh; }
       #shiny-modal .modal-body { max-height: 70vh; overflow-y: auto; }
       .sidebar-section-title { font-weight:700; color:#1e5aa8; margin-top:10px; }
+      .navbar .container-fluid { display: flex; flex-direction: column; align-items: flex-start; }
+      .navbar .navbar-brand { color: #ffffff !important; margin-right: 0; white-space: normal; }
+      .navbar .navbar-brand small { color: #ffffff !important; }
+      .navbar .navbar-nav { margin-top: 0.5rem; }
     "))
   ),
 
