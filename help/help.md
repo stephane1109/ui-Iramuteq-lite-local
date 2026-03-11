@@ -31,10 +31,6 @@ Sur Hugging Face Spaces, le stockage local de ce conteneur est temporaire : si l
 Conseil : télécharge l’archive ZIP des exports juste après la fin de l’analyse.
 
 
-# Logique générale de l’application
-
-Uploadez un fichier texte au format IRaMuTeQ. L’app segmente, construit une matrice documents-termes (DFM), lance la CHD avec le moteur IRaMuTeQ-like, calcule les statistiques, génère un HTML surligné (concordancier), puis produit la CHD, AFC, NER, nuages de mots et réseaux de cooccurrences. L’onglet d’exploration permet de visualiser la CHD.
-
 ### DFM (définition et construction)
 
 - **DFM (Document-Feature Matrix)** : matrice où chaque ligne = un segment, chaque colonne = un terme, chaque cellule = nombre d’occurrences du terme dans le segment.
@@ -60,7 +56,7 @@ Uploadez un fichier texte au format IRaMuTeQ. L’app segmente, construit une ma
 - Conséquence pratique : les effectifs `Eff. s.t.` et `Eff. total` sont calculés sur le **corpus classé** (segments avec classe `> 0`) et non sur l'ensemble brut des segments importés.
 - L'application journalise le nombre de segments non classés pour audit/reproductibilité.
 
-### Paramètres de l’analyse (appliqués au calcul IRaMuTeQ-like)
+### Paramètres de l’analyse (appliqués au calcul IRaMuTeQ-lite)
 
 - **segment_size** : taille des segments pour la segmentation simple (valeur UI par défaut: 40).
 - **Fréquence minimale des termes (`min_docfreq`)** : valeur recommandée **3**. Une forme doit apparaître dans au moins 3 segments pour être conservée; plus la valeur augmente, plus les termes rares sont exclus.
