@@ -102,7 +102,7 @@ ui_form_parametres_analyse <- function() {
     ),
     checkboxInput("supprimer_ponctuation", "Supprimer la ponctuation", value = FALSE),
     tags$p(
-      "Supprime la ponctuation à la tokenisation quanteda (remove_punct), pour les deux sources (spaCy et lexique_fr), par ex. . , ; : ! ? ' ’ \" - ( ) [ ] …",
+      "Supprime la ponctuation à la tokenisation quanteda (remove_punct), par ex. . , ; : ! ? ' ’ \" - ( ) [ ] …",
       style = "color: #c00; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
     ),
     checkboxInput("supprimer_chiffres", "Supprimer les chiffres (0-9)", value = FALSE),
