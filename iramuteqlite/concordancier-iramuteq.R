@@ -141,7 +141,7 @@ generer_concordancier_iramuteq_html <- function(
   writeLines("</head><body>", con)
   writeLines("<h1>Concordancier IRaMuTeQ-like</h1>", con)
   writeLines("<h2>Segments par classe</h2>", con)
-  writeLines(if (isTRUE(filtrer_pvalue)) "<h3>Filtrage: p ≤ seuil + χ² positif (puis fallback top χ²)</h3>" else "<h3>Filtrage: χ² positif (sans filtre p-value)</h3>", con)
+  writeLines(if (isTRUE(filtrer_pvalue)) "<h3>Filtrage: p ≤ seuil</h3>" else "<h3>Filtrage: χ² positif (sans filtre p-value)</h3>", con)
 
   noms_classes <- names(segments_by_class)
   n_classes <- length(noms_classes)
