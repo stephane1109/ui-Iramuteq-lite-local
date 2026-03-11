@@ -211,8 +211,8 @@ ui <- page_navbar(
     )
   ),
 
-  nav_panel("Résultats CHD", value = "resultats_chd", ui_resultats_chd_iramuteq()),
   nav_panel("Corpus", value = "corpus", tags$h3("Corpus importé"), uiOutput("ui_corpus_preview")),
+  nav_panel("Résultats CHD", value = "resultats_chd", ui_resultats_chd_iramuteq()),
   nav_panel(
     "AFC", value = "afc",
     tags$h3("AFC"), uiOutput("ui_afc_statut"), uiOutput("ui_afc_erreurs"),
