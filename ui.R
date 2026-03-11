@@ -94,16 +94,16 @@ ui_form_parametres_analyse <- function() {
     checkboxInput("nettoyage_caracteres", "Nettoyage caractères (regex)", value = FALSE),
     tags$p(
       "[^a-zA-Z0-9àÀâÂäÄáÁåÅãéÉèÈêÊëËìÌîÎïÏíÍóÓòÒôÔöÖõÕøØùÙûÛüÜúÚçÇßœŒ’ñÑ\\.:,;!\\?']",
-      style = "color: red; margin-top: -8px; margin-bottom: 8px;"
+      style = "color: #c00; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
     ),
     tags$p(
       "Les caractères présents dans la liste entre crochets sont conservés ; tous les autres (ex. @ # & / emoji) sont remplacés par des espaces.",
-      style = "color: red; margin-top: -8px; margin-bottom: 8px;"
+      style = "color: #c00; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
     ),
     checkboxInput("supprimer_ponctuation", "Supprimer la ponctuation", value = FALSE),
     tags$p(
       "Supprime la ponctuation à la tokenisation quanteda (remove_punct), pour les deux sources (spaCy et lexique_fr), par ex. . , ; : ! ? ' ’ \" - ( ) [ ] …",
-      style = "color: red; margin-top: -8px; margin-bottom: 8px;"
+      style = "color: #c00; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
     ),
     checkboxInput("supprimer_chiffres", "Supprimer les chiffres (0-9)", value = FALSE),
     checkboxInput("supprimer_apostrophes", "Traiter les élisions FR (c'est→est, m'écrire→écrire)", value = FALSE),
