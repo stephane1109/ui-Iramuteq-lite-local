@@ -1487,6 +1487,26 @@ register_events_lancer <- function(input, output, session, rv) {
           chd_png_rel <- NULL
           chd_html_rel <- NULL
 
+          chd_png <- file.path(rv$export_dir, "dendrogramme_chd.png")
+          ok_chd_png <- tryCatch({
+            png(chd_png, width = 2200, height = 1500, res = 200)
+            on.exit(try(dev.off(), silent = TRUE), add = TRUE)
+            tracer_dendrogramme_iramuteq_ui(
+              rv = rv,
+              top_n_terms = 4,
+              orientation = "horizontal",
+              style_affichage = "factoextra"
+            )
+            TRUE
+          }, error = function(e) {
+            ajouter_log(rv, paste0("Export dendrogramme PNG : ", e$message))
+            FALSE
+          })
+
+          if (isTRUE(ok_chd_png) && file.exists(chd_png)) {
+            chd_png_rel <- basename(chd_png)
+          }
+
           wc_files <- list.files(wordcloud_dir, pattern = "\\.png$", full.names = FALSE)
           if (length(wc_files) > 0) {
             wc_classes <- gsub("^cluster_([0-9]+)_wordcloud\\.png$", "\\1", wc_files)
