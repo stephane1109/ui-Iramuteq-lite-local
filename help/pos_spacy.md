@@ -65,6 +65,9 @@ Noms des catégories de Lexique_fr
 - **PRO_POS** : pronom possessif
 - **PRO_REL** : pronom relatif
 - **ONO** : onomatopée
+- **FORM_NR** : forme non reconnue (catégorie fonctionnelle ajoutée par l'application pour conserver les formes que le lexique `lexique_fr` ne parvient pas à classer dans une catégorie existante ; utile notamment pour des noms propres).
+
+> Remarque importante : `FORM_NR` est une catégorie fonctionnelle ajoutée par l'application. Elle n'est pas un tag natif de `lexique_fr.csv` et sert à conserver les formes hors lexique quand elle est sélectionnée.
 
 
 Flux technique (mode "Lexique_fr"):
