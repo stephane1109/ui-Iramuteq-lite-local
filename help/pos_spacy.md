@@ -1,28 +1,6 @@
-### Analyse morphosyntaxique avec spaCy et Lexique (fr)
+### Analyse morphosyntaxique avec Lexique (fr)
 
-- Documentation principale spaCy : <https://spacy.io/usage>
-- Linguistic Features (POS, morphology) : <a href="https://spacy.io/usage/linguistic-feature/" target="_blank" rel="noopener noreferrer">Lexique POS spaCy</a>
 - Documentation OpenLexicon : <a href="https://openlexicon.fr/" target="_blank" rel="noopener noreferrer">OpenLexicon</a>
-
-### Traduction FR des POS (spaCy)
-
-- **ADJ** : adjectif
-- **ADP** : adposition (préposition)
-- **ADV** : adverbe
-- **AUX** : auxiliaire
-- **CCONJ** : conjonction de coordination
-- **DET** : déterminant
-- **INTJ** : interjection
-- **NOUN** : nom
-- **NUM** : numéral
-- **PART** : particule
-- **PRON** : pronom
-- **PROPN** : nom propre
-- **PUNCT** : ponctuation
-- **SCONJ** : conjonction de subordination
-- **SYM** : symbole
-- **VERB** : verbe
-- **X** : autre / catégorie inconnue
 
 ### Filtrage morphosyntaxique spécifique lexique_fr
 
