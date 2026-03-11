@@ -157,7 +157,17 @@ if (!exists("REGEX_CARACTERES_A_SUPPRIMER", inherits = TRUE)) {
 
 ui <- page_navbar(
   id = "nav_principal",
-  title = "IRaMuTeQ-Lite",
+  title = tags$div(
+    tags$div("IRaMuTeQ-Lite"),
+    tags$small(
+      style = "display:block; font-size: 0.75rem; line-height: 1.35; font-weight: 400; color: #4f5b66; margin-top: 2px;",
+      "Tentative de reproduction de la CHD du logiciel IRaMuTeQ (IRaMuTeQ - Pierre Ratinaud - LERASS)",
+      tags$br(),
+      "Pour d'autres scripts/appli, vous pouvez consulter mon site : www.codeandcortex.fr",
+      tags$br(),
+      "version beta 0.1 - 11-03-2026"
+    )
+  ),
   theme = bs_theme(version = 5, bootswatch = "flatly"),
   fillable = FALSE,
   sidebar = sidebar(
