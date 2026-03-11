@@ -40,14 +40,9 @@ Noms des catégories de Lexique_fr
 - **PRO_POS** : pronom possessif
 - **PRO_REL** : pronom relatif
 - **ONO** : onomatopée
-- **FORM_NR** : forme non reconnue (catégorie fonctionnelle ajoutée par l'application pour conserver les formes que le lexique `lexique_fr` ne parvient pas à classer dans une catégorie existante ; utile notamment pour des noms propres).
-
-> Remarque importante : `FORM_NR` est une catégorie fonctionnelle ajoutée par l'application. Elle n'est pas un tag natif de `lexique_fr.csv` et sert à conserver les formes hors lexique quand elle est sélectionnée.
-
-
 Flux technique (mode "Lexique_fr"):
 1. tokenisation locale (quanteda),
-2. filtrage des tokens par présence dans lexique_fr avec les catégories `c_morpho` sélectionnées,
+2. filtrage des tokens par catégories `c_morpho` sélectionnées dans `lexique_fr` (avec conservation des termes `c_mot` et `c_lemme` correspondants),
 3. lemmatisation (si activée) directement via lexique_fr (forme -> lemme).
 
 > Le filtrage morphosyntaxique lexique_fr est donc indépendant de spaCy.

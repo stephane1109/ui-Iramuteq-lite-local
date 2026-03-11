@@ -62,7 +62,7 @@ ui_form_parametres_analyse <- function() {
     "ADJ", "ADJ_SUP", "ADJ_DEM", "ADJ_IND", "ADJ_INT", "ADJ_NUM", "ADJ_POS",
     "ADV", "ADV_SUP", "PRE", "CON", "ONO",
     "PRO_PER", "PRO_POS", "PRO_DEM", "PRO_IND", "PRO_REL",
-    "ART_DEF", "ART_IND", "FORM_NR"
+    "ART_DEF", "ART_IND"
   )
 
   if (file.exists(lexique_path)) {
@@ -75,7 +75,7 @@ ui_form_parametres_analyse <- function() {
       morpho_from_lexique <- unique(toupper(trimws(as.character(lexique_df$c_morpho))))
       morpho_from_lexique <- morpho_from_lexique[nzchar(morpho_from_lexique)]
       if (length(morpho_from_lexique) > 0) {
-        morpho_choices <- sort(unique(c(morpho_from_lexique, "FORM_NR")))
+        morpho_choices <- sort(unique(morpho_from_lexique))
       }
     }
   }
@@ -83,9 +83,6 @@ ui_form_parametres_analyse <- function() {
   morpho_choices_labels <- stats::setNames(morpho_choices, morpho_choices)
   if ("VER_SUP" %in% names(morpho_choices_labels)) {
     morpho_choices_labels[["VER_SUP"]] <- "VER_SUP (verbe supplémentaire)"
-  }
-  if ("FORM_NR" %in% names(morpho_choices_labels)) {
-    morpho_choices_labels[["FORM_NR"]] <- "FORM_NR (forme non reconnue)"
   }
 
   tagList(

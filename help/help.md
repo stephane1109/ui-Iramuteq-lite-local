@@ -86,7 +86,7 @@ Ensuite, chaque groupe peut être à nouveau subdivisé, et ainsi de suite, jusq
 
 - **Source de lemmatisation** : en mode IRaMuTeQ-lite, la source active est **Lexique (fr)**.
 - **Lemmatisation via lexique_fr** (`lexique_utiliser_lemmes`) : remplace les formes par leur lemme (`forme → c_lemme`) avant la DFM.
-- **Dictionnaire d'expressions** (`expression_utiliser_dictionnaire`) : applique les remplacements `dic_mot → dic_norm` avant l'analyse.
+- **Dictionnaire d'expressions** (`expression_utiliser_dictionnaire`) : applique les remplacements `dic_mot → dic_norm` en amont du pipeline (avant nettoyage, tokenisation, lemmatisation et filtrage morphosyntaxique).
 
 - <a href="https://openlexicon.fr/" target="_blank" rel="noopener noreferrer">OpenLexicon</a>
 
