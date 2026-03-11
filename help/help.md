@@ -1,4 +1,4 @@
-### codeandcortex.fr - Stéphane Meurisse - version beta 0.1 - 09-03-2026
+### codeandcortex.fr - Stéphane Meurisse - version beta 0.1 - 11-03-2026
 - <a href="https://www.codeandcortex.fr" target="_blank" rel="noopener noreferrer">codeandcortex.fr</a>
 - <a href="https://www.codeandcortex.fr/comprendre-chd-methode-reinert/" target="_blank" rel="noopener noreferrer">Comprendre la CHD</a>
 
