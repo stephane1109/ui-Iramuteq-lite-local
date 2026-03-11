@@ -528,28 +528,12 @@ register_events_lancer <- function(input, output, session, rv) {
           lex <- rv$lexique_fr_df
           lex_morpho <- toupper(trimws(as.character(lex$c_morpho)))
 
-          inclure_forme_non_reconnue <- "FORM_NR" %in% morpho_selection
-          morpho_selection_lexique <- setdiff(morpho_selection, "FORM_NR")
-
-          termes_autorises <- character(0)
-          if (length(morpho_selection_lexique) > 0) {
-            idx <- nzchar(lex_morpho) & lex_morpho %in% morpho_selection_lexique
-            termes_autorises <- unique(c(
-              tolower(trimws(as.character(lex$c_mot[idx]))),
-              tolower(trimws(as.character(lex$c_lemme[idx])))
-            ))
-            termes_autorises <- termes_autorises[nzchar(termes_autorises)]
-          }
-
-          if (isTRUE(inclure_forme_non_reconnue)) {
-            termes_lexique_connus <- unique(c(
-              tolower(trimws(as.character(lex$c_mot))),
-              tolower(trimws(as.character(lex$c_lemme)))
-            ))
-            termes_lexique_connus <- termes_lexique_connus[nzchar(termes_lexique_connus)]
-            termes_non_reconnus <- setdiff(quanteda::featnames(dfm_obj), termes_lexique_connus)
-            termes_autorises <- unique(c(termes_autorises, termes_non_reconnus))
-          }
+          idx <- nzchar(lex_morpho) & lex_morpho %in% morpho_selection
+          termes_autorises <- unique(c(
+            tolower(trimws(as.character(lex$c_mot[idx]))),
+            tolower(trimws(as.character(lex$c_lemme[idx])))
+          ))
+          termes_autorises <- termes_autorises[nzchar(termes_autorises)]
 
           n_feat_avant_morpho <- quanteda::nfeat(dfm_obj)
           dfm_obj <- quanteda::dfm_select(
