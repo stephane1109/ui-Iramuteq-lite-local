@@ -1,6 +1,3 @@
-[//]: # (Rôle du fichier: pos_spacy.md documente une partie de l'application IRaMuTeQ-like.)
-[//]: # (Ce document sert de référence fonctionnelle/technique pour l'équipe.)
-[//]: # (Il décrit le comportement attendu afin de sécuriser maintenance et diagnostics.)
 ### Analyse morphosyntaxique avec spaCy et Lexique (fr)
 
 - Documentation principale spaCy : <https://spacy.io/usage>
