@@ -55,6 +55,24 @@ if (!exists("ui_aide_huggingface", mode = "function")) {
   }
 }
 
+if (!exists("ui_aide_morpho", mode = "function")) {
+  if (file.exists("help/pos_lexique.md")) {
+    ui_aide_morpho <- function() {
+      tagList(
+        tags$h2("Aide morpho"),
+        includeMarkdown("help/pos_lexique.md")
+      )
+    }
+  } else {
+    ui_aide_morpho <- function() {
+      tagList(
+        tags$h2("Aide morpho"),
+        tags$p("Le fichier help/pos_lexique.md est introuvable. Vérifie le dossier d'aide du projet.")
+      )
+    }
+  }
+}
+
 ui_form_parametres_analyse <- function() {
   lexique_path <- file.path(getwd(), "dictionnaires", "lexique_fr.csv")
   morpho_choices <- c(
@@ -255,5 +273,6 @@ ui <- page_navbar(
     tags$h4("Valeurs propres"), tableOutput("table_afc_eig")
   ),
 
-  nav_panel("Aide", value = "aide", ui_aide_huggingface())
+  nav_panel("Aide", value = "aide", ui_aide_huggingface()),
+  nav_panel("Aide morpho", value = "aide_morpho", ui_aide_morpho())
 )
