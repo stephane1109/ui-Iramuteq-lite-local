@@ -618,6 +618,12 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
     }, character(1))
     hc$labels <- labels_txt
 
+    pct_labels <- vapply(seq_along(labels_classes), function(i) {
+      cl_id <- ids_cl[[i]]
+      if (!is.finite(cl_id) || is.null(pct_par_classe)) return(NA_real_)
+      suppressWarnings(as.numeric(pct_par_classe[[as.character(cl_id)]]))
+    }, numeric(1))
+
     if (identical(style_affichage, "factoextra") && requireNamespace("factoextra", quietly = TRUE)) {
       ok_facto <- tryCatch({
         p <- factoextra::fviz_dend(
@@ -627,6 +633,7 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
           cex = 0.78,
           k_colors = NULL,
           color_labels_by_k = FALSE,
+          lwd = 1.9,
           rect = TRUE,
           rect_border = "#7a7a7a",
           rect_fill = FALSE,
@@ -634,6 +641,69 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
           xlab = "",
           ylab = ""
         )
+
+        has_pct <- any(is.finite(pct_labels))
+        if (isTRUE(has_pct)) {
+          bar_df <- data.frame(
+            label = labels_txt,
+            leaf_id = seq_along(labels_txt),
+            pct = pct_labels,
+            stringsAsFactors = FALSE
+          )
+          bar_df <- bar_df[is.finite(bar_df$pct) & bar_df$pct >= 0, , drop = FALSE]
+
+          if (nrow(bar_df) > 0) {
+            max_h <- max(c(0, hc$height), na.rm = TRUE)
+            if (!is.finite(max_h) || max_h <= 0) max_h <- 1
+
+            # "Traits-barres" : largeur et longueur proportionnelles au % de classe.
+            bar_df$bar_len <- (bar_df$pct / 100) * (max_h * 0.28)
+            bar_df$bar_lwd <- 2.6 + (bar_df$pct / 100) * 11.5
+            bar_df$pct_lab <- paste0(format(round(bar_df$pct, 1), nsmall = 1), " %")
+
+            if (identical(orientation, "horizontal")) {
+              p <- p +
+                ggplot2::geom_segment(
+                  data = bar_df,
+                  ggplot2::aes(x = 0, xend = bar_len, y = leaf_id, yend = leaf_id, linewidth = bar_lwd),
+                  inherit.aes = FALSE,
+                  lineend = "round",
+                  colour = "#4f8df7",
+                  alpha = 0.85
+                ) +
+                ggplot2::geom_text(
+                  data = bar_df,
+                  ggplot2::aes(x = bar_len + (max_h * 0.015), y = leaf_id, label = pct_lab),
+                  inherit.aes = FALSE,
+                  hjust = 0,
+                  vjust = 0.4,
+                  size = 3.1,
+                  colour = "#1f1f1f"
+                )
+            } else {
+              p <- p +
+                ggplot2::geom_segment(
+                  data = bar_df,
+                  ggplot2::aes(x = leaf_id, xend = leaf_id, y = 0, yend = bar_len, linewidth = bar_lwd),
+                  inherit.aes = FALSE,
+                  lineend = "round",
+                  colour = "#4f8df7",
+                  alpha = 0.85
+                ) +
+                ggplot2::geom_text(
+                  data = bar_df,
+                  ggplot2::aes(x = leaf_id, y = bar_len + (max_h * 0.015), label = pct_lab),
+                  inherit.aes = FALSE,
+                  vjust = 0,
+                  size = 3.1,
+                  colour = "#1f1f1f"
+                )
+            }
+
+            p <- p + ggplot2::scale_linewidth_identity()
+          }
+        }
+
         p <- p + ggplot2::theme(
           axis.title = ggplot2::element_blank(),
           axis.text = ggplot2::element_blank(),
