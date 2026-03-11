@@ -44,7 +44,7 @@ Noms des catégories de Lexique_fr
 - **NOM** : nom commun
 - **NOM_SUP** : nom
 - **VER** : verbe
-- **VER_SUP** : verbe
+- **VER_SUP** : verbe supplémentaire
 - **AUX** : auxiliaire
 - **ADJ** : adjectif
 - **ADJ_SUP** : adjectif

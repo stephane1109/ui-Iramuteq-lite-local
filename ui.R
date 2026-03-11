@@ -81,6 +81,9 @@ ui_form_parametres_analyse <- function() {
   }
 
   morpho_choices_labels <- stats::setNames(morpho_choices, morpho_choices)
+  if ("VER_SUP" %in% names(morpho_choices_labels)) {
+    morpho_choices_labels[["VER_SUP"]] <- "VER_SUP (verbe supplémentaire)"
+  }
   if ("FORM_NR" %in% names(morpho_choices_labels)) {
     morpho_choices_labels[["FORM_NR"]] <- "FORM_NR (forme non reconnue)"
   }
