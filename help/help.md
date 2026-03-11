@@ -30,10 +30,10 @@ Ensuite, chaque groupe peut être à nouveau subdivisé, et ainsi de suite, jusq
 ### Segments vides (dans la DFM)
 
 - Un **segment vide** est un segment dont la somme de ligne vaut 0 dans la DFM.
-- En clair : c'est un segment de texte pour lequel **aucun terme ne survit** après les filtres (stopwords, fréquence minimale `min_docfreq`, nettoyage, etc...).
+- En clair : c'est un segment de texte pour lequel **aucun terme ne survit** après les filtres (stopwords, fréquence minimale `min_docfreq`, nettoyage, etc.).
 - Ces segments sont supprimés avant la CHD.
 
-### Définitions IRaMuTeQ des effectifs
+### Définitions IRaMuTeQ des effectifs (table CHD)
 
 - **Eff. s.t. (effectif des segments de texte)** : nombre de segments de texte de la classe qui contiennent au moins une fois la forme.
 - **Eff. total (effectif total des segments de texte)** : nombre de segments de texte dans tout le corpus classé qui contiennent au moins une fois la forme.
@@ -54,12 +54,12 @@ Ensuite, chaque groupe peut être à nouveau subdivisé, et ainsi de suite, jusq
 #### Paramètres CHD spécifiques IRaMuTeQ-lite
 
 - **Nombre de classes terminales de la phase 1 (`k_iramuteq`)** : nombre de classes cibles pour la phase de partition.
-- **mincl (auto/manuel)** : seuil minimal d'UCE pour conserver une classe terminale (mode automatique ou valeur manuelle).
+  - **mincl (auto/manuel)** : seuil minimal d'UCE pour conserver une classe terminale (mode automatique ou valeur manuelle). Ce paramètre semble etre différent de la logique "rainette"
 - **Type de classification terminale** :
   - `simple` : segmentation avec `segment_size`.
   - `double` : segmentation en deux passes avec **rst1** puis **rst2**.
 - **Méthode SVD (`iramuteq_svd_method`)** : `irlba` (défaut) ou `svdR`.
-- **Nombre maximum de formes analysées (`iramuteq_max_formes`)** : limite le nombre de termes analysés pour la CHD.
+- **Nombre maximum de formes analysées (`iramuteq_max_formes`)** : limite le nombre de termes conservés pour la CHD.
 - **Calcul des statistiques CHD (`iramuteq_stats_mode`)** : choix du mode de calcul des stats (vectorisé/classique).
 
 ### Options de nettoyage du texte
@@ -70,9 +70,9 @@ Ensuite, chaque groupe peut être à nouveau subdivisé, et ainsi de suite, jusq
 - **Traiter les élisions FR** (`supprimer_apostrophes`) : enlève les élisions en début de mot (`c'`, `j'`, `l'`, `m'`, `n'`, `s'`, `t'`, `d'`, `qu'`) pour ramener par ex. `c'est` vers `est`.
 - **Remplacer les tirets par des espaces** (`remplacer_tirets_espaces`) : transforme `mot-compose` en `mot compose` avant tokenisation.
 - **Retirer les stopwords** (`retirer_stopwords`) : enlève les mots-outils français via la liste `quanteda::stopwords("fr")`.
-- **Passage en minuscules** : appliqué automatiquement avant la construction des tokens/termes.
+- **Passage en minuscules** : appliqué automatiquement avant la construction des tokens/termes (option non configurable).
 
-#### Stopwords en mode IRaMuTeQ-lite
+#### Stopwords en mode IRaMuTeQ-like
 
 - En mode **IRaMuTeQ-lite**, la source de lemmatisation est forcée sur **Lexique (fr)**.
 - Donc, quand l'option **Retirer les stopwords** est activée, le filtrage se fait avec les stopwords **français de quanteda**.
