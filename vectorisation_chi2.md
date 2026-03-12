@@ -1,8 +1,21 @@
-# Vectorisation du calcul du χ² (CHD IRaMuTeQ-like)
+# Calcul **vectorisé** du χ² (CHD IRaMuTeQ-like)
 
-Ce document explique la logique du mode **vectorisé** ajouté pour calculer `chi2` et `p.value` plus rapidement dans la table des statistiques CHD.
+> Réponse courte à la question : **non, on ne “vectorise” pas le χ² en tant que concept statistique**.  
+> On vectorise **le calcul** du χ² (implémentation informatique), c’est-à-dire la manière de calculer beaucoup de χ² d’un coup.
 
-## 1) Contexte
+Ce document explique la logique du mode vectorisé ajouté pour calculer `chi2` et `p.value` plus rapidement dans la table des statistiques CHD.
+
+## 1) Clarification de vocabulaire
+
+Le terme le plus précis est :
+
+- ✅ **calcul vectorisé du χ²**
+- ✅ **implémentation vectorisée du test χ²**
+- ⚠️ **vectorisation du χ²** (raccourci courant, compréhensible, mais techniquement moins précis)
+
+Donc votre intuition est bonne : on ne transforme pas la statistique χ² elle-même, on optimise son calcul en exploitant des opérations sur vecteurs.
+
+## 2) Contexte
 
 Dans la version classique, pour chaque terme et chaque classe on construit un tableau de contingence 2x2 puis on appelle :
 
@@ -10,7 +23,7 @@ Dans la version classique, pour chaque terme et chaque classe on construit un ta
 
 Cette approche est correcte, mais coûteuse sur de gros corpus (beaucoup de termes × classes), car elle fait un grand nombre d'appels R/fonctions statistiques.
 
-## 2) Idée de la vectorisation
+## 3) Idée de la vectorisation
 
 La vectorisation consiste à calculer **en bloc** les mêmes quantités pour tous les termes d'une classe, au lieu de les traiter un par un.
 
@@ -29,7 +42,7 @@ Puis on applique la formule fermée du χ² (ddl=1) sur ces vecteurs :
 
 avec `a=n11`, `b=n12`, `c=n21`, `d=n22`, `n=a+b+c+d`.
 
-## 3) Signe du χ² (sur/sous-représentation)
+## 4) Signe du χ² (sur/sous-représentation)
 
 Le χ² standard est positif. Pour conserver la sémantique historique IRaMuTeQ-like, on applique un signe :
 
@@ -39,7 +52,7 @@ Le χ² standard est positif. Pour conserver la sémantique historique IRaMuTeQ-
 
 On obtient ainsi un `chi2` signé compatible avec les usages existants (tri, interprétation, filtres).
 
-## 4) Calcul de la p-value
+## 5) Calcul de la p-value
 
 En mode vectorisé, la p-value est obtenue via la loi du χ² :
 
@@ -49,7 +62,7 @@ où `chi2_abs` est le χ² non signé.
 
 Cela reproduit la logique de `chisq.test(..., correct=FALSE)` pour des tableaux 2x2 sans correction de continuité.
 
-## 5) Robustesse numérique
+## 6) Robustesse numérique
 
 Le mode vectorisé inclut des garde-fous :
 
@@ -59,7 +72,7 @@ Le mode vectorisé inclut des garde-fous :
 
 Objectif : éviter les crashs et garder un comportement stable sur des données extrêmes/rares.
 
-## 6) Compatibilité : mode "classique"
+## 7) Compatibilité : mode "classique"
 
 Un mode de calcul "classique" est conservé :
 
@@ -68,7 +81,7 @@ Un mode de calcul "classique" est conservé :
 
 Ce mode sert de référence de compatibilité. Le mode vectorisé est recommandé pour la performance.
 
-## 7) Pourquoi c'est plus rapide ?
+## 8) Pourquoi c'est plus rapide ?
 
 - moins d'appels de fonctions R coûteux
 - opérations arithmétiques vectorielles optimisées
