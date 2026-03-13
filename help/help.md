@@ -21,6 +21,46 @@ Ensuite, chaque groupe peut être à nouveau subdivisé, et ainsi de suite, jusq
 
 ## Quelques defintions/explications
 
+### Principe présence / absence
+
+L’idée est simple :
+
+Pour chaque segment (ligne) et chaque mot (colonne), on ne garde que :
+
+  1 si le mot apparaît au moins une fois,
+  0 sinon.
+
+Donc on ignore le nombre exact de répétitions dans le segment pour cette étape.
+
+Dans votre pipeline CHD, c’est explicitement activé :
+
+ l’appel moteur passe binariser = TRUE.
+ puis la matrice est transformée en binaire via ifelse(mat > 0, 1, 0).
+
+Donc la classification CHD se fait bien sur une logique présence/absence.
+Option chi2 vectorisé : différence avec le mode classique
+
+Dans l’UI, vous avez 2 modes :
+
+  Mode optimisé (vectorisé, recommandé),
+  Mode classique (chisq.test par terme).
+
+1) Mode classique
+
+  Fait un stats::chisq.test() terme par terme (boucle mapply).
+  C’est robuste, lisible, mais plus lent quand il y a beaucoup de termes.
+
+2) Mode vectorisé
+
+    Calcule le chi2 et la p-value avec des formules matricielles/vecteur sur tous les termes d’un coup (calc_chi_sign_vectorise).
+
+    Beaucoup plus rapide sur gros vocabulaires.
+
+3) Sur le fond statistique
+
+ Les deux modes visent le même résultat (chi2 signé + p-value).
+ Les écarts éventuels sont en général minimes (arrondis/gestion numérique), pas de changement conceptuel majeur.
+
 
 ### DFM (définition et construction)
 
