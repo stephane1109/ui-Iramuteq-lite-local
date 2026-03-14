@@ -120,7 +120,7 @@ ui_form_parametres_analyse <- function() {
       value = FALSE
     ),
     tags$p(
-      "Si activé, un segment est clôturé dès qu'une ponctuation forte (. ! ?) est rencontrée, même si segment_size n'est pas atteint.",
+      "Si activé, le découpage recherche la meilleure frontière autour de segment_size avec priorité . ! ?, puis ; :, puis , puis espace ; un retour à la ligne clôture aussi le segment.",
       style = "color: #555; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
     ),
     numericInput("min_docfreq", "Fréquence minimale des termes (min_docfreq)", value = 3, min = 1, step = 1),

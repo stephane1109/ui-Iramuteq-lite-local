@@ -140,27 +140,25 @@ register_events_lancer <- function(input, output, session, rv) {
         dv_in <- tryCatch(quanteda::docvars(corpus), error = function(e) NULL)
 
         for (i in seq_along(docs)) {
-          tok_doc <- quanteda::tokens(
-            docs[[i]],
-            remove_punct = if (isTRUE(force_split_on_strong_punct)) FALSE else isTRUE(remove_punct),
-            remove_numbers = isTRUE(remove_numbers),
-            remove_symbols = TRUE,
-            remove_separators = TRUE,
-            split_hyphens = FALSE
-          )
-          tok <- as.character(tok_doc[[1]])
-          tok <- tok[nzchar(tok)]
-          if (length(tok) == 0) next
-
           if (isTRUE(force_split_on_strong_punct)) {
-            seg_tokens <- character(0)
-            seg_count <- 0L
-            seg_idx <- 0L
-            is_punct_token <- grepl("^[[:punct:]]+$", tok)
-            is_strong_punct <- grepl("^[.!?…]+$", tok)
+            doc_with_newlines <- gsub("\r\n|\r|\n", " __NL_SEG_BREAK__ ", docs[[i]], perl = TRUE)
+            tok_doc <- quanteda::tokens(
+              doc_with_newlines,
+              remove_punct = FALSE,
+              remove_numbers = isTRUE(remove_numbers),
+              remove_symbols = TRUE,
+              remove_separators = TRUE,
+              split_hyphens = FALSE
+            )
+            tok <- as.character(tok_doc[[1]])
+            tok <- tok[nzchar(tok)]
+            if (length(tok) == 0) next
 
-            append_segment <- function() {
-              seg <- paste(seg_tokens, collapse = " ")
+            seg_tokens <- character(0)
+            seg_idx <- 0L
+
+            append_segment <- function(tokens_to_write) {
+              seg <- paste(tokens_to_write, collapse = " ")
               if (!nzchar(seg)) return(invisible(NULL))
               seg_idx <<- seg_idx + 1L
               out_text <<- c(out_text, seg)
@@ -173,34 +171,103 @@ register_events_lancer <- function(input, output, session, rv) {
               }
             }
 
+            rank_boundary <- function(token) {
+              if (!nzchar(token)) return(4L)
+              if (grepl("^[.!?…]+$", token)) return(1L)
+              if (grepl("^[;:]+$", token)) return(2L)
+              if (grepl("^[,]+$", token)) return(3L)
+              4L
+            }
+
+            compute_state <- function(tokens_vec) {
+              candidates <- list()
+              non_punct_count <- 0L
+              for (idx_tok in seq_along(tokens_vec)) {
+                tk2 <- tokens_vec[[idx_tok]]
+                if (identical(tk2, "__NL_SEG_BREAK__")) next
+                is_punct2 <- grepl("^[[:punct:]]+$", tk2)
+                if (!isTRUE(is_punct2)) non_punct_count <- non_punct_count + 1L
+                boundary_rank <- if (isTRUE(is_punct2)) rank_boundary(tk2) else 4L
+                candidates[[length(candidates) + 1L]] <- list(
+                  pos = idx_tok,
+                  count = non_punct_count,
+                  rank = boundary_rank
+                )
+              }
+              list(candidates = candidates, non_punct_count = non_punct_count)
+            }
+
+            choose_boundary <- function(candidates, target_size) {
+              if (length(candidates) == 0) return(NULL)
+              min_count <- max(1L, floor(target_size * 0.5))
+              cand_ok <- Filter(function(x) x$count >= min_count, candidates)
+              if (length(cand_ok) == 0) cand_ok <- candidates
+              ord <- order(
+                vapply(cand_ok, function(x) x$rank, integer(1)),
+                vapply(cand_ok, function(x) abs(x$count - target_size), integer(1)),
+                -vapply(cand_ok, function(x) x$pos, integer(1))
+              )
+              cand_ok[[ord[[1]]]]
+            }
+
+            flush_by_policy <- function() {
+              state <- compute_state(seg_tokens)
+              while (state$non_punct_count >= segment_size && length(state$candidates) > 0) {
+                best <- choose_boundary(state$candidates, segment_size)
+                if (is.null(best)) break
+                write_tokens <- seg_tokens[seq_len(best$pos)]
+                write_tokens <- write_tokens[write_tokens != "__NL_SEG_BREAK__"]
+                if (isTRUE(remove_punct)) {
+                  write_tokens <- write_tokens[!grepl("^[[:punct:]]+$", write_tokens)]
+                }
+                append_segment(write_tokens)
+                if (best$pos < length(seg_tokens)) {
+                  seg_tokens <<- seg_tokens[(best$pos + 1L):length(seg_tokens)]
+                } else {
+                  seg_tokens <<- character(0)
+                }
+                state <- compute_state(seg_tokens)
+              }
+            }
+
             for (k in seq_along(tok)) {
               tk <- tok[[k]]
-              if (isTRUE(is_punct_token[[k]])) {
-                if (!isTRUE(remove_punct)) {
-                  seg_tokens <- c(seg_tokens, tk)
-                }
-                if (isTRUE(is_strong_punct[[k]]) && length(seg_tokens) > 0) {
-                  append_segment()
+              if (identical(tk, "__NL_SEG_BREAK__")) {
+                flush_by_policy()
+                if (length(seg_tokens) > 0) {
+                  remain_tokens <- seg_tokens[seg_tokens != "__NL_SEG_BREAK__"]
+                  if (isTRUE(remove_punct)) {
+                    remain_tokens <- remain_tokens[!grepl("^[[:punct:]]+$", remain_tokens)]
+                  }
+                  append_segment(remain_tokens)
                   seg_tokens <- character(0)
-                  seg_count <- 0L
                 }
                 next
               }
-
               seg_tokens <- c(seg_tokens, tk)
-              seg_count <- seg_count + 1L
-
-              if (seg_count >= segment_size) {
-                append_segment()
-                seg_tokens <- character(0)
-                seg_count <- 0L
-              }
+              flush_by_policy()
             }
 
             if (length(seg_tokens) > 0) {
-              append_segment()
+              remain_tokens <- seg_tokens[seg_tokens != "__NL_SEG_BREAK__"]
+              if (isTRUE(remove_punct)) {
+                remain_tokens <- remain_tokens[!grepl("^[[:punct:]]+$", remain_tokens)]
+              }
+              append_segment(remain_tokens)
             }
           } else {
+            tok_doc <- quanteda::tokens(
+              docs[[i]],
+              remove_punct = isTRUE(remove_punct),
+              remove_numbers = isTRUE(remove_numbers),
+              remove_symbols = TRUE,
+              remove_separators = TRUE,
+              split_hyphens = FALSE
+            )
+            tok <- as.character(tok_doc[[1]])
+            tok <- tok[nzchar(tok)]
+            if (length(tok) == 0) next
+
             nseg <- ceiling(length(tok) / segment_size)
             for (j in seq_len(nseg)) {
               deb <- ((j - 1L) * segment_size) + 1L
