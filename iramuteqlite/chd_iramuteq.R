@@ -55,10 +55,6 @@ preparer_entrees_chd_iramuteq <- function(
     if (exists("appliquer_nettoyage_et_minuscules", mode = "function", inherits = TRUE)) {
       appliquer_nettoyage_fun <- get("appliquer_nettoyage_et_minuscules", mode = "function", inherits = TRUE)
     } else {
-      op <- par(no.readonly = TRUE)
-      on.exit(par(op), add = TRUE)
-      par(mar = c(3.0, 2.6, 3.4, 8.5))
-      
       appliquer_nettoyage_fun <- function(textes,
                                           activer_nettoyage = FALSE,
                                           forcer_minuscules = FALSE,
@@ -300,10 +296,6 @@ reconstruire_classes_terminales_iramuteq <- function(
       classif_mode = classif_mode
     )
   } else {
-    op <- par(no.readonly = TRUE)
-    on.exit(par(op), add = TRUE)
-    par(mar = c(3.0, 2.6, 3.4, 8.5))
-    
     mincl_use <- as.integer(mincl)
     if (!is.finite(mincl_use) || is.na(mincl_use) || mincl_use < 1) mincl_use <- 1L
   }
@@ -336,10 +328,6 @@ reconstruire_classes_terminales_iramuteq <- function(
     if (cl %in% feuilles) {
       classes_finales[which(feuilles_docs == cl)] <- cl_names[[i]]
     } else {
-      op <- par(no.readonly = TRUE)
-      on.exit(par(op), add = TRUE)
-      par(mar = c(3.0, 2.6, 3.4, 8.5))
-      
       filles <- suppressWarnings(as.integer(getfille(list_fille, cl, NULL)))
       tochange <- intersect(filles, feuilles)
       for (cl_fille in tochange) {
@@ -880,8 +868,8 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
     invisible(NULL)
   }
   
-  op <- par(no.readonly = TRUE)
-  on.exit(par(op), add = TRUE)
+  old_mar <- par("mar")
+  on.exit(par(mar = old_mar), add = TRUE)
   
   if (identical(orientation, "vertical")) {
     par(mar = c(2, 1, 3, 1))
