@@ -146,7 +146,7 @@ ui_form_parametres_analyse <- function() {
       checkboxInput("lexique_utiliser_lemmes", "Lemmatisation via les lemmes de lexique_fr (forme → c_lemme)", value = TRUE)
     ),
     checkboxInput("expression_utiliser_dictionnaire", "Utiliser le dictionnaire d'expression (dic_mot → dic_norm)", value = FALSE),
-    actionButton("charger_add_expression", "Charger add_expression.csv (annotation)", class = "btn-outline-secondary btn-sm"),
+    actionButton("charger_add_expression", "Ajouter un dictionnaire d'expression (.csv)", class = "btn-outline-secondary btn-sm"),
 
     tags$div(class = "sidebar-section-title", "Nettoyage"),
     checkboxInput("nettoyage_caracteres", "Nettoyage caractères (regex)", value = FALSE),
@@ -301,7 +301,7 @@ ui <- page_navbar(
     tags$h4("Dictionnaire d'expressions (session)"),
     tableOutput("table_annotation_dict")
   ),
-  nav_panel("CHD", value = "chd", ui_resultats_chd_iramuteq()),
+  nav_panel("Résultats CHD", value = "resultats_chd", ui_resultats_chd_iramuteq()),
   nav_panel(
     "AFC", value = "afc",
     tags$h3("AFC"), uiOutput("ui_afc_statut"), uiOutput("ui_afc_erreurs"),

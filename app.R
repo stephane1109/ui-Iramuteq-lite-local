@@ -334,6 +334,38 @@ server <- function(input, output, session) {
     showNotification(paste0("add_expression.csv chargé (", nrow(df_add), " entrées) et activé pour l'analyse."), type = "message")
   })
 
+  observeEvent(input$charger_add_expression, {
+    showModal(modalDialog(
+      title = "Importer un dictionnaire d'expression",
+      easyClose = TRUE,
+      size = "s",
+      fileInput("add_expression_upload", "Choisir un .csv (colonnes: dic_mot, dic_norm, dic_morpho optionnel)", accept = c(".csv")),
+      footer = modalButton("Fermer")
+    ))
+  })
+
+  observeEvent(input$add_expression_upload, {
+    f <- input$add_expression_upload
+    if (is.null(f) || is.null(f$datapath) || !file.exists(f$datapath)) return(invisible(NULL))
+    df <- tryCatch(utils::read.csv2(f$datapath, stringsAsFactors = FALSE, encoding = "UTF-8"), error = function(e) NULL)
+    if (is.null(df) || !all(c("dic_mot", "dic_norm") %in% names(df))) {
+      showNotification("CSV invalide: colonnes requises dic_mot, dic_norm.", type = "error")
+      return(invisible(NULL))
+    }
+    if (!"dic_morpho" %in% names(df)) df$dic_morpho <- ""
+    df <- df[, c("dic_mot", "dic_norm", "dic_morpho"), drop = FALSE]
+    df$dic_mot <- tolower(trimws(as.character(df$dic_mot)))
+    df$dic_norm <- tolower(trimws(as.character(df$dic_norm)))
+    df$dic_morpho <- trimws(as.character(df$dic_morpho))
+    df <- df[nzchar(df$dic_mot) & nzchar(df$dic_norm), , drop = FALSE]
+    df <- df[!duplicated(df$dic_mot), , drop = FALSE]
+    rv$expression_annotations_df <- df
+    rv$utiliser_add_expression <- TRUE
+    sauvegarder_add_expression(rv$expression_annotations_df)
+    removeModal()
+    showNotification(paste0("Dictionnaire importé depuis le disque (", nrow(df), " entrées) et activé pour l'analyse."), type = "message")
+  }, ignoreInit = TRUE)
+
   observeEvent(input$menu_importer_fichier_sidebar, {
     showModal(modalDialog(
       title = "Importer un fichier corpus",
