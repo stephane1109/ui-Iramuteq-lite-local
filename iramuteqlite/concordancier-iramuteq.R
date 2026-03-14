@@ -137,7 +137,7 @@ generer_concordancier_iramuteq_html <- function(
   on.exit(try(close(con), silent = TRUE), add = TRUE)
 
   writeLines("<html><head><meta charset='utf-8'/>", con)
-  writeLines("<style>body{font-family:Arial,sans-serif;line-height:1.45;} span.highlight{background-color:yellow;} p.segment{margin:0 0 .45rem 0;} .classe-bloc{margin-bottom:1.25rem;padding-bottom:.8rem;border-bottom:1px solid #eee;}</style>", con)
+  writeLines("<style>body{font-family:Inter,Segoe UI,Arial,sans-serif;line-height:1.55;color:#1f2937;background:#f8fafc;padding:10px;} h1,h2,h3{color:#0f172a;} span.highlight{background:linear-gradient(120deg,#fde68a 0%,#f59e0b 100%);color:#7c2d12;font-weight:700;padding:0 .18rem;border-radius:.35rem;box-decoration-break:clone;-webkit-box-decoration-break:clone;} p.segment{margin:0 0 .55rem 0;padding:.45rem .55rem;border-radius:.55rem;background:#ffffff;box-shadow:0 1px 3px rgba(15,23,42,.08);} .classe-bloc{margin-bottom:1.25rem;padding:.7rem .85rem;border:1px solid #e2e8f0;border-radius:.75rem;background:#fefefe;box-shadow:0 2px 8px rgba(15,23,42,.05);}</style>", con)
   writeLines("</head><body>", con)
   writeLines("<h1>Concordancier IRaMuTeQ-like</h1>", con)
   writeLines("<h2>Segments par classe</h2>", con)
@@ -274,7 +274,7 @@ generer_concordancier_afc_html <- function(chemin_sortie, afc_table_mots, rv = N
   on.exit(try(close(con), silent = TRUE), add = TRUE)
 
   writeLines("<html><head><meta charset='utf-8'/>", con)
-  writeLines("<style>body{font-family:Arial,sans-serif;line-height:1.45;} h2{margin-top:1.2rem;} table{width:100%;border-collapse:collapse;margin-bottom:1rem;} th,td{padding:6px;border-bottom:1px solid #ececec;vertical-align:top;text-align:left;} span.highlight{background-color:yellow;}</style>", con)
+  writeLines("<style>body{font-family:Inter,Segoe UI,Arial,sans-serif;line-height:1.55;color:#1f2937;background:#f8fafc;padding:10px;} h1,h2{color:#0f172a;} h2{margin-top:1.2rem;} table{width:100%;border-collapse:collapse;margin-bottom:1rem;background:#ffffff;border:1px solid #e2e8f0;border-radius:.65rem;overflow:hidden;} th,td{padding:8px;border-bottom:1px solid #ececec;vertical-align:top;text-align:left;} th{background:#f1f5f9;} span.highlight{background:linear-gradient(120deg,#fde68a 0%,#f59e0b 100%);color:#7c2d12;font-weight:700;padding:0 .18rem;border-radius:.35rem;box-decoration-break:clone;-webkit-box-decoration-break:clone;}</style>", con)
   writeLines("</head><body>", con)
   writeLines("<h1>Concordancier AFC (fallback IRaMuTeQ-like)</h1>", con)
 
