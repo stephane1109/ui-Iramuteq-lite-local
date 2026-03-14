@@ -190,6 +190,7 @@ server <- function(input, output, session) {
     lexique_fr_df = NULL,
     expression_fr_df = NULL,
     expression_annotations_df = data.frame(dic_mot = character(0), dic_norm = character(0), dic_morpho = character(0), stringsAsFactors = FALSE),
+    utiliser_add_expression = FALSE,
     textes_indexation = NULL,
 
     afc_obj = NULL,
@@ -211,6 +212,33 @@ server <- function(input, output, session) {
     stats_zipf_df = NULL,
     min_docfreq_applique = 3L
   )
+
+  app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
+  if (is.null(app_dir) || !nzchar(app_dir)) app_dir <- getwd()
+
+  sauvegarder_add_expression <- function(df) {
+    if (is.null(df) || !is.data.frame(df)) return(invisible(NULL))
+    path_out <- file.path(app_dir, "dictionnaires", "add_expression.csv")
+    tryCatch({
+      utils::write.csv2(df, path_out, row.names = FALSE, fileEncoding = "UTF-8")
+      invisible(path_out)
+    }, error = function(e) invisible(NULL))
+  }
+
+  charger_add_expression <- function() {
+    path_in <- file.path(app_dir, "dictionnaires", "add_expression.csv")
+    if (!file.exists(path_in)) return(NULL)
+    df <- tryCatch(utils::read.csv2(path_in, stringsAsFactors = FALSE, encoding = "UTF-8"), error = function(e) NULL)
+    if (is.null(df) || !all(c("dic_mot", "dic_norm") %in% names(df))) return(NULL)
+    if (!"dic_morpho" %in% names(df)) df$dic_morpho <- ""
+    df <- df[, c("dic_mot", "dic_norm", "dic_morpho"), drop = FALSE]
+    df$dic_mot <- tolower(trimws(as.character(df$dic_mot)))
+    df$dic_norm <- tolower(trimws(as.character(df$dic_norm)))
+    df$dic_morpho <- trimws(as.character(df$dic_morpho))
+    df <- df[nzchar(df$dic_mot) & nzchar(df$dic_norm), , drop = FALSE]
+    df <- df[!duplicated(df$dic_mot), , drop = FALSE]
+    df
+  }
 
   if (exists("register_outputs_status", mode = "function", inherits = TRUE)) {
     register_outputs_status(input, output, session, rv)
@@ -293,11 +321,16 @@ server <- function(input, output, session) {
     ouvrir_modal_parametres()
   })
 
-  observeEvent(input$nav_principal, {
-    if (identical(input$nav_principal, "chd")) {
-      ouvrir_modal_parametres()
+  observeEvent(input$charger_add_expression, {
+    df_add <- charger_add_expression()
+    if (is.null(df_add) || nrow(df_add) == 0) {
+      showNotification("add_expression.csv introuvable ou vide.", type = "warning")
+      return(invisible(NULL))
     }
-  }, ignoreInit = TRUE)
+    rv$expression_annotations_df <- df_add
+    rv$utiliser_add_expression <- TRUE
+    showNotification(paste0("add_expression.csv chargé (", nrow(df_add), " entrées) et activé pour l'analyse."), type = "message")
+  })
 
   observeEvent(input$menu_importer_fichier_sidebar, {
     showModal(modalDialog(
@@ -405,6 +438,7 @@ server <- function(input, output, session) {
       df <- rbind(df, data.frame(dic_mot = dic_mot, dic_norm = dic_norm, dic_morpho = dic_morpho, stringsAsFactors = FALSE))
     }
     rv$expression_annotations_df <- df[order(df$dic_mot), , drop = FALSE]
+    sauvegarder_add_expression(rv$expression_annotations_df)
     showNotification("Entrée dictionnaire enregistrée (session).", type = "message")
   })
 
@@ -414,6 +448,7 @@ server <- function(input, output, session) {
     df <- rv$expression_annotations_df
     if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) return(invisible(NULL))
     rv$expression_annotations_df <- df[df$dic_mot != key, , drop = FALSE]
+    sauvegarder_add_expression(rv$expression_annotations_df)
     showNotification("Entrée supprimée (si existante).", type = "message")
   })
 
@@ -433,6 +468,7 @@ server <- function(input, output, session) {
     df <- df[nzchar(df$dic_mot) & nzchar(df$dic_norm), , drop = FALSE]
     df <- df[!duplicated(df$dic_mot), , drop = FALSE]
     rv$expression_annotations_df <- df
+    sauvegarder_add_expression(rv$expression_annotations_df)
     showNotification(paste0("Dictionnaire importé (", nrow(df), " entrées)."), type = "message")
   })
 
@@ -445,7 +481,7 @@ server <- function(input, output, session) {
   }, striped = TRUE, bordered = TRUE, hover = TRUE, spacing = "xs", width = "100%")
 
   output$dl_expression_csv <- downloadHandler(
-    filename = function() "expression_fr.csv",
+    filename = function() "add_expression.csv",
     content = function(file) {
       df <- rv$expression_annotations_df
       if (is.null(df) || !is.data.frame(df)) {

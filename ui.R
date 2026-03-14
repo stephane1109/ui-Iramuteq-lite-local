@@ -146,6 +146,7 @@ ui_form_parametres_analyse <- function() {
       checkboxInput("lexique_utiliser_lemmes", "Lemmatisation via les lemmes de lexique_fr (forme → c_lemme)", value = TRUE)
     ),
     checkboxInput("expression_utiliser_dictionnaire", "Utiliser le dictionnaire d'expression (dic_mot → dic_norm)", value = FALSE),
+    actionButton("charger_add_expression", "Charger add_expression.csv (annotation)", class = "btn-outline-secondary btn-sm"),
 
     tags$div(class = "sidebar-section-title", "Nettoyage"),
     checkboxInput("nettoyage_caracteres", "Nettoyage caractères (regex)", value = FALSE),
@@ -282,7 +283,7 @@ ui <- page_navbar(
   nav_panel("Corpus", value = "corpus", tags$h3("Corpus importé"), uiOutput("ui_corpus_preview")),
   nav_panel(
     "Annotation expressions", value = "annotation_expressions",
-    tags$h3("Annotation du corpus pour expression_fr.csv"),
+    tags$h3("Annotation du corpus pour add_expression.csv"),
     tags$p("Sélectionnez un extrait dans la zone ci-dessous puis ajoutez-le au dictionnaire (dic_mot, dic_norm, dic_morpho)."),
     textAreaInput("annotation_corpus_text", "Corpus (zone d'annotation)", value = "", rows = 14, width = "100%"),
     tags$div(style = "display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;",
@@ -297,12 +298,12 @@ ui <- page_navbar(
       textInput("annotation_remove_key", "dic_mot à supprimer", value = ""),
       actionButton("annotation_remove_entry", "Supprimer")
     ),
-    fileInput("annotation_import_csv", "Importer expression_fr.csv", accept = c(".csv")),
-    downloadButton("dl_expression_csv", "Télécharger expression_fr.csv"),
+    fileInput("annotation_import_csv", "Importer add_expression.csv", accept = c(".csv")),
+    downloadButton("dl_expression_csv", "Télécharger add_expression.csv"),
     tags$h4("Dictionnaire d'expressions (session)"),
     tableOutput("table_annotation_dict")
   ),
-  nav_panel("CHD", value = "chd", ui_resultats_chd_iramuteq()),
+  nav_panel("Résultats CHD", value = "resultats_chd", ui_resultats_chd_iramuteq()),
   nav_panel(
     "AFC", value = "afc",
     tags$h3("AFC"), uiOutput("ui_afc_statut"), uiOutput("ui_afc_erreurs"),

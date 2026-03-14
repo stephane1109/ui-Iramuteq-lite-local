@@ -1106,7 +1106,8 @@ register_events_lancer <- function(input, output, session, rv) {
             rv$expression_fr_df <- charger_expression_fr(app_dir)
 
             expr_session_df <- NULL
-            if (!is.null(rv$expression_annotations_df) && is.data.frame(rv$expression_annotations_df) && nrow(rv$expression_annotations_df) > 0) {
+            add_expression_actif <- isTRUE(rv$utiliser_add_expression)
+            if (isTRUE(add_expression_actif) && !is.null(rv$expression_annotations_df) && is.data.frame(rv$expression_annotations_df) && nrow(rv$expression_annotations_df) > 0) {
               expr_session_df <- rv$expression_annotations_df
               cols_need <- c("dic_mot", "dic_norm")
               if (all(cols_need %in% names(expr_session_df))) {
@@ -1121,7 +1122,10 @@ register_events_lancer <- function(input, output, session, rv) {
             }
 
             expressions_actives_df <- rv$expression_fr_df
-            if (!is.null(expr_session_df) && nrow(expr_session_df) > 0) {
+            if (!isTRUE(add_expression_actif)) {
+              ajouter_log(rv, "Dictionnaire add_expression.csv non activé (cliquer 'Charger add_expression.csv' dans Paramétrages de l'analyse).")
+            }
+            if (isTRUE(add_expression_actif) && !is.null(expr_session_df) && nrow(expr_session_df) > 0) {
               expressions_actives_df <- rbind(expr_session_df, rv$expression_fr_df[, c("dic_mot", "dic_norm"), drop = FALSE])
               expressions_actives_df <- expressions_actives_df[!duplicated(expressions_actives_df$dic_mot), , drop = FALSE]
               ajouter_log(rv, paste0("Dictionnaire d'expressions enrichi par l'onglet Annotation : +", nrow(expr_session_df), " entrée(s) session."))
