@@ -285,6 +285,9 @@ ui <- page_navbar(
     tags$h3("Annotation du corpus pour add_expression_fr.csv"),
     tags$p("Sélectionnez un extrait dans la zone ci-dessous puis ajoutez-le au dictionnaire (dic_mot, dic_norm, dic_morpho)."),
     textAreaInput("annotation_corpus_text", "Corpus (zone d'annotation)", value = "", rows = 14, width = "100%"),
+    tags$h4("Prévisualisation annotée"),
+    tags$p("Les formes présentes dans le dictionnaire de session (dont add_expression_fr.csv importé) sont surlignées en orange."),
+    uiOutput("annotation_corpus_colore"),
     tags$div(style = "display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;",
       actionButton("annotation_capture_selection", "Capturer la sélection"),
       actionButton("annotation_charger_corpus", "Charger le corpus importé")

@@ -486,6 +486,63 @@ server <- function(input, output, session) {
     updateTextInput(session, "annotation_norm", value = norm)
   }, ignoreInit = TRUE)
 
+  output$annotation_corpus_colore <- renderUI({
+    texte <- if (is.null(input$annotation_corpus_text)) "" else as.character(input$annotation_corpus_text)
+    if (!nzchar(trimws(texte))) {
+      return(tags$div(
+        style = "white-space: pre-wrap; max-height: 280px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #fafafa;",
+        "Aucun texte à annoter pour le moment."
+      ))
+    }
+
+    expr_df <- rv$expression_annotations_df
+    if (is.null(expr_df) || !is.data.frame(expr_df) || nrow(expr_df) == 0 || !"dic_mot" %in% names(expr_df)) {
+      return(tags$div(
+        style = "white-space: pre-wrap; max-height: 280px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #fafafa;",
+        htmltools::HTML(htmltools::htmlEscape(texte))
+      ))
+    }
+
+    motifs <- tolower(trimws(as.character(expr_df$dic_mot)))
+    motifs <- motifs[nzchar(motifs)]
+    motifs <- unique(motifs)
+    motifs <- motifs[order(nchar(motifs), decreasing = TRUE)]
+
+    construire_motif_regex <- function(motif) {
+      motif <- gsub("[’`´ʼʹ]", "'", motif, perl = TRUE)
+      chars <- strsplit(motif, "", fixed = TRUE)[[1]]
+      out <- character(length(chars))
+      for (k in seq_along(chars)) {
+        ch <- chars[[k]]
+        if (ch == "'") {
+          out[[k]] <- "['’`´ʼʹ]"
+        } else {
+          special <- c("\\", "^", "$", ".", "|", "?", "*", "+", "(", ")", "[", "]", "{", "}")
+          out[[k]] <- if (ch %in% special) paste0("\\", ch) else ch
+        }
+      }
+      paste0(out, collapse = "")
+    }
+
+    texte_hl <- texte
+    for (motif in motifs) {
+      motif_regex <- construire_motif_regex(motif)
+      regex <- paste0("(?i)(?<![[:alnum:]_])", motif_regex, "(?![[:alnum:]_])")
+      texte_hl <- gsub(regex, "<span class='highlight'>\\0</span>", texte_hl, perl = TRUE)
+    }
+
+    texte_safe <- echapper_segments_en_preservant_surlignage(
+      texte_hl,
+      "<span class='highlight'>",
+      "</span>"
+    )
+
+    tags$div(
+      style = "white-space: pre-wrap; max-height: 280px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #fafafa;",
+      htmltools::HTML(texte_safe)
+    )
+  })
+
   observeEvent(input$annotation_add_entry, {
     dic_mot <- tolower(trimws(as.character(input$annotation_selection)))
     dic_norm <- tolower(trimws(as.character(input$annotation_norm)))
