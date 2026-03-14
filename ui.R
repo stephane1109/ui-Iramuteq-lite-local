@@ -301,7 +301,7 @@ ui <- page_navbar(
     tags$h4("Dictionnaire d'expressions (session)"),
     tableOutput("table_annotation_dict")
   ),
-  nav_panel("Résultats CHD", value = "resultats_chd", ui_resultats_chd_iramuteq()),
+  nav_panel("CHD", value = "resultats_chd", ui_resultats_chd_iramuteq()),
   nav_panel(
     "AFC", value = "afc",
     tags$h3("AFC"), uiOutput("ui_afc_statut"), uiOutput("ui_afc_erreurs"),

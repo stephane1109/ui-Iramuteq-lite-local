@@ -323,7 +323,7 @@ server <- function(input, output, session) {
   }
 
   observeEvent(input$nav_principal, {
-    if (identical(input$nav_principal, "chd")) {
+    if (input$nav_principal %in% c("chd", "resultats_chd")) {
       ouvrir_modal_parametres()
     }
   }, ignoreInit = TRUE)
