@@ -289,9 +289,11 @@ server <- function(input, output, session) {
     ))
   }
 
-  observeEvent(input$ouvrir_parametres, {
-    ouvrir_modal_parametres()
-  })
+  observeEvent(input$nav_principal, {
+    if (identical(input$nav_principal, "chd")) {
+      ouvrir_modal_parametres()
+    }
+  }, ignoreInit = TRUE)
 
   observeEvent(input$menu_importer_fichier_sidebar, {
     showModal(modalDialog(
@@ -310,7 +312,6 @@ server <- function(input, output, session) {
       updateTextAreaInput(session, "annotation_corpus_text", value = paste(lignes_auto, collapse = "\n"))
     }
     removeModal()
-    ouvrir_modal_parametres()
   }, ignoreInit = TRUE)
 
   output$ui_corpus_preview <- renderUI({
