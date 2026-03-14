@@ -571,7 +571,8 @@ register_events_lancer <- function(input, output, session, rv) {
           } else if (ch_l == "œ") {
             out[[k]] <- "(?:œ|oe)"
           } else {
-            out[[k]] <- gsub("([.|()\\^{}+$*?\\[\\]\\\\])", "\\\1", ch, perl = TRUE)
+            chars_speciaux_regex <- c("\\", "^", "$", ".", "|", "?", "*", "+", "(", ")", "[", "]", "{", "}")
+            out[[k]] <- if (ch %in% chars_speciaux_regex) paste0("\\", ch) else ch
           }
         }
         paste0(out, collapse = "")
@@ -1126,6 +1127,9 @@ register_events_lancer <- function(input, output, session, rv) {
                 " entrée(s) du dictionnaire (dic_mot -> dic_norm)."
               )
             )
+            if (isTRUE(input$filtrage_morpho) && !("AUTRE_FORME" %in% toupper(trimws(as.character(input$pos_lexique_a_conserver))))) {
+              ajouter_log(rv, "Note: formes normalisées hors lexique (ex. gerald_darmanin) seront exclues si AUTRE_FORME n'est pas sélectionné dans le filtrage morphosyntaxique.")
+            }
           }
 
           avancer(0.18, "Préparation texte (nettoyage / minuscules)")
