@@ -124,7 +124,8 @@ register_events_lancer <- function(input, output, session, rv) {
       split_segments <- function(corpus,
                                  segment_size = 40,
                                  remove_punct = FALSE,
-                                 remove_numbers = FALSE) {
+                                 remove_numbers = FALSE,
+                                 force_split_on_strong_punct = FALSE) {
         segment_size <- suppressWarnings(as.integer(segment_size))
         if (!is.finite(segment_size) || is.na(segment_size) || segment_size < 1) segment_size <- 40L
 
@@ -139,30 +140,147 @@ register_events_lancer <- function(input, output, session, rv) {
         dv_in <- tryCatch(quanteda::docvars(corpus), error = function(e) NULL)
 
         for (i in seq_along(docs)) {
-          tok_doc <- quanteda::tokens(
-            docs[[i]],
-            remove_punct = isTRUE(remove_punct),
-            remove_numbers = isTRUE(remove_numbers),
-            remove_symbols = TRUE,
-            remove_separators = TRUE,
-            split_hyphens = FALSE
-          )
-          tok <- as.character(tok_doc[[1]])
-          tok <- tok[nzchar(tok)]
-          if (length(tok) == 0) next
+          if (isTRUE(force_split_on_strong_punct)) {
+            doc_with_newlines <- gsub("\r\n|\r|\n", " __NL_SEG_BREAK__ ", docs[[i]], perl = TRUE)
+            tok_doc <- quanteda::tokens(
+              doc_with_newlines,
+              remove_punct = FALSE,
+              remove_numbers = isTRUE(remove_numbers),
+              remove_symbols = TRUE,
+              remove_separators = TRUE,
+              split_hyphens = FALSE
+            )
+            tok <- as.character(tok_doc[[1]])
+            tok <- tok[nzchar(tok)]
+            if (length(tok) == 0) next
 
-          nseg <- ceiling(length(tok) / segment_size)
-          for (j in seq_len(nseg)) {
-            deb <- ((j - 1L) * segment_size) + 1L
-            fin <- min(j * segment_size, length(tok))
-            seg <- paste(tok[deb:fin], collapse = " ")
-            out_text <- c(out_text, seg)
-            out_id <- c(out_id, paste0(dn[[i]], "_seg", j))
-            out_src <- c(out_src, dn[[i]])
-            if (!is.null(dv_in) && nrow(dv_in) >= i) {
-              out_docvars[[length(out_docvars) + 1L]] <- dv_in[i, , drop = FALSE]
-            } else {
-              out_docvars[[length(out_docvars) + 1L]] <- NULL
+            seg_tokens <- character(0)
+            seg_idx <- 0L
+
+            append_segment <- function(tokens_to_write) {
+              seg <- paste(tokens_to_write, collapse = " ")
+              if (!nzchar(seg)) return(invisible(NULL))
+              seg_idx <<- seg_idx + 1L
+              out_text <<- c(out_text, seg)
+              out_id <<- c(out_id, paste0(dn[[i]], "_seg", seg_idx))
+              out_src <<- c(out_src, dn[[i]])
+              if (!is.null(dv_in) && nrow(dv_in) >= i) {
+                out_docvars[[length(out_docvars) + 1L]] <<- dv_in[i, , drop = FALSE]
+              } else {
+                out_docvars[[length(out_docvars) + 1L]] <<- NULL
+              }
+            }
+
+            rank_boundary <- function(token) {
+              if (!nzchar(token)) return(4L)
+              if (grepl("^[.!?…]+$", token)) return(1L)
+              if (grepl("^[;:]+$", token)) return(2L)
+              if (grepl("^[,]+$", token)) return(3L)
+              4L
+            }
+
+            compute_state <- function(tokens_vec) {
+              candidates <- list()
+              non_punct_count <- 0L
+              for (idx_tok in seq_along(tokens_vec)) {
+                tk2 <- tokens_vec[[idx_tok]]
+                if (identical(tk2, "__NL_SEG_BREAK__")) next
+                is_punct2 <- grepl("^[[:punct:]]+$", tk2)
+                if (!isTRUE(is_punct2)) non_punct_count <- non_punct_count + 1L
+                boundary_rank <- if (isTRUE(is_punct2)) rank_boundary(tk2) else 4L
+                candidates[[length(candidates) + 1L]] <- list(
+                  pos = idx_tok,
+                  count = non_punct_count,
+                  rank = boundary_rank
+                )
+              }
+              list(candidates = candidates, non_punct_count = non_punct_count)
+            }
+
+            choose_boundary <- function(candidates, target_size) {
+              if (length(candidates) == 0) return(NULL)
+              min_count <- max(1L, floor(target_size * 0.5))
+              cand_ok <- Filter(function(x) x$count >= min_count, candidates)
+              if (length(cand_ok) == 0) cand_ok <- candidates
+              ord <- order(
+                vapply(cand_ok, function(x) x$rank, integer(1)),
+                vapply(cand_ok, function(x) abs(x$count - target_size), integer(1)),
+                -vapply(cand_ok, function(x) x$pos, integer(1))
+              )
+              cand_ok[[ord[[1]]]]
+            }
+
+            flush_by_policy <- function() {
+              state <- compute_state(seg_tokens)
+              while (state$non_punct_count >= segment_size && length(state$candidates) > 0) {
+                best <- choose_boundary(state$candidates, segment_size)
+                if (is.null(best)) break
+                write_tokens <- seg_tokens[seq_len(best$pos)]
+                write_tokens <- write_tokens[write_tokens != "__NL_SEG_BREAK__"]
+                if (isTRUE(remove_punct)) {
+                  write_tokens <- write_tokens[!grepl("^[[:punct:]]+$", write_tokens)]
+                }
+                append_segment(write_tokens)
+                if (best$pos < length(seg_tokens)) {
+                  seg_tokens <<- seg_tokens[(best$pos + 1L):length(seg_tokens)]
+                } else {
+                  seg_tokens <<- character(0)
+                }
+                state <- compute_state(seg_tokens)
+              }
+            }
+
+            for (k in seq_along(tok)) {
+              tk <- tok[[k]]
+              if (identical(tk, "__NL_SEG_BREAK__")) {
+                flush_by_policy()
+                if (length(seg_tokens) > 0) {
+                  remain_tokens <- seg_tokens[seg_tokens != "__NL_SEG_BREAK__"]
+                  if (isTRUE(remove_punct)) {
+                    remain_tokens <- remain_tokens[!grepl("^[[:punct:]]+$", remain_tokens)]
+                  }
+                  append_segment(remain_tokens)
+                  seg_tokens <- character(0)
+                }
+                next
+              }
+              seg_tokens <- c(seg_tokens, tk)
+              flush_by_policy()
+            }
+
+            if (length(seg_tokens) > 0) {
+              remain_tokens <- seg_tokens[seg_tokens != "__NL_SEG_BREAK__"]
+              if (isTRUE(remove_punct)) {
+                remain_tokens <- remain_tokens[!grepl("^[[:punct:]]+$", remain_tokens)]
+              }
+              append_segment(remain_tokens)
+            }
+          } else {
+            tok_doc <- quanteda::tokens(
+              docs[[i]],
+              remove_punct = isTRUE(remove_punct),
+              remove_numbers = isTRUE(remove_numbers),
+              remove_symbols = TRUE,
+              remove_separators = TRUE,
+              split_hyphens = FALSE
+            )
+            tok <- as.character(tok_doc[[1]])
+            tok <- tok[nzchar(tok)]
+            if (length(tok) == 0) next
+
+            nseg <- ceiling(length(tok) / segment_size)
+            for (j in seq_len(nseg)) {
+              deb <- ((j - 1L) * segment_size) + 1L
+              fin <- min(j * segment_size, length(tok))
+              seg <- paste(tok[deb:fin], collapse = " ")
+              out_text <- c(out_text, seg)
+              out_id <- c(out_id, paste0(dn[[i]], "_seg", j))
+              out_src <- c(out_src, dn[[i]])
+              if (!is.null(dv_in) && nrow(dv_in) >= i) {
+                out_docvars[[length(out_docvars) + 1L]] <- dv_in[i, , drop = FALSE]
+              } else {
+                out_docvars[[length(out_docvars) + 1L]] <- NULL
+              }
             }
           }
         }
@@ -196,7 +314,8 @@ register_events_lancer <- function(input, output, session, rv) {
                                             rst1 = 12,
                                             rst2 = 14,
                                             remove_punct = FALSE,
-                                            remove_numbers = FALSE) {
+                                            remove_numbers = FALSE,
+                                            force_split_on_strong_punct = FALSE) {
         rst1 <- suppressWarnings(as.integer(rst1))
         rst2 <- suppressWarnings(as.integer(rst2))
         if (!is.finite(rst1) || is.na(rst1) || rst1 < 1) rst1 <- 12L
@@ -214,14 +333,16 @@ register_events_lancer <- function(input, output, session, rv) {
           corpus,
           segment_size = rst1,
           remove_punct = isTRUE(remove_punct),
-          remove_numbers = isTRUE(remove_numbers)
+          remove_numbers = isTRUE(remove_numbers),
+          force_split_on_strong_punct = isTRUE(force_split_on_strong_punct)
         )
 
         corpus_rst2 <- split_segments(
           corpus,
           segment_size = rst2,
           remove_punct = isTRUE(remove_punct),
-          remove_numbers = isTRUE(remove_numbers)
+          remove_numbers = isTRUE(remove_numbers),
+          force_split_on_strong_punct = isTRUE(force_split_on_strong_punct)
         )
 
         txt1 <- as.character(corpus_rst1)
@@ -375,9 +496,18 @@ register_events_lancer <- function(input, output, session, rv) {
     }
 
     charger_expression_fr <- function(app_dir) {
-      chemin_expression <- file.path(app_dir, "dictionnaires", "expression_fr.csv")
-      if (!file.exists(chemin_expression)) {
-        stop(paste0("Fichier dictionnaire d'expressions introuvable: ", chemin_expression))
+      chemins_candidats <- c(
+        file.path(app_dir, "dictionnaires", "expression_fr.csv"),
+        file.path(app_dir, "dictionnaires", "expressions.csv")
+      )
+      chemin_expression <- chemins_candidats[file.exists(chemins_candidats)][1]
+      if (is.na(chemin_expression) || !nzchar(chemin_expression)) {
+        stop(
+          paste0(
+            "Fichier dictionnaire d'expressions introuvable. Chemins testés: ",
+            paste(chemins_candidats, collapse = " | ")
+          )
+        )
       }
 
       expressions <- utils::read.csv2(
@@ -388,7 +518,7 @@ register_events_lancer <- function(input, output, session, rv) {
 
       colonnes_requises <- c("dic_mot", "dic_norm")
       if (!all(colonnes_requises %in% names(expressions))) {
-        stop("Le fichier expression_fr.csv doit contenir les colonnes dic_mot et dic_norm.")
+        stop("Le fichier expression_fr.csv (ou expressions.csv) doit contenir les colonnes dic_mot et dic_norm.")
       }
 
       expressions$dic_mot <- tolower(trimws(as.character(expressions$dic_mot)))
@@ -400,6 +530,7 @@ register_events_lancer <- function(input, output, session, rv) {
         drop = FALSE
       ]
       expressions <- expressions[!duplicated(expressions$dic_mot), , drop = FALSE]
+      attr(expressions, "source_file") <- chemin_expression
       expressions
     }
 
@@ -416,11 +547,40 @@ register_events_lancer <- function(input, output, session, rv) {
       dic <- dic[ord, , drop = FALSE]
       n_occurrences <- 0L
 
+      construire_motif_regex_expression <- function(motif) {
+        accent_map <- list(
+          a = "aàáâäãå",
+          e = "eèéêë",
+          i = "iìíîï",
+          o = "oòóôöõø",
+          u = "uùúûü",
+          y = "yÿ",
+          c = "cç",
+          n = "nñ"
+        )
+
+        chars <- strsplit(motif, "", fixed = TRUE)[[1]]
+        out <- character(length(chars))
+        for (k in seq_along(chars)) {
+          ch <- chars[[k]]
+          ch_l <- tolower(ch)
+          if (ch == "'") {
+            out[[k]] <- "['’`´ʼʹ]"
+          } else if (ch_l %in% names(accent_map)) {
+            out[[k]] <- paste0("[", accent_map[[ch_l]], "]")
+          } else if (ch_l == "œ") {
+            out[[k]] <- "(?:œ|oe)"
+          } else {
+            out[[k]] <- gsub("([.|()\\^{}+$*?\\[\\]\\\\])", "\\\1", ch, perl = TRUE)
+          }
+        }
+        paste0(out, collapse = "")
+      }
+
       for (i in seq_len(nrow(dic))) {
         motif <- dic$dic_mot[[i]]
         remplacement <- dic$dic_norm[[i]]
-        motif_echappe <- gsub("([.|()\\^{}+$*?\\[\\]\\\\])", "\\\\\\1", motif, perl = TRUE)
-        motif_echappe <- gsub("'", "['’`´ʼʹ]", motif_echappe, fixed = TRUE)
+        motif_echappe <- construire_motif_regex_expression(motif)
         regex <- paste0("(?i)(?<![[:alnum:]_])", motif_echappe, "(?![[:alnum:]_])")
 
         nb_match_ligne <- lengths(regmatches(textes_out, gregexpr(regex, textes_out, perl = TRUE)))
@@ -523,22 +683,44 @@ register_events_lancer <- function(input, output, session, rv) {
 
         morpho_selection <- toupper(trimws(as.character(input$pos_lexique_a_conserver)))
         morpho_selection <- unique(morpho_selection[nzchar(morpho_selection)])
+        inclure_autre_forme <- "AUTRE_FORME" %in% morpho_selection
+        morpho_selection_lexique <- setdiff(morpho_selection, "AUTRE_FORME")
 
-        if (length(morpho_selection) > 0) {
+        if (length(morpho_selection_lexique) > 0 || isTRUE(inclure_autre_forme)) {
           lex <- rv$lexique_fr_df
           lex_morpho <- toupper(trimws(as.character(lex$c_morpho)))
 
-          idx <- nzchar(lex_morpho) & lex_morpho %in% morpho_selection
+          idx <- nzchar(lex_morpho) & lex_morpho %in% morpho_selection_lexique
           termes_autorises <- unique(c(
             tolower(trimws(as.character(lex$c_mot[idx]))),
             tolower(trimws(as.character(lex$c_lemme[idx])))
           ))
           termes_autorises <- termes_autorises[nzchar(termes_autorises)]
 
+          toutes_formes_lexique <- unique(c(
+            tolower(trimws(as.character(lex$c_mot))),
+            tolower(trimws(as.character(lex$c_lemme)))
+          ))
+          toutes_formes_lexique <- toutes_formes_lexique[nzchar(toutes_formes_lexique)]
+
+          featnames_dfm <- quanteda::featnames(dfm_obj)
+          featnames_norm <- tolower(trimws(as.character(featnames_dfm)))
+          featnames_core <- gsub("^[[:punct:]]+|[[:punct:]]+$", "", featnames_norm, perl = TRUE)
+          is_punct_feature <- !nzchar(featnames_core)
+
+          in_selection <- (featnames_norm %in% termes_autorises) | (featnames_core %in% termes_autorises)
+          in_lexique <- (featnames_norm %in% toutes_formes_lexique) | (featnames_core %in% toutes_formes_lexique)
+
+          keep_mask <- in_selection
+          if (isTRUE(inclure_autre_forme)) {
+            keep_mask <- keep_mask | (!in_lexique & !is_punct_feature)
+          }
+
+          pattern_keep <- featnames_dfm[keep_mask]
           n_feat_avant_morpho <- quanteda::nfeat(dfm_obj)
           dfm_obj <- quanteda::dfm_select(
             dfm_obj,
-            pattern = termes_autorises,
+            pattern = pattern_keep,
             selection = "keep",
             valuetype = "fixed",
             case_insensitive = FALSE
@@ -549,6 +731,10 @@ register_events_lancer <- function(input, output, session, rv) {
             paste0(
               "Filtrage morphosyntaxique lexique_fr appliqué (c_morpho=",
               paste(morpho_selection, collapse = ","),
+              " | inclure_autre_forme=",
+              ifelse(isTRUE(inclure_autre_forme), "1", "0"),
+              " | ponct_exclue_autre_forme=1",
+              " | normalisation_bords_ponct=1",
               ") : ",
               n_feat_avant_morpho,
               " -> ",
@@ -862,7 +1048,8 @@ register_events_lancer <- function(input, output, session, rv) {
             corpus_importe,
             segment_size = segment_size,
             remove_punct = FALSE,
-            remove_numbers = FALSE
+            remove_numbers = FALSE,
+            force_split_on_strong_punct = isTRUE(input$segmenter_sur_ponctuation_forte)
           )
 
           # CHD: segmentation selon les options de prétraitement demandées.
@@ -873,7 +1060,8 @@ register_events_lancer <- function(input, output, session, rv) {
               rst1 = rst1_iramuteq,
               rst2 = rst2_iramuteq,
               remove_punct = isTRUE(input$supprimer_ponctuation),
-              remove_numbers = isTRUE(input$supprimer_chiffres)
+              remove_numbers = isTRUE(input$supprimer_chiffres),
+              force_split_on_strong_punct = isTRUE(input$segmenter_sur_ponctuation_forte)
             )
             ajouter_log(rv, paste0("Segmentation CHD double (RST): rst1=", rst1_iramuteq, " | rst2=", rst2_iramuteq, "."))
           } else {
@@ -881,7 +1069,8 @@ register_events_lancer <- function(input, output, session, rv) {
               corpus_importe,
               segment_size = segment_size,
               remove_punct = isTRUE(input$supprimer_ponctuation),
-              remove_numbers = isTRUE(input$supprimer_chiffres)
+              remove_numbers = isTRUE(input$supprimer_chiffres),
+              force_split_on_strong_punct = isTRUE(input$segmenter_sur_ponctuation_forte)
             )
           }
           min_docfreq_val <- lire_min_docfreq_manuel(input$min_docfreq, valeur_defaut = 3L)
@@ -913,10 +1102,17 @@ register_events_lancer <- function(input, output, session, rv) {
           textes_orig <- as.character(corpus)
 
           if (isTRUE(input$expression_utiliser_dictionnaire)) {
-            if (is.null(rv$expression_fr_df) || !is.data.frame(rv$expression_fr_df) || nrow(rv$expression_fr_df) == 0) {
-              rv$expression_fr_df <- charger_expression_fr(app_dir)
-              ajouter_log(rv, paste0("Dictionnaire d'expressions chargé: ", nrow(rv$expression_fr_df), " entrées."))
-            }
+            rv$expression_fr_df <- charger_expression_fr(app_dir)
+            ajouter_log(
+              rv,
+              paste0(
+                "Dictionnaire d'expressions chargé: ",
+                nrow(rv$expression_fr_df),
+                " entrées (source: ",
+                basename(attr(rv$expression_fr_df, "source_file")),
+                ")."
+              )
+            )
 
             remplacements_expr <- appliquer_dictionnaire_expressions(textes_orig, rv$expression_fr_df)
             textes_orig <- remplacements_expr$textes
@@ -983,8 +1179,10 @@ register_events_lancer <- function(input, output, session, rv) {
               "Diagnostic pipeline: dictionnaire=", source_dictionnaire,
               " | langue UI=fr",
               " | filtrage_morpho=", ifelse(isTRUE(input$filtrage_morpho), "1", "0"),
+              " | inclure_autre_forme=", ifelse("AUTRE_FORME" %in% toupper(trimws(as.character(input$pos_lexique_a_conserver))), "1", "0"),
               " | retirer_stopwords=", ifelse(isTRUE(input$retirer_stopwords), "1", "0"),
               " | supprimer_ponctuation=", ifelse(isTRUE(input$supprimer_ponctuation), "1", "0"),
+              " | segmenter_sur_ponctuation_forte=", ifelse(isTRUE(input$segmenter_sur_ponctuation_forte), "1", "0"),
               " | supprimer_chiffres=", ifelse(isTRUE(input$supprimer_chiffres), "1", "0"),
               " | supprimer_apostrophes=", ifelse(isTRUE(input$supprimer_apostrophes), "1", "0"),
               " | remplacer_tirets_espaces=", ifelse(isTRUE(input$remplacer_tirets_espaces), "1", "0"),
@@ -1119,6 +1317,7 @@ register_events_lancer <- function(input, output, session, rv) {
               if (identical(mincl_mode_iramuteq, "manuel")) paste0(" | mincl=", mincl_iramuteq) else "",
               " | classif_mode=", classif_mode_iramuteq,
               if (identical(classif_mode_iramuteq, "double")) paste0(" | rst1=", rst1_iramuteq, " | rst2=", rst2_iramuteq) else "",
+              " | segmenter_sur_ponctuation_forte=", ifelse(isTRUE(input$segmenter_sur_ponctuation_forte), "1", "0"),
               " | svd_method=", svd_method_iramuteq,
               " | max_formes=", max_formes_iramuteq,
               " | stats_mode=", stats_mode_iramuteq
@@ -1211,7 +1410,15 @@ register_events_lancer <- function(input, output, session, rv) {
           rv$statut <- "Exports et statistiques..."
 
           segments_vec <- as.character(filtered_corpus_ok)
-          names(segments_vec) <- quanteda::docnames(filtered_corpus_ok)
+          ids_segments <- as.character(quanteda::docnames(filtered_corpus_ok))
+          names(segments_vec) <- ids_segments
+          if (!is.null(textes_chd) && length(textes_chd) > 0) {
+            idx_chd <- match(ids_segments, names(textes_chd))
+            ok_chd <- !is.na(idx_chd)
+            if (any(ok_chd)) {
+              segments_vec[ok_chd] <- as.character(textes_chd[idx_chd[ok_chd]])
+            }
+          }
           segments_by_class <- split(segments_vec, quanteda::docvars(filtered_corpus_ok)$Classes)
 
           segments_file <- file.path(rv$export_dir, "segments_par_classe.txt")
