@@ -249,6 +249,7 @@ ui <- page_navbar(
       .navbar .navbar-brand { color: #ffffff !important; margin-right: 0; white-space: normal; }
       .navbar .navbar-brand small { color: #ffffff !important; }
       .navbar .navbar-nav { margin-top: 0.5rem; }
+      span.highlight { background: linear-gradient(120deg,#fde68a 0%,#f59e0b 100%); color:#7c2d12; font-weight:700; padding:0 .18rem; border-radius:.35rem; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
     ")),
     tags$script(HTML("
       document.addEventListener('click', function(ev) {
@@ -291,6 +292,8 @@ ui <- page_navbar(
     textInput("annotation_selection", "Texte sélectionné (dic_mot)", value = ""),
     textInput("annotation_norm", "Normalisation (dic_norm)", value = ""),
     textInput("annotation_morpho", "Type morpho (dic_morpho, optionnel)", value = ""),
+    tags$h4("Aperçu des occurrences surlignées"),
+    uiOutput("ui_annotation_highlight_preview"),
     tags$div(style = "display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;",
       actionButton("annotation_add_entry", "Ajouter / mettre à jour"),
       textInput("annotation_remove_key", "dic_mot à supprimer", value = ""),
