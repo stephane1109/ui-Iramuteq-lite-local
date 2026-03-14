@@ -26,7 +26,9 @@ appliquer_nettoyage_iramuteq <- function(textes,
   }
 
   if (isTRUE(activer_nettoyage)) {
-    regex_autorises <- "a-zA-Z0-9àÀâÂäÄáÁåÅãéÉèÈêÊëËìÌîÎïÏíÍóÓòÒôÔöÖõÕøØùÙûÛüÜúÚçÇßœŒ’ñÑ\\.:,;!\\?'"
+    # Conserver "_" pour préserver les formes normalisées via le dictionnaire
+    # d'expressions (ex. "aujourd_hui", "gerald_darmanin").
+    regex_autorises <- "a-zA-Z0-9àÀâÂäÄáÁåÅãéÉèÈêÊëËìÌîÎïÏíÍóÓòÒôÔöÖõÕøØùÙûÛüÜúÚçÇßœŒ’ñÑ_\\.:,;!\\?'"
     regex_a_supprimer <- paste0("[^", regex_autorises, "]")
     x <- gsub(regex_a_supprimer, " ", x, perl = TRUE)
   }
