@@ -496,9 +496,18 @@ register_events_lancer <- function(input, output, session, rv) {
     }
 
     charger_expression_fr <- function(app_dir) {
-      chemin_expression <- file.path(app_dir, "dictionnaires", "expression_fr.csv")
-      if (!file.exists(chemin_expression)) {
-        stop(paste0("Fichier dictionnaire d'expressions introuvable: ", chemin_expression))
+      chemins_candidats <- c(
+        file.path(app_dir, "dictionnaires", "expression_fr.csv"),
+        file.path(app_dir, "dictionnaires", "expressions.csv")
+      )
+      chemin_expression <- chemins_candidats[file.exists(chemins_candidats)][1]
+      if (is.na(chemin_expression) || !nzchar(chemin_expression)) {
+        stop(
+          paste0(
+            "Fichier dictionnaire d'expressions introuvable. Chemins testés: ",
+            paste(chemins_candidats, collapse = " | ")
+          )
+        )
       }
 
       expressions <- utils::read.csv2(
@@ -509,7 +518,7 @@ register_events_lancer <- function(input, output, session, rv) {
 
       colonnes_requises <- c("dic_mot", "dic_norm")
       if (!all(colonnes_requises %in% names(expressions))) {
-        stop("Le fichier expression_fr.csv doit contenir les colonnes dic_mot et dic_norm.")
+        stop("Le fichier expression_fr.csv (ou expressions.csv) doit contenir les colonnes dic_mot et dic_norm.")
       }
 
       expressions$dic_mot <- tolower(trimws(as.character(expressions$dic_mot)))
@@ -521,6 +530,7 @@ register_events_lancer <- function(input, output, session, rv) {
         drop = FALSE
       ]
       expressions <- expressions[!duplicated(expressions$dic_mot), , drop = FALSE]
+      attr(expressions, "source_file") <- chemin_expression
       expressions
     }
 
@@ -537,11 +547,40 @@ register_events_lancer <- function(input, output, session, rv) {
       dic <- dic[ord, , drop = FALSE]
       n_occurrences <- 0L
 
+      construire_motif_regex_expression <- function(motif) {
+        accent_map <- list(
+          a = "aàáâäãå",
+          e = "eèéêë",
+          i = "iìíîï",
+          o = "oòóôöõø",
+          u = "uùúûü",
+          y = "yÿ",
+          c = "cç",
+          n = "nñ"
+        )
+
+        chars <- strsplit(motif, "", fixed = TRUE)[[1]]
+        out <- character(length(chars))
+        for (k in seq_along(chars)) {
+          ch <- chars[[k]]
+          ch_l <- tolower(ch)
+          if (ch == "'") {
+            out[[k]] <- "['’`´ʼʹ]"
+          } else if (ch_l %in% names(accent_map)) {
+            out[[k]] <- paste0("[", accent_map[[ch_l]], "]")
+          } else if (ch_l == "œ") {
+            out[[k]] <- "(?:œ|oe)"
+          } else {
+            out[[k]] <- gsub("([.|()\\^{}+$*?\\[\\]\\\\])", "\\\1", ch, perl = TRUE)
+          }
+        }
+        paste0(out, collapse = "")
+      }
+
       for (i in seq_len(nrow(dic))) {
         motif <- dic$dic_mot[[i]]
         remplacement <- dic$dic_norm[[i]]
-        motif_echappe <- gsub("([.|()\\^{}+$*?\\[\\]\\\\])", "\\\\\\1", motif, perl = TRUE)
-        motif_echappe <- gsub("'", "['’`´ʼʹ]", motif_echappe, fixed = TRUE)
+        motif_echappe <- construire_motif_regex_expression(motif)
         regex <- paste0("(?i)(?<![[:alnum:]_])", motif_echappe, "(?![[:alnum:]_])")
 
         nb_match_ligne <- lengths(regmatches(textes_out, gregexpr(regex, textes_out, perl = TRUE)))
@@ -1063,10 +1102,17 @@ register_events_lancer <- function(input, output, session, rv) {
           textes_orig <- as.character(corpus)
 
           if (isTRUE(input$expression_utiliser_dictionnaire)) {
-            if (is.null(rv$expression_fr_df) || !is.data.frame(rv$expression_fr_df) || nrow(rv$expression_fr_df) == 0) {
-              rv$expression_fr_df <- charger_expression_fr(app_dir)
-              ajouter_log(rv, paste0("Dictionnaire d'expressions chargé: ", nrow(rv$expression_fr_df), " entrées."))
-            }
+            rv$expression_fr_df <- charger_expression_fr(app_dir)
+            ajouter_log(
+              rv,
+              paste0(
+                "Dictionnaire d'expressions chargé: ",
+                nrow(rv$expression_fr_df),
+                " entrées (source: ",
+                basename(attr(rv$expression_fr_df, "source_file")),
+                ")."
+              )
+            )
 
             remplacements_expr <- appliquer_dictionnaire_expressions(textes_orig, rv$expression_fr_df)
             textes_orig <- remplacements_expr$textes
