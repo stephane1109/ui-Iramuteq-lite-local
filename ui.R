@@ -114,6 +114,15 @@ ui_form_parametres_analyse <- function() {
 
     tags$div(class = "sidebar-section-title", "Paramètres généraux CHD"),
     numericInput("segment_size", "segment_size", value = 40, min = 5, step = 1),
+    checkboxInput(
+      "segmenter_sur_ponctuation_forte",
+      "Tenir compte de la ponctuation forte (. ! ?) dans le découpage",
+      value = FALSE
+    ),
+    tags$p(
+      "Si activé, le découpage recherche la meilleure frontière autour de segment_size avec priorité . ! ?, puis ; :, puis , puis espace ; un retour à la ligne clôture aussi le segment.",
+      style = "color: #555; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
+    ),
     numericInput("min_docfreq", "Fréquence minimale des termes (min_docfreq)", value = 3, min = 1, step = 1),
     numericInput("max_p", "max_p (p-value)", value = 0.05, min = 0, max = 1, step = 0.01),
     checkboxInput("filtrer_affichage_pvalue", "Filtrer l'affichage des résultats par p-value (p ≤ max_p)", value = TRUE),
