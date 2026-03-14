@@ -150,11 +150,11 @@ ui_form_parametres_analyse <- function() {
     tags$div(class = "sidebar-section-title", "Nettoyage"),
     checkboxInput("nettoyage_caracteres", "Nettoyage caractères (regex)", value = FALSE),
     tags$p(
-      "[^a-zA-Z0-9àÀâÂäÄáÁåÅãéÉèÈêÊëËìÌîÎïÏíÍóÓòÒôÔöÖõÕøØùÙûÛüÜúÚçÇßœŒ’ñÑ\\.:,;!\\?']",
+      "[^a-zA-Z0-9àÀâÂäÄáÁåÅãéÉèÈêÊëËìÌîÎïÏíÍóÓòÒôÔöÖõÕøØùÙûÛüÜúÚçÇßœŒ’ñÑ_\\.:,;!\\?']",
       style = "color: #c00; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
     ),
     tags$p(
-      "Les caractères présents dans la liste entre crochets sont conservés ; tous les autres (ex. @ # & / emoji) sont remplacés par des espaces.",
+      "Les caractères présents dans la liste entre crochets sont conservés (dont _ pour les expressions normalisées) ; tous les autres (ex. @ # & / emoji) sont remplacés par des espaces.",
       style = "color: #c00; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
     ),
     checkboxInput("supprimer_ponctuation", "Supprimer la ponctuation", value = FALSE),
