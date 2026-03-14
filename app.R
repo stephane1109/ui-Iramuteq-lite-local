@@ -219,11 +219,29 @@ server <- function(input, output, session) {
 
   sauvegarder_add_expression <- function(df) {
     if (is.null(df) || !is.data.frame(df)) return(invisible(NULL))
+    if (!"dic_morpho" %in% names(df)) df$dic_morpho <- ""
+    df$dic_morpho[is.na(df$dic_morpho)] <- ""
     path_out <- file.path(app_dir, "dictionnaires", "add_expression_fr.csv")
     tryCatch({
-      utils::write.csv2(df, path_out, row.names = FALSE, fileEncoding = "UTF-8")
+      utils::write.csv2(df, path_out, row.names = FALSE, fileEncoding = "UTF-8", na = "")
       invisible(path_out)
     }, error = function(e) invisible(NULL))
+  }
+
+  normaliser_add_expression_df <- function(df) {
+    if (is.null(df) || !is.data.frame(df)) return(NULL)
+    if (!all(c("dic_mot", "dic_norm") %in% names(df))) return(NULL)
+    if (!"dic_morpho" %in% names(df)) df$dic_morpho <- ""
+    df <- df[, c("dic_mot", "dic_norm", "dic_morpho"), drop = FALSE]
+    df$dic_mot[is.na(df$dic_mot)] <- ""
+    df$dic_norm[is.na(df$dic_norm)] <- ""
+    df$dic_morpho[is.na(df$dic_morpho)] <- ""
+    df$dic_mot <- tolower(trimws(as.character(df$dic_mot)))
+    df$dic_norm <- tolower(trimws(as.character(df$dic_norm)))
+    df$dic_morpho <- trimws(as.character(df$dic_morpho))
+    df <- df[nzchar(df$dic_mot) & nzchar(df$dic_norm), , drop = FALSE]
+    df <- df[!duplicated(df$dic_mot), , drop = FALSE]
+    df
   }
 
   charger_add_expression <- function() {
@@ -233,16 +251,11 @@ server <- function(input, output, session) {
     )
     path_in <- paths_in[file.exists(paths_in)][1]
     if (is.na(path_in) || !nzchar(path_in) || !file.exists(path_in)) return(NULL)
-    df <- tryCatch(utils::read.csv2(path_in, stringsAsFactors = FALSE, encoding = "UTF-8"), error = function(e) NULL)
-    if (is.null(df) || !all(c("dic_mot", "dic_norm") %in% names(df))) return(NULL)
-    if (!"dic_morpho" %in% names(df)) df$dic_morpho <- ""
-    df <- df[, c("dic_mot", "dic_norm", "dic_morpho"), drop = FALSE]
-    df$dic_mot <- tolower(trimws(as.character(df$dic_mot)))
-    df$dic_norm <- tolower(trimws(as.character(df$dic_norm)))
-    df$dic_morpho <- trimws(as.character(df$dic_morpho))
-    df <- df[nzchar(df$dic_mot) & nzchar(df$dic_norm), , drop = FALSE]
-    df <- df[!duplicated(df$dic_mot), , drop = FALSE]
-    df
+    df <- tryCatch(
+      utils::read.csv2(path_in, stringsAsFactors = FALSE, encoding = "UTF-8", na.strings = character()),
+      error = function(e) NULL
+    )
+    normaliser_add_expression_df(df)
   }
 
   if (exists("register_outputs_status", mode = "function", inherits = TRUE)) {
@@ -525,18 +538,15 @@ server <- function(input, output, session) {
   observeEvent(input$annotation_import_csv, {
     f <- input$annotation_import_csv
     if (is.null(f) || is.null(f$datapath) || !file.exists(f$datapath)) return(invisible(NULL))
-    df <- tryCatch(utils::read.csv2(f$datapath, stringsAsFactors = FALSE, encoding = "UTF-8"), error = function(e) NULL)
-    if (is.null(df) || !all(c("dic_mot", "dic_norm") %in% names(df))) {
+    df <- tryCatch(
+      utils::read.csv2(f$datapath, stringsAsFactors = FALSE, encoding = "UTF-8", na.strings = character()),
+      error = function(e) NULL
+    )
+    df <- normaliser_add_expression_df(df)
+    if (is.null(df)) {
       showNotification("CSV invalide: colonnes requises dic_mot, dic_norm.", type = "error")
       return(invisible(NULL))
     }
-    if (!"dic_morpho" %in% names(df)) df$dic_morpho <- ""
-    df <- df[, c("dic_mot", "dic_norm", "dic_morpho"), drop = FALSE]
-    df$dic_mot <- tolower(trimws(as.character(df$dic_mot)))
-    df$dic_norm <- tolower(trimws(as.character(df$dic_norm)))
-    df$dic_morpho <- trimws(as.character(df$dic_morpho))
-    df <- df[nzchar(df$dic_mot) & nzchar(df$dic_norm), , drop = FALSE]
-    df <- df[!duplicated(df$dic_mot), , drop = FALSE]
     rv$expression_annotations_df <- df
     sauvegarder_add_expression(rv$expression_annotations_df)
     showNotification(paste0("Dictionnaire importé (", nrow(df), " entrées)."), type = "message")
@@ -557,7 +567,9 @@ server <- function(input, output, session) {
       if (is.null(df) || !is.data.frame(df)) {
         df <- data.frame(dic_mot = character(0), dic_norm = character(0), dic_morpho = character(0), stringsAsFactors = FALSE)
       }
-      utils::write.csv2(df, file, row.names = FALSE, fileEncoding = "UTF-8")
+      if (!"dic_morpho" %in% names(df)) df$dic_morpho <- ""
+      df$dic_morpho[is.na(df$dic_morpho)] <- ""
+      utils::write.csv2(df, file, row.names = FALSE, fileEncoding = "UTF-8", na = "")
     }
   )
 
