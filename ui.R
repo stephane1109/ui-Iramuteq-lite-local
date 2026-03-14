@@ -269,8 +269,6 @@ ui <- page_navbar(
     fluidRow(
       column(
         width = 12,
-        actionButton("ouvrir_parametres", "Paramétrer l'analyse", class = "btn-secondary"),
-        tags$br(), tags$br(),
         tags$h3("Statut"), textOutput("statut"),
         tags$h3("Journal"), tags$pre(style = "white-space: pre-wrap;", textOutput("logs")),
         tags$h3("Analyse du corpus"), uiOutput("ui_table_stats_corpus"),
@@ -303,7 +301,7 @@ ui <- page_navbar(
     tags$h4("Dictionnaire d'expressions (session)"),
     tableOutput("table_annotation_dict")
   ),
-  nav_panel("Résultats CHD", value = "resultats_chd", ui_resultats_chd_iramuteq()),
+  nav_panel("CHD", value = "chd", ui_resultats_chd_iramuteq()),
   nav_panel(
     "AFC", value = "afc",
     tags$h3("AFC"), uiOutput("ui_afc_statut"), uiOutput("ui_afc_erreurs"),
