@@ -540,8 +540,8 @@ server <- function(input, output, session) {
     texte_hl <- texte
     for (motif in motifs) {
       motif_regex <- construire_motif_regex(motif)
-      regex <- paste0("(?i)(?<![[:alnum:]_])", motif_regex, "(?![[:alnum:]_])")
-      texte_hl <- gsub(regex, "<span class='highlight'>\\0</span>", texte_hl, perl = TRUE)
+      regex <- paste0("(?i)(?<![[:alnum:]_])(", motif_regex, ")(?![[:alnum:]_])")
+      texte_hl <- gsub(regex, "<span class='highlight'>\\1</span>", texte_hl, perl = TRUE)
     }
 
     texte_safe <- echapper_segments_en_preservant_surlignage(
