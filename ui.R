@@ -177,6 +177,11 @@ ui_form_parametres_analyse <- function() {
         selected = c("NOM", "VER", "ADJ"),
         multiple = TRUE,
         options = list(plugins = list("remove_button"))
+      ),
+      checkboxInput(
+        "morpho_conserver_hors_lexique",
+        "Conserver les formes non reconnues par le lexique (AUTRE_FORME)",
+        value = TRUE
       )
     ),
 
@@ -264,8 +269,6 @@ ui <- page_navbar(
     fluidRow(
       column(
         width = 12,
-        actionButton("ouvrir_parametres", "Paramétrer l'analyse", class = "btn-secondary"),
-        tags$br(), tags$br(),
         tags$h3("Statut"), textOutput("statut"),
         tags$h3("Journal"), tags$pre(style = "white-space: pre-wrap;", textOutput("logs")),
         tags$h3("Analyse du corpus"), uiOutput("ui_table_stats_corpus"),
