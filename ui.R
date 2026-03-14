@@ -176,6 +176,11 @@ ui_form_parametres_analyse <- function() {
         selected = c("NOM", "VER", "ADJ"),
         multiple = TRUE,
         options = list(plugins = list("remove_button"))
+      ),
+      checkboxInput(
+        "morpho_conserver_hors_lexique",
+        "Conserver les formes non reconnues par le lexique (AUTRE_FORME)",
+        value = TRUE
       )
     ),
 
