@@ -124,7 +124,8 @@ register_events_lancer <- function(input, output, session, rv) {
       split_segments <- function(corpus,
                                  segment_size = 40,
                                  remove_punct = FALSE,
-                                 remove_numbers = FALSE) {
+                                 remove_numbers = FALSE,
+                                 force_split_on_strong_punct = FALSE) {
         segment_size <- suppressWarnings(as.integer(segment_size))
         if (!is.finite(segment_size) || is.na(segment_size) || segment_size < 1) segment_size <- 40L
 
@@ -141,7 +142,7 @@ register_events_lancer <- function(input, output, session, rv) {
         for (i in seq_along(docs)) {
           tok_doc <- quanteda::tokens(
             docs[[i]],
-            remove_punct = isTRUE(remove_punct),
+            remove_punct = if (isTRUE(force_split_on_strong_punct)) FALSE else isTRUE(remove_punct),
             remove_numbers = isTRUE(remove_numbers),
             remove_symbols = TRUE,
             remove_separators = TRUE,
@@ -151,18 +152,68 @@ register_events_lancer <- function(input, output, session, rv) {
           tok <- tok[nzchar(tok)]
           if (length(tok) == 0) next
 
-          nseg <- ceiling(length(tok) / segment_size)
-          for (j in seq_len(nseg)) {
-            deb <- ((j - 1L) * segment_size) + 1L
-            fin <- min(j * segment_size, length(tok))
-            seg <- paste(tok[deb:fin], collapse = " ")
-            out_text <- c(out_text, seg)
-            out_id <- c(out_id, paste0(dn[[i]], "_seg", j))
-            out_src <- c(out_src, dn[[i]])
-            if (!is.null(dv_in) && nrow(dv_in) >= i) {
-              out_docvars[[length(out_docvars) + 1L]] <- dv_in[i, , drop = FALSE]
-            } else {
-              out_docvars[[length(out_docvars) + 1L]] <- NULL
+          if (isTRUE(force_split_on_strong_punct)) {
+            seg_tokens <- character(0)
+            seg_count <- 0L
+            seg_idx <- 0L
+            is_punct_token <- grepl("^[[:punct:]]+$", tok)
+            is_strong_punct <- grepl("^[.!?…]+$", tok)
+
+            append_segment <- function() {
+              seg <- paste(seg_tokens, collapse = " ")
+              if (!nzchar(seg)) return(invisible(NULL))
+              seg_idx <<- seg_idx + 1L
+              out_text <<- c(out_text, seg)
+              out_id <<- c(out_id, paste0(dn[[i]], "_seg", seg_idx))
+              out_src <<- c(out_src, dn[[i]])
+              if (!is.null(dv_in) && nrow(dv_in) >= i) {
+                out_docvars[[length(out_docvars) + 1L]] <<- dv_in[i, , drop = FALSE]
+              } else {
+                out_docvars[[length(out_docvars) + 1L]] <<- NULL
+              }
+            }
+
+            for (k in seq_along(tok)) {
+              tk <- tok[[k]]
+              if (isTRUE(is_punct_token[[k]])) {
+                if (!isTRUE(remove_punct)) {
+                  seg_tokens <- c(seg_tokens, tk)
+                }
+                if (isTRUE(is_strong_punct[[k]]) && length(seg_tokens) > 0) {
+                  append_segment()
+                  seg_tokens <- character(0)
+                  seg_count <- 0L
+                }
+                next
+              }
+
+              seg_tokens <- c(seg_tokens, tk)
+              seg_count <- seg_count + 1L
+
+              if (seg_count >= segment_size) {
+                append_segment()
+                seg_tokens <- character(0)
+                seg_count <- 0L
+              }
+            }
+
+            if (length(seg_tokens) > 0) {
+              append_segment()
+            }
+          } else {
+            nseg <- ceiling(length(tok) / segment_size)
+            for (j in seq_len(nseg)) {
+              deb <- ((j - 1L) * segment_size) + 1L
+              fin <- min(j * segment_size, length(tok))
+              seg <- paste(tok[deb:fin], collapse = " ")
+              out_text <- c(out_text, seg)
+              out_id <- c(out_id, paste0(dn[[i]], "_seg", j))
+              out_src <- c(out_src, dn[[i]])
+              if (!is.null(dv_in) && nrow(dv_in) >= i) {
+                out_docvars[[length(out_docvars) + 1L]] <- dv_in[i, , drop = FALSE]
+              } else {
+                out_docvars[[length(out_docvars) + 1L]] <- NULL
+              }
             }
           }
         }
@@ -196,7 +247,8 @@ register_events_lancer <- function(input, output, session, rv) {
                                             rst1 = 12,
                                             rst2 = 14,
                                             remove_punct = FALSE,
-                                            remove_numbers = FALSE) {
+                                            remove_numbers = FALSE,
+                                            force_split_on_strong_punct = FALSE) {
         rst1 <- suppressWarnings(as.integer(rst1))
         rst2 <- suppressWarnings(as.integer(rst2))
         if (!is.finite(rst1) || is.na(rst1) || rst1 < 1) rst1 <- 12L
@@ -214,14 +266,16 @@ register_events_lancer <- function(input, output, session, rv) {
           corpus,
           segment_size = rst1,
           remove_punct = isTRUE(remove_punct),
-          remove_numbers = isTRUE(remove_numbers)
+          remove_numbers = isTRUE(remove_numbers),
+          force_split_on_strong_punct = isTRUE(force_split_on_strong_punct)
         )
 
         corpus_rst2 <- split_segments(
           corpus,
           segment_size = rst2,
           remove_punct = isTRUE(remove_punct),
-          remove_numbers = isTRUE(remove_numbers)
+          remove_numbers = isTRUE(remove_numbers),
+          force_split_on_strong_punct = isTRUE(force_split_on_strong_punct)
         )
 
         txt1 <- as.character(corpus_rst1)
@@ -862,7 +916,8 @@ register_events_lancer <- function(input, output, session, rv) {
             corpus_importe,
             segment_size = segment_size,
             remove_punct = FALSE,
-            remove_numbers = FALSE
+            remove_numbers = FALSE,
+            force_split_on_strong_punct = isTRUE(input$segmenter_sur_ponctuation_forte)
           )
 
           # CHD: segmentation selon les options de prétraitement demandées.
@@ -873,7 +928,8 @@ register_events_lancer <- function(input, output, session, rv) {
               rst1 = rst1_iramuteq,
               rst2 = rst2_iramuteq,
               remove_punct = isTRUE(input$supprimer_ponctuation),
-              remove_numbers = isTRUE(input$supprimer_chiffres)
+              remove_numbers = isTRUE(input$supprimer_chiffres),
+              force_split_on_strong_punct = isTRUE(input$segmenter_sur_ponctuation_forte)
             )
             ajouter_log(rv, paste0("Segmentation CHD double (RST): rst1=", rst1_iramuteq, " | rst2=", rst2_iramuteq, "."))
           } else {
@@ -881,7 +937,8 @@ register_events_lancer <- function(input, output, session, rv) {
               corpus_importe,
               segment_size = segment_size,
               remove_punct = isTRUE(input$supprimer_ponctuation),
-              remove_numbers = isTRUE(input$supprimer_chiffres)
+              remove_numbers = isTRUE(input$supprimer_chiffres),
+              force_split_on_strong_punct = isTRUE(input$segmenter_sur_ponctuation_forte)
             )
           }
           min_docfreq_val <- lire_min_docfreq_manuel(input$min_docfreq, valeur_defaut = 3L)
@@ -985,6 +1042,7 @@ register_events_lancer <- function(input, output, session, rv) {
               " | filtrage_morpho=", ifelse(isTRUE(input$filtrage_morpho), "1", "0"),
               " | retirer_stopwords=", ifelse(isTRUE(input$retirer_stopwords), "1", "0"),
               " | supprimer_ponctuation=", ifelse(isTRUE(input$supprimer_ponctuation), "1", "0"),
+              " | segmenter_sur_ponctuation_forte=", ifelse(isTRUE(input$segmenter_sur_ponctuation_forte), "1", "0"),
               " | supprimer_chiffres=", ifelse(isTRUE(input$supprimer_chiffres), "1", "0"),
               " | supprimer_apostrophes=", ifelse(isTRUE(input$supprimer_apostrophes), "1", "0"),
               " | remplacer_tirets_espaces=", ifelse(isTRUE(input$remplacer_tirets_espaces), "1", "0"),
@@ -1119,6 +1177,7 @@ register_events_lancer <- function(input, output, session, rv) {
               if (identical(mincl_mode_iramuteq, "manuel")) paste0(" | mincl=", mincl_iramuteq) else "",
               " | classif_mode=", classif_mode_iramuteq,
               if (identical(classif_mode_iramuteq, "double")) paste0(" | rst1=", rst1_iramuteq, " | rst2=", rst2_iramuteq) else "",
+              " | segmenter_sur_ponctuation_forte=", ifelse(isTRUE(input$segmenter_sur_ponctuation_forte), "1", "0"),
               " | svd_method=", svd_method_iramuteq,
               " | max_formes=", max_formes_iramuteq,
               " | stats_mode=", stats_mode_iramuteq
