@@ -102,6 +102,7 @@ ui_form_parametres_analyse <- function() {
   if ("VER_SUP" %in% names(morpho_choices_labels)) {
     morpho_choices_labels[["VER_SUP"]] <- "VER_SUP (verbe supplémentaire)"
   }
+  morpho_choices_labels[["AUTRE_FORME"]] <- "AUTRE_FORME (forme non reconnue : type vide)"
 
   tagList(
     radioButtons(
@@ -114,6 +115,15 @@ ui_form_parametres_analyse <- function() {
 
     tags$div(class = "sidebar-section-title", "Paramètres généraux CHD"),
     numericInput("segment_size", "segment_size", value = 40, min = 5, step = 1),
+    checkboxInput(
+      "segmenter_sur_ponctuation_forte",
+      "Tenir compte de la ponctuation forte (. ! ?) dans le découpage",
+      value = FALSE
+    ),
+    tags$p(
+      "Si activé, le découpage recherche la meilleure frontière autour de segment_size avec priorité . ! ?, puis ; :, puis , puis espace ; un retour à la ligne clôture aussi le segment.",
+      style = "color: #555; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
+    ),
     numericInput("min_docfreq", "Fréquence minimale des termes (min_docfreq)", value = 3, min = 1, step = 1),
     numericInput("max_p", "max_p (p-value)", value = 0.05, min = 0, max = 1, step = 0.01),
     checkboxInput("filtrer_affichage_pvalue", "Filtrer l'affichage des résultats par p-value (p ≤ max_p)", value = TRUE),
@@ -136,15 +146,16 @@ ui_form_parametres_analyse <- function() {
       checkboxInput("lexique_utiliser_lemmes", "Lemmatisation via les lemmes de lexique_fr (forme → c_lemme)", value = TRUE)
     ),
     checkboxInput("expression_utiliser_dictionnaire", "Utiliser le dictionnaire d'expression (dic_mot → dic_norm)", value = FALSE),
+    actionButton("charger_add_expression", "Ajouter un dictionnaire d'expression (.csv)", class = "btn-outline-secondary btn-sm"),
 
     tags$div(class = "sidebar-section-title", "Nettoyage"),
     checkboxInput("nettoyage_caracteres", "Nettoyage caractères (regex)", value = FALSE),
     tags$p(
-      "[^a-zA-Z0-9àÀâÂäÄáÁåÅãéÉèÈêÊëËìÌîÎïÏíÍóÓòÒôÔöÖõÕøØùÙûÛüÜúÚçÇßœŒ’ñÑ\\.:,;!\\?']",
+      "[^a-zA-Z0-9àÀâÂäÄáÁåÅãéÉèÈêÊëËìÌîÎïÏíÍóÓòÒôÔöÖõÕøØùÙûÛüÜúÚçÇßœŒ’ñÑ_\\.:,;!\\?']",
       style = "color: #c00; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
     ),
     tags$p(
-      "Les caractères présents dans la liste entre crochets sont conservés ; tous les autres (ex. @ # & / emoji) sont remplacés par des espaces.",
+      "Les caractères présents dans la liste entre crochets sont conservés (dont _ pour les expressions normalisées) ; tous les autres (ex. @ # & / emoji) sont remplacés par des espaces.",
       style = "color: #c00; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
     ),
     checkboxInput("supprimer_ponctuation", "Supprimer la ponctuation", value = FALSE),
@@ -233,6 +244,17 @@ ui <- page_navbar(
       .navbar .navbar-brand { color: #ffffff !important; margin-right: 0; white-space: normal; }
       .navbar .navbar-brand small { color: #ffffff !important; }
       .navbar .navbar-nav { margin-top: 0.5rem; }
+    ")),
+    tags$script(HTML("
+      document.addEventListener('click', function(ev) {
+        if (!ev.target || ev.target.id !== 'annotation_capture_selection') return;
+        var area = document.getElementById('annotation_corpus_text');
+        if (!area) return;
+        var selected = area.value.substring(area.selectionStart, area.selectionEnd) || '';
+        if (window.Shiny) {
+          Shiny.setInputValue('annotation_selection', selected, {priority: 'event'});
+        }
+      });
     "))
   ),
 
@@ -254,6 +276,28 @@ ui <- page_navbar(
   ),
 
   nav_panel("Corpus", value = "corpus", tags$h3("Corpus importé"), uiOutput("ui_corpus_preview")),
+  nav_panel(
+    "Annotation expressions", value = "annotation_expressions",
+    tags$h3("Annotation du corpus pour add_expression.csv"),
+    tags$p("Sélectionnez un extrait dans la zone ci-dessous puis ajoutez-le au dictionnaire (dic_mot, dic_norm, dic_morpho)."),
+    textAreaInput("annotation_corpus_text", "Corpus (zone d'annotation)", value = "", rows = 14, width = "100%"),
+    tags$div(style = "display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;",
+      actionButton("annotation_capture_selection", "Capturer la sélection"),
+      actionButton("annotation_charger_corpus", "Charger le corpus importé")
+    ),
+    textInput("annotation_selection", "Texte sélectionné (dic_mot)", value = ""),
+    textInput("annotation_norm", "Normalisation (dic_norm)", value = ""),
+    textInput("annotation_morpho", "Type morpho (dic_morpho, optionnel)", value = ""),
+    tags$div(style = "display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;",
+      actionButton("annotation_add_entry", "Ajouter / mettre à jour"),
+      textInput("annotation_remove_key", "dic_mot à supprimer", value = ""),
+      actionButton("annotation_remove_entry", "Supprimer")
+    ),
+    fileInput("annotation_import_csv", "Importer add_expression.csv", accept = c(".csv")),
+    downloadButton("dl_expression_csv", "Télécharger add_expression.csv"),
+    tags$h4("Dictionnaire d'expressions (session)"),
+    tableOutput("table_annotation_dict")
+  ),
   nav_panel("Résultats CHD", value = "resultats_chd", ui_resultats_chd_iramuteq()),
   nav_panel(
     "AFC", value = "afc",
