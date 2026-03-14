@@ -712,7 +712,10 @@ register_events_lancer <- function(input, output, session, rv) {
 
         morpho_selection <- toupper(trimws(as.character(input$pos_lexique_a_conserver)))
         morpho_selection <- unique(morpho_selection[nzchar(morpho_selection)])
-        inclure_autre_forme <- "AUTRE_FORME" %in% morpho_selection
+        inclure_autre_forme <- isTRUE(input$morpho_conserver_hors_lexique) || ("AUTRE_FORME" %in% morpho_selection)
+        if (isTRUE(inclure_autre_forme) && !("AUTRE_FORME" %in% morpho_selection)) {
+          morpho_selection <- c(morpho_selection, "AUTRE_FORME")
+        }
         morpho_selection_lexique <- setdiff(morpho_selection, "AUTRE_FORME")
 
         if (length(morpho_selection_lexique) > 0 || isTRUE(inclure_autre_forme)) {
@@ -1187,8 +1190,9 @@ register_events_lancer <- function(input, output, session, rv) {
                 " entrée(s) du dictionnaire (dic_mot -> dic_norm)."
               )
             )
-            if (isTRUE(input$filtrage_morpho) && !("AUTRE_FORME" %in% toupper(trimws(as.character(input$pos_lexique_a_conserver))))) {
-              ajouter_log(rv, "Note: formes normalisées hors lexique (ex. gerald_darmanin) seront exclues si AUTRE_FORME n'est pas sélectionné dans le filtrage morphosyntaxique.")
+            inclure_autre_forme_log <- isTRUE(input$morpho_conserver_hors_lexique) || ("AUTRE_FORME" %in% toupper(trimws(as.character(input$pos_lexique_a_conserver))))
+            if (isTRUE(input$filtrage_morpho) && !isTRUE(inclure_autre_forme_log)) {
+              ajouter_log(rv, "Note: formes normalisées hors lexique (ex. gerald_darmanin) seront exclues si AUTRE_FORME n'est pas activé dans le filtrage morphosyntaxique.")
             }
           } else {
             rv$expressions_actives_df <- NULL
@@ -1246,7 +1250,7 @@ register_events_lancer <- function(input, output, session, rv) {
               "Diagnostic pipeline: dictionnaire=", source_dictionnaire,
               " | langue UI=fr",
               " | filtrage_morpho=", ifelse(isTRUE(input$filtrage_morpho), "1", "0"),
-              " | inclure_autre_forme=", ifelse("AUTRE_FORME" %in% toupper(trimws(as.character(input$pos_lexique_a_conserver))), "1", "0"),
+              " | inclure_autre_forme=", ifelse(isTRUE(input$morpho_conserver_hors_lexique) || ("AUTRE_FORME" %in% toupper(trimws(as.character(input$pos_lexique_a_conserver)))), "1", "0"),
               " | retirer_stopwords=", ifelse(isTRUE(input$retirer_stopwords), "1", "0"),
               " | supprimer_ponctuation=", ifelse(isTRUE(input$supprimer_ponctuation), "1", "0"),
               " | segmenter_sur_ponctuation_forte=", ifelse(isTRUE(input$segmenter_sur_ponctuation_forte), "1", "0"),
@@ -1469,6 +1473,25 @@ register_events_lancer <- function(input, output, session, rv) {
           rv$dfm <- dfm_ok
           rv$filtered_corpus <- filtered_corpus_ok
           rv$res_stats_df <- NULL
+
+          if (!is.null(rv$expressions_actives_df) && is.data.frame(rv$expressions_actives_df) && nrow(rv$expressions_actives_df) > 0 && "dic_norm" %in% names(rv$expressions_actives_df)) {
+            expr_norm <- unique(tolower(trimws(as.character(rv$expressions_actives_df$dic_norm))))
+            expr_norm <- expr_norm[nzchar(expr_norm)]
+            if (length(expr_norm) > 0) {
+              feats_ok <- tolower(trimws(as.character(quanteda::featnames(dfm_ok))))
+              expr_dans_dfm_ok <- intersect(expr_norm, feats_ok)
+              ajouter_log(
+                rv,
+                paste0(
+                  "Expressions (dic_norm) conservées dans le DFM final CHD/AFC : ",
+                  length(expr_dans_dfm_ok),
+                  "/",
+                  length(expr_norm),
+                  "."
+                )
+              )
+            }
+          }
 
           avancer(0.58, "Finalisation du pipeline")
           rv$statut <- "Finalisation du pipeline..."
