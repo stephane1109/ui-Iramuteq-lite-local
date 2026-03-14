@@ -292,6 +292,8 @@ ui <- page_navbar(
     textInput("annotation_selection", "Texte sélectionné (dic_mot)", value = ""),
     textInput("annotation_norm", "Normalisation (dic_norm)", value = ""),
     textInput("annotation_morpho", "Type morpho (dic_morpho, optionnel)", value = ""),
+    tags$h4("Aperçu des occurrences surlignées"),
+    uiOutput("ui_annotation_highlight_preview"),
     tags$div(style = "display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;",
       actionButton("annotation_add_entry", "Ajouter / mettre à jour"),
       textInput("annotation_remove_key", "dic_mot à supprimer", value = ""),

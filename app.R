@@ -412,6 +412,70 @@ server <- function(input, output, session) {
     showNotification("Corpus chargé dans l'onglet Annotation.", type = "message")
   })
 
+  .annotation_regex_escape <- function(x) {
+    x <- as.character(x)
+    if (!nzchar(x)) return("")
+    meta <- c("\\", ".", "|", "(", ")", "[", "]", "{", "}", "^", "$", "*", "+", "?")
+    chars <- strsplit(x, "", fixed = TRUE)[[1]]
+    chars <- vapply(chars, function(ch) if (ch %in% meta) paste0("\\", ch) else ch, character(1))
+    paste(chars, collapse = "")
+  }
+
+  surligner_occurrences_annotation <- function(texte, terme) {
+    texte <- as.character(texte)
+    terme <- trimws(as.character(terme))
+
+    if (!nzchar(texte)) {
+      return(tags$em("Aucun corpus chargé dans la zone d'annotation."))
+    }
+    if (!nzchar(terme)) {
+      return(tags$em("Sélectionnez un terme puis cliquez sur 'Capturer la sélection' pour voir toutes ses occurrences surlignées."))
+    }
+
+    motif <- .annotation_regex_escape(terme)
+    locs <- gregexpr(motif, texte, ignore.case = TRUE, perl = TRUE)[[1]]
+
+    if (length(locs) == 1L && identical(locs, -1L)) {
+      return(tags$em("Aucune occurrence trouvée pour la sélection actuelle."))
+    }
+
+    lens <- attr(locs, "match.length")
+    morceaux <- vector("list", length(locs) * 2 + 1)
+    pos <- 1L
+    k <- 1L
+
+    for (i in seq_along(locs)) {
+      deb <- locs[[i]]
+      fin <- deb + lens[[i]] - 1L
+      if (deb > pos) {
+        morceaux[[k]] <- htmltools::htmlEscape(substr(texte, pos, deb - 1L))
+        k <- k + 1L
+      }
+      morceaux[[k]] <- tags$span(class = "highlight", htmltools::htmlEscape(substr(texte, deb, fin)))
+      k <- k + 1L
+      pos <- fin + 1L
+    }
+
+    if (pos <= nchar(texte)) {
+      morceaux[[k]] <- htmltools::htmlEscape(substr(texte, pos, nchar(texte)))
+    }
+
+    tags$div(
+      tags$small(
+        style = "display:block; margin-bottom:6px; color:#555;",
+        paste0("Occurrences trouvées : ", length(locs))
+      ),
+      tags$div(
+        style = "white-space: pre-wrap; max-height: 320px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #fafafa; border-radius: 6px;",
+        do.call(tagList, morceaux)
+      )
+    )
+  }
+
+  output$ui_annotation_highlight_preview <- renderUI({
+    surligner_occurrences_annotation(input$annotation_corpus_text, input$annotation_selection)
+  })
+
   observeEvent(input$annotation_selection, {
     txt <- trimws(as.character(input$annotation_selection))
     if (!nzchar(txt)) return(invisible(NULL))
