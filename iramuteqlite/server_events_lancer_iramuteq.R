@@ -656,10 +656,26 @@ register_events_lancer <- function(input, output, session, rv) {
           ))
           termes_autorises <- termes_autorises[nzchar(termes_autorises)]
 
+          toutes_formes_lexique <- unique(c(
+            tolower(trimws(as.character(lex$c_mot))),
+            tolower(trimws(as.character(lex$c_lemme)))
+          ))
+          toutes_formes_lexique <- toutes_formes_lexique[nzchar(toutes_formes_lexique)]
+
+          conserver_hors_lexique <- isTRUE(input$morpho_conserver_hors_lexique)
+          featnames_dfm <- quanteda::featnames(dfm_obj)
+          featnames_norm <- tolower(trimws(as.character(featnames_dfm)))
+
+          keep_mask <- featnames_norm %in% termes_autorises
+          if (isTRUE(conserver_hors_lexique)) {
+            keep_mask <- keep_mask | !(featnames_norm %in% toutes_formes_lexique)
+          }
+
+          pattern_keep <- featnames_dfm[keep_mask]
           n_feat_avant_morpho <- quanteda::nfeat(dfm_obj)
           dfm_obj <- quanteda::dfm_select(
             dfm_obj,
-            pattern = termes_autorises,
+            pattern = pattern_keep,
             selection = "keep",
             valuetype = "fixed",
             case_insensitive = FALSE
@@ -670,6 +686,8 @@ register_events_lancer <- function(input, output, session, rv) {
             paste0(
               "Filtrage morphosyntaxique lexique_fr appliqué (c_morpho=",
               paste(morpho_selection, collapse = ","),
+              " | conserver_hors_lexique=",
+              ifelse(isTRUE(conserver_hors_lexique), "1", "0"),
               ") : ",
               n_feat_avant_morpho,
               " -> ",
@@ -1107,6 +1125,7 @@ register_events_lancer <- function(input, output, session, rv) {
               "Diagnostic pipeline: dictionnaire=", source_dictionnaire,
               " | langue UI=fr",
               " | filtrage_morpho=", ifelse(isTRUE(input$filtrage_morpho), "1", "0"),
+              " | morpho_conserver_hors_lexique=", ifelse(isTRUE(input$morpho_conserver_hors_lexique), "1", "0"),
               " | retirer_stopwords=", ifelse(isTRUE(input$retirer_stopwords), "1", "0"),
               " | supprimer_ponctuation=", ifelse(isTRUE(input$supprimer_ponctuation), "1", "0"),
               " | segmenter_sur_ponctuation_forte=", ifelse(isTRUE(input$segmenter_sur_ponctuation_forte), "1", "0"),
