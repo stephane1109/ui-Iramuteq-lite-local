@@ -322,8 +322,31 @@ server <- function(input, output, session) {
     ))
   }
 
-  observeEvent(input$ouvrir_parametres, {
-    ouvrir_modal_parametres()
+  observeEvent(input$nav_principal, {
+    if (identical(input$nav_principal, "chd")) {
+      ouvrir_modal_parametres()
+    }
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$charger_add_expression, {
+    df_add <- charger_add_expression()
+    if (is.null(df_add) || nrow(df_add) == 0) {
+      showNotification("add_expression.csv introuvable ou vide.", type = "warning")
+      return(invisible(NULL))
+    }
+    rv$expression_annotations_df <- df_add
+    rv$utiliser_add_expression <- TRUE
+    showNotification(paste0("add_expression.csv chargé (", nrow(df_add), " entrées) et activé pour l'analyse."), type = "message")
+  })
+
+  observeEvent(input$charger_add_expression, {
+    showModal(modalDialog(
+      title = "Importer un dictionnaire d'expression",
+      easyClose = TRUE,
+      size = "s",
+      fileInput("add_expression_upload", "Choisir un .csv (colonnes: dic_mot, dic_norm, dic_morpho optionnel)", accept = c(".csv")),
+      footer = modalButton("Fermer")
+    ))
   })
 
   observeEvent(input$charger_add_expression, {
@@ -375,7 +398,6 @@ server <- function(input, output, session) {
       updateTextAreaInput(session, "annotation_corpus_text", value = paste(lignes_auto, collapse = "\n"))
     }
     removeModal()
-    ouvrir_modal_parametres()
   }, ignoreInit = TRUE)
 
   output$ui_corpus_preview <- renderUI({
