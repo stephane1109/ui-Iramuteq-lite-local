@@ -122,7 +122,7 @@ ui_form_parametres_analyse <- function() {
     ),
     tags$p(
       "Si activé, le découpage recherche la meilleure frontière autour de segment_size avec priorité . ! ?, puis ; :, puis , puis espace ; un retour à la ligne clôture aussi le segment.",
-      style = "color: #555; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
+      style = "color: #c00; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
     ),
     numericInput("min_docfreq", "Fréquence minimale des termes (min_docfreq)", value = 3, min = 1, step = 1),
     numericInput("max_p", "max_p (p-value)", value = 0.05, min = 0, max = 1, step = 0.01),
