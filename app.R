@@ -189,6 +189,7 @@ server <- function(input, output, session) {
 
     lexique_fr_df = NULL,
     expression_fr_df = NULL,
+    expression_annotations_df = data.frame(dic_mot = character(0), dic_norm = character(0), dic_morpho = character(0), stringsAsFactors = FALSE),
     textes_indexation = NULL,
 
     afc_obj = NULL,
@@ -304,6 +305,10 @@ server <- function(input, output, session) {
 
   observeEvent(input$fichier_corpus, {
     req(input$fichier_corpus$datapath)
+    lignes_auto <- tryCatch(readLines(input$fichier_corpus$datapath, encoding = "UTF-8", warn = FALSE), error = function(e) character(0))
+    if (length(lignes_auto) > 0) {
+      updateTextAreaInput(session, "annotation_corpus_text", value = paste(lignes_auto, collapse = "\n"))
+    }
     removeModal()
     ouvrir_modal_parametres()
   }, ignoreInit = TRUE)
@@ -346,6 +351,104 @@ server <- function(input, output, session) {
       )
     )
   })
+
+  observeEvent(input$annotation_charger_corpus, {
+    fichier <- input$fichier_corpus
+    if (is.null(fichier) || is.null(fichier$datapath) || !file.exists(fichier$datapath)) {
+      showNotification("Aucun corpus importé.", type = "warning")
+      return(invisible(NULL))
+    }
+    lignes <- tryCatch(readLines(fichier$datapath, encoding = "UTF-8", warn = FALSE), error = function(e) character(0))
+    if (length(lignes) == 0) {
+      showNotification("Corpus vide ou illisible.", type = "warning")
+      return(invisible(NULL))
+    }
+    updateTextAreaInput(session, "annotation_corpus_text", value = paste(lignes, collapse = "\n"))
+    showNotification("Corpus chargé dans l'onglet Annotation.", type = "message")
+  })
+
+  observeEvent(input$annotation_selection, {
+    txt <- trimws(as.character(input$annotation_selection))
+    if (!nzchar(txt)) return(invisible(NULL))
+    norm <- tolower(txt)
+    norm <- gsub("[’`´ʼʹ]", "'", norm, perl = TRUE)
+    norm <- gsub("\\s+", "_", norm, perl = TRUE)
+    norm <- gsub("[^[:alnum:]_àâäáãåéèêëíìîïóòôöõúùûüçœñ]", "", norm, perl = TRUE)
+    updateTextInput(session, "annotation_norm", value = norm)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$annotation_add_entry, {
+    dic_mot <- tolower(trimws(as.character(input$annotation_selection)))
+    dic_norm <- tolower(trimws(as.character(input$annotation_norm)))
+    dic_morpho <- trimws(as.character(input$annotation_morpho))
+    dic_mot <- gsub("[’`´ʼʹ]", "'", dic_mot, perl = TRUE)
+    dic_norm <- gsub("[’`´ʼʹ]", "'", dic_norm, perl = TRUE)
+    if (!nzchar(dic_mot) || !nzchar(dic_norm)) {
+      showNotification("dic_mot et dic_norm sont obligatoires.", type = "error")
+      return(invisible(NULL))
+    }
+    df <- rv$expression_annotations_df
+    if (is.null(df) || !is.data.frame(df)) {
+      df <- data.frame(dic_mot = character(0), dic_norm = character(0), dic_morpho = character(0), stringsAsFactors = FALSE)
+    }
+    idx <- match(dic_mot, df$dic_mot)
+    if (!is.na(idx)) {
+      df$dic_norm[idx] <- dic_norm
+      df$dic_morpho[idx] <- dic_morpho
+    } else {
+      df <- rbind(df, data.frame(dic_mot = dic_mot, dic_norm = dic_norm, dic_morpho = dic_morpho, stringsAsFactors = FALSE))
+    }
+    rv$expression_annotations_df <- df[order(df$dic_mot), , drop = FALSE]
+    showNotification("Entrée dictionnaire enregistrée (session).", type = "message")
+  })
+
+  observeEvent(input$annotation_remove_entry, {
+    key <- tolower(trimws(as.character(input$annotation_remove_key)))
+    if (!nzchar(key)) return(invisible(NULL))
+    df <- rv$expression_annotations_df
+    if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) return(invisible(NULL))
+    rv$expression_annotations_df <- df[df$dic_mot != key, , drop = FALSE]
+    showNotification("Entrée supprimée (si existante).", type = "message")
+  })
+
+  observeEvent(input$annotation_import_csv, {
+    f <- input$annotation_import_csv
+    if (is.null(f) || is.null(f$datapath) || !file.exists(f$datapath)) return(invisible(NULL))
+    df <- tryCatch(utils::read.csv2(f$datapath, stringsAsFactors = FALSE, encoding = "UTF-8"), error = function(e) NULL)
+    if (is.null(df) || !all(c("dic_mot", "dic_norm") %in% names(df))) {
+      showNotification("CSV invalide: colonnes requises dic_mot, dic_norm.", type = "error")
+      return(invisible(NULL))
+    }
+    if (!"dic_morpho" %in% names(df)) df$dic_morpho <- ""
+    df <- df[, c("dic_mot", "dic_norm", "dic_morpho"), drop = FALSE]
+    df$dic_mot <- tolower(trimws(as.character(df$dic_mot)))
+    df$dic_norm <- tolower(trimws(as.character(df$dic_norm)))
+    df$dic_morpho <- trimws(as.character(df$dic_morpho))
+    df <- df[nzchar(df$dic_mot) & nzchar(df$dic_norm), , drop = FALSE]
+    df <- df[!duplicated(df$dic_mot), , drop = FALSE]
+    rv$expression_annotations_df <- df
+    showNotification(paste0("Dictionnaire importé (", nrow(df), " entrées)."), type = "message")
+  })
+
+  output$table_annotation_dict <- renderTable({
+    df <- rv$expression_annotations_df
+    if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) {
+      return(data.frame(info = "Aucune entrée annotée.", stringsAsFactors = FALSE))
+    }
+    df
+  }, striped = TRUE, bordered = TRUE, hover = TRUE, spacing = "xs", width = "100%")
+
+  output$dl_expression_csv <- downloadHandler(
+    filename = function() "expression_fr.csv",
+    content = function(file) {
+      df <- rv$expression_annotations_df
+      if (is.null(df) || !is.data.frame(df)) {
+        df <- data.frame(dic_mot = character(0), dic_norm = character(0), dic_morpho = character(0), stringsAsFactors = FALSE)
+      }
+      utils::write.csv2(df, file, row.names = FALSE, fileEncoding = "UTF-8")
+    }
+  )
+
 
   output$ui_table_stats_corpus <- renderUI({
     req(rv$stats_corpus_df)

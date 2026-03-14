@@ -248,6 +248,17 @@ ui <- page_navbar(
       .navbar .navbar-brand { color: #ffffff !important; margin-right: 0; white-space: normal; }
       .navbar .navbar-brand small { color: #ffffff !important; }
       .navbar .navbar-nav { margin-top: 0.5rem; }
+    ")),
+    tags$script(HTML("
+      document.addEventListener('click', function(ev) {
+        if (!ev.target || ev.target.id !== 'annotation_capture_selection') return;
+        var area = document.getElementById('annotation_corpus_text');
+        if (!area) return;
+        var selected = area.value.substring(area.selectionStart, area.selectionEnd) || '';
+        if (window.Shiny) {
+          Shiny.setInputValue('annotation_selection', selected, {priority: 'event'});
+        }
+      });
     "))
   ),
 
@@ -269,6 +280,28 @@ ui <- page_navbar(
   ),
 
   nav_panel("Corpus", value = "corpus", tags$h3("Corpus importé"), uiOutput("ui_corpus_preview")),
+  nav_panel(
+    "Annotation expressions", value = "annotation_expressions",
+    tags$h3("Annotation du corpus pour expression_fr.csv"),
+    tags$p("Sélectionnez un extrait dans la zone ci-dessous puis ajoutez-le au dictionnaire (dic_mot, dic_norm, dic_morpho)."),
+    textAreaInput("annotation_corpus_text", "Corpus (zone d'annotation)", value = "", rows = 14, width = "100%"),
+    tags$div(style = "display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;",
+      actionButton("annotation_capture_selection", "Capturer la sélection"),
+      actionButton("annotation_charger_corpus", "Charger le corpus importé")
+    ),
+    textInput("annotation_selection", "Texte sélectionné (dic_mot)", value = ""),
+    textInput("annotation_norm", "Normalisation (dic_norm)", value = ""),
+    textInput("annotation_morpho", "Type morpho (dic_morpho, optionnel)", value = ""),
+    tags$div(style = "display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;",
+      actionButton("annotation_add_entry", "Ajouter / mettre à jour"),
+      textInput("annotation_remove_key", "dic_mot à supprimer", value = ""),
+      actionButton("annotation_remove_entry", "Supprimer")
+    ),
+    fileInput("annotation_import_csv", "Importer expression_fr.csv", accept = c(".csv")),
+    downloadButton("dl_expression_csv", "Télécharger expression_fr.csv"),
+    tags$h4("Dictionnaire d'expressions (session)"),
+    tableOutput("table_annotation_dict")
+  ),
   nav_panel("Résultats CHD", value = "resultats_chd", ui_resultats_chd_iramuteq()),
   nav_panel(
     "AFC", value = "afc",

@@ -1104,18 +1104,41 @@ register_events_lancer <- function(input, output, session, rv) {
 
           if (isTRUE(input$expression_utiliser_dictionnaire)) {
             rv$expression_fr_df <- charger_expression_fr(app_dir)
+
+            expr_session_df <- NULL
+            if (!is.null(rv$expression_annotations_df) && is.data.frame(rv$expression_annotations_df) && nrow(rv$expression_annotations_df) > 0) {
+              expr_session_df <- rv$expression_annotations_df
+              cols_need <- c("dic_mot", "dic_norm")
+              if (all(cols_need %in% names(expr_session_df))) {
+                expr_session_df <- expr_session_df[, cols_need, drop = FALSE]
+                expr_session_df$dic_mot <- tolower(trimws(as.character(expr_session_df$dic_mot)))
+                expr_session_df$dic_norm <- tolower(trimws(as.character(expr_session_df$dic_norm)))
+                expr_session_df <- expr_session_df[nzchar(expr_session_df$dic_mot) & nzchar(expr_session_df$dic_norm), , drop = FALSE]
+                expr_session_df <- expr_session_df[!duplicated(expr_session_df$dic_mot), , drop = FALSE]
+              } else {
+                expr_session_df <- NULL
+              }
+            }
+
+            expressions_actives_df <- rv$expression_fr_df
+            if (!is.null(expr_session_df) && nrow(expr_session_df) > 0) {
+              expressions_actives_df <- rbind(expr_session_df, rv$expression_fr_df[, c("dic_mot", "dic_norm"), drop = FALSE])
+              expressions_actives_df <- expressions_actives_df[!duplicated(expressions_actives_df$dic_mot), , drop = FALSE]
+              ajouter_log(rv, paste0("Dictionnaire d'expressions enrichi par l'onglet Annotation : +", nrow(expr_session_df), " entrée(s) session."))
+            }
+
             ajouter_log(
               rv,
               paste0(
                 "Dictionnaire d'expressions chargé: ",
-                nrow(rv$expression_fr_df),
-                " entrées (source: ",
+                nrow(expressions_actives_df),
+                " entrées actives (source base: ",
                 basename(attr(rv$expression_fr_df, "source_file")),
                 ")."
               )
             )
 
-            remplacements_expr <- appliquer_dictionnaire_expressions(textes_orig, rv$expression_fr_df)
+            remplacements_expr <- appliquer_dictionnaire_expressions(textes_orig, expressions_actives_df)
             textes_orig <- remplacements_expr$textes
             ajouter_log(
               rv,
