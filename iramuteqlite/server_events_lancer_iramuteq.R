@@ -644,12 +644,14 @@ register_events_lancer <- function(input, output, session, rv) {
 
         morpho_selection <- toupper(trimws(as.character(input$pos_lexique_a_conserver)))
         morpho_selection <- unique(morpho_selection[nzchar(morpho_selection)])
+        inclure_autre_forme <- "AUTRE_FORME" %in% morpho_selection
+        morpho_selection_lexique <- setdiff(morpho_selection, "AUTRE_FORME")
 
-        if (length(morpho_selection) > 0) {
+        if (length(morpho_selection_lexique) > 0 || isTRUE(inclure_autre_forme)) {
           lex <- rv$lexique_fr_df
           lex_morpho <- toupper(trimws(as.character(lex$c_morpho)))
 
-          idx <- nzchar(lex_morpho) & lex_morpho %in% morpho_selection
+          idx <- nzchar(lex_morpho) & lex_morpho %in% morpho_selection_lexique
           termes_autorises <- unique(c(
             tolower(trimws(as.character(lex$c_mot[idx]))),
             tolower(trimws(as.character(lex$c_lemme[idx])))
@@ -662,7 +664,6 @@ register_events_lancer <- function(input, output, session, rv) {
           ))
           toutes_formes_lexique <- toutes_formes_lexique[nzchar(toutes_formes_lexique)]
 
-          conserver_hors_lexique <- isTRUE(input$morpho_conserver_hors_lexique)
           featnames_dfm <- quanteda::featnames(dfm_obj)
           featnames_norm <- tolower(trimws(as.character(featnames_dfm)))
           featnames_core <- gsub("^[[:punct:]]+|[[:punct:]]+$", "", featnames_norm, perl = TRUE)
@@ -672,7 +673,7 @@ register_events_lancer <- function(input, output, session, rv) {
           in_lexique <- (featnames_norm %in% toutes_formes_lexique) | (featnames_core %in% toutes_formes_lexique)
 
           keep_mask <- in_selection
-          if (isTRUE(conserver_hors_lexique)) {
+          if (isTRUE(inclure_autre_forme)) {
             keep_mask <- keep_mask | (!in_lexique & !is_punct_feature)
           }
 
@@ -691,9 +692,9 @@ register_events_lancer <- function(input, output, session, rv) {
             paste0(
               "Filtrage morphosyntaxique lexique_fr appliqué (c_morpho=",
               paste(morpho_selection, collapse = ","),
-              " | conserver_hors_lexique=",
-              ifelse(isTRUE(conserver_hors_lexique), "1", "0"),
-              " | ponct_exclue_hors_lexique=1",
+              " | inclure_autre_forme=",
+              ifelse(isTRUE(inclure_autre_forme), "1", "0"),
+              " | ponct_exclue_autre_forme=1",
               " | normalisation_bords_ponct=1",
               ") : ",
               n_feat_avant_morpho,
@@ -1132,7 +1133,7 @@ register_events_lancer <- function(input, output, session, rv) {
               "Diagnostic pipeline: dictionnaire=", source_dictionnaire,
               " | langue UI=fr",
               " | filtrage_morpho=", ifelse(isTRUE(input$filtrage_morpho), "1", "0"),
-              " | morpho_conserver_hors_lexique=", ifelse(isTRUE(input$morpho_conserver_hors_lexique), "1", "0"),
+              " | inclure_autre_forme=", ifelse("AUTRE_FORME" %in% toupper(trimws(as.character(input$pos_lexique_a_conserver))), "1", "0"),
               " | retirer_stopwords=", ifelse(isTRUE(input$retirer_stopwords), "1", "0"),
               " | supprimer_ponctuation=", ifelse(isTRUE(input$supprimer_ponctuation), "1", "0"),
               " | segmenter_sur_ponctuation_forte=", ifelse(isTRUE(input$segmenter_sur_ponctuation_forte), "1", "0"),
@@ -1363,7 +1364,15 @@ register_events_lancer <- function(input, output, session, rv) {
           rv$statut <- "Exports et statistiques..."
 
           segments_vec <- as.character(filtered_corpus_ok)
-          names(segments_vec) <- quanteda::docnames(filtered_corpus_ok)
+          ids_segments <- as.character(quanteda::docnames(filtered_corpus_ok))
+          names(segments_vec) <- ids_segments
+          if (!is.null(textes_chd) && length(textes_chd) > 0) {
+            idx_chd <- match(ids_segments, names(textes_chd))
+            ok_chd <- !is.na(idx_chd)
+            if (any(ok_chd)) {
+              segments_vec[ok_chd] <- as.character(textes_chd[idx_chd[ok_chd]])
+            }
+          }
           segments_by_class <- split(segments_vec, quanteda::docvars(filtered_corpus_ok)$Classes)
 
           segments_file <- file.path(rv$export_dir, "segments_par_classe.txt")

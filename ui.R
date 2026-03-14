@@ -102,6 +102,7 @@ ui_form_parametres_analyse <- function() {
   if ("VER_SUP" %in% names(morpho_choices_labels)) {
     morpho_choices_labels[["VER_SUP"]] <- "VER_SUP (verbe supplémentaire)"
   }
+  morpho_choices_labels[["AUTRE_FORME"]] <- "AUTRE_FORME (forme non reconnue : type vide)"
 
   tagList(
     radioButtons(
