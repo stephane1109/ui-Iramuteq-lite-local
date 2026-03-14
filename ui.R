@@ -249,7 +249,7 @@ ui <- page_navbar(
       .navbar .navbar-brand { color: #ffffff !important; margin-right: 0; white-space: normal; }
       .navbar .navbar-brand small { color: #ffffff !important; }
       .navbar .navbar-nav { margin-top: 0.5rem; }
-      span.highlight { background: linear-gradient(120deg,#fde68a 0%,#f59e0b 100%); color:#7c2d12; font-weight:700; padding:0 .18rem; border-radius:.35rem; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
+      span.highlight { background-color: yellow; color: inherit; font-weight: inherit; padding: 0; border-radius: 0; }
     ")),
     tags$script(HTML("
       document.addEventListener('click', function(ev) {
