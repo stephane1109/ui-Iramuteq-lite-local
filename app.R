@@ -293,6 +293,12 @@ server <- function(input, output, session) {
     ouvrir_modal_parametres()
   })
 
+  observeEvent(input$nav_principal, {
+    if (identical(input$nav_principal, "chd")) {
+      ouvrir_modal_parametres()
+    }
+  }, ignoreInit = TRUE)
+
   observeEvent(input$menu_importer_fichier_sidebar, {
     showModal(modalDialog(
       title = "Importer un fichier corpus",
