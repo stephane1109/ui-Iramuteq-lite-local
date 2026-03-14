@@ -102,6 +102,7 @@ ui_form_parametres_analyse <- function() {
   if ("VER_SUP" %in% names(morpho_choices_labels)) {
     morpho_choices_labels[["VER_SUP"]] <- "VER_SUP (verbe supplémentaire)"
   }
+  morpho_choices_labels[["AUTRE_FORME"]] <- "AUTRE_FORME (forme non reconnue : type vide)"
 
   tagList(
     radioButtons(
@@ -114,6 +115,15 @@ ui_form_parametres_analyse <- function() {
 
     tags$div(class = "sidebar-section-title", "Paramètres généraux CHD"),
     numericInput("segment_size", "segment_size", value = 40, min = 5, step = 1),
+    checkboxInput(
+      "segmenter_sur_ponctuation_forte",
+      "Tenir compte de la ponctuation forte (. ! ?) dans le découpage",
+      value = FALSE
+    ),
+    tags$p(
+      "Si activé, le découpage recherche la meilleure frontière autour de segment_size avec priorité . ! ?, puis ; :, puis , puis espace ; un retour à la ligne clôture aussi le segment.",
+      style = "color: #555; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
+    ),
     numericInput("min_docfreq", "Fréquence minimale des termes (min_docfreq)", value = 3, min = 1, step = 1),
     numericInput("max_p", "max_p (p-value)", value = 0.05, min = 0, max = 1, step = 0.01),
     checkboxInput("filtrer_affichage_pvalue", "Filtrer l'affichage des résultats par p-value (p ≤ max_p)", value = TRUE),
@@ -140,11 +150,11 @@ ui_form_parametres_analyse <- function() {
     tags$div(class = "sidebar-section-title", "Nettoyage"),
     checkboxInput("nettoyage_caracteres", "Nettoyage caractères (regex)", value = FALSE),
     tags$p(
-      "[^a-zA-Z0-9àÀâÂäÄáÁåÅãéÉèÈêÊëËìÌîÎïÏíÍóÓòÒôÔöÖõÕøØùÙûÛüÜúÚçÇßœŒ’ñÑ\\.:,;!\\?']",
+      "[^a-zA-Z0-9àÀâÂäÄáÁåÅãéÉèÈêÊëËìÌîÎïÏíÍóÓòÒôÔöÖõÕøØùÙûÛüÜúÚçÇßœŒ’ñÑ_\\.:,;!\\?']",
       style = "color: #c00; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
     ),
     tags$p(
-      "Les caractères présents dans la liste entre crochets sont conservés ; tous les autres (ex. @ # & / emoji) sont remplacés par des espaces.",
+      "Les caractères présents dans la liste entre crochets sont conservés (dont _ pour les expressions normalisées) ; tous les autres (ex. @ # & / emoji) sont remplacés par des espaces.",
       style = "color: #c00; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
     ),
     checkboxInput("supprimer_ponctuation", "Supprimer la ponctuation", value = FALSE),
