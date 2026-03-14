@@ -190,6 +190,7 @@ server <- function(input, output, session) {
     lexique_fr_df = NULL,
     expression_fr_df = NULL,
     expression_annotations_df = data.frame(dic_mot = character(0), dic_norm = character(0), dic_morpho = character(0), stringsAsFactors = FALSE),
+    expressions_actives_df = NULL,
     utiliser_add_expression = FALSE,
     textes_indexation = NULL,
 
@@ -218,7 +219,7 @@ server <- function(input, output, session) {
 
   sauvegarder_add_expression <- function(df) {
     if (is.null(df) || !is.data.frame(df)) return(invisible(NULL))
-    path_out <- file.path(app_dir, "dictionnaires", "add_expression.csv")
+    path_out <- file.path(app_dir, "dictionnaires", "add_expression_fr.csv")
     tryCatch({
       utils::write.csv2(df, path_out, row.names = FALSE, fileEncoding = "UTF-8")
       invisible(path_out)
@@ -226,8 +227,12 @@ server <- function(input, output, session) {
   }
 
   charger_add_expression <- function() {
-    path_in <- file.path(app_dir, "dictionnaires", "add_expression.csv")
-    if (!file.exists(path_in)) return(NULL)
+    paths_in <- c(
+      file.path(app_dir, "dictionnaires", "add_expression_fr.csv"),
+      file.path(app_dir, "dictionnaires", "add_expression.csv")
+    )
+    path_in <- paths_in[file.exists(paths_in)][1]
+    if (is.na(path_in) || !nzchar(path_in) || !file.exists(path_in)) return(NULL)
     df <- tryCatch(utils::read.csv2(path_in, stringsAsFactors = FALSE, encoding = "UTF-8"), error = function(e) NULL)
     if (is.null(df) || !all(c("dic_mot", "dic_norm") %in% names(df))) return(NULL)
     if (!"dic_morpho" %in% names(df)) df$dic_morpho <- ""
@@ -344,6 +349,16 @@ server <- function(input, output, session) {
     ))
   })
 
+  observeEvent(input$charger_add_expression, {
+    showModal(modalDialog(
+      title = "Importer un dictionnaire d'expression (add_expression_fr.csv)",
+      easyClose = TRUE,
+      size = "s",
+      fileInput("add_expression_upload", "Choisir un .csv (colonnes: dic_mot, dic_norm, dic_morpho optionnel)", accept = c(".csv")),
+      footer = modalButton("Fermer")
+    ))
+  })
+
   observeEvent(input$add_expression_upload, {
     f <- input$add_expression_upload
     if (is.null(f) || is.null(f$datapath) || !file.exists(f$datapath)) return(invisible(NULL))
@@ -363,7 +378,7 @@ server <- function(input, output, session) {
     rv$utiliser_add_expression <- TRUE
     sauvegarder_add_expression(rv$expression_annotations_df)
     removeModal()
-    showNotification(paste0("Dictionnaire importé depuis le disque (", nrow(df), " entrées) et activé pour l'analyse."), type = "message")
+    showNotification(paste0("Dictionnaire add_expression_fr.csv importé depuis le disque (", nrow(df), " entrées) et activé pour l'analyse."), type = "message")
   }, ignoreInit = TRUE)
 
   observeEvent(input$menu_importer_fichier_sidebar, {
@@ -514,7 +529,7 @@ server <- function(input, output, session) {
   }, striped = TRUE, bordered = TRUE, hover = TRUE, spacing = "xs", width = "100%")
 
   output$dl_expression_csv <- downloadHandler(
-    filename = function() "add_expression.csv",
+    filename = function() "add_expression_fr.csv",
     content = function(file) {
       df <- rv$expression_annotations_df
       if (is.null(df) || !is.data.frame(df)) {

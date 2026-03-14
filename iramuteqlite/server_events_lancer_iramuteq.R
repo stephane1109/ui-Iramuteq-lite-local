@@ -676,6 +676,34 @@ register_events_lancer <- function(input, output, session, rv) {
       dfm_obj <- quanteda::dfm(tok)
       quanteda::docnames(dfm_obj) <- ids_docs
 
+      log_presence_expressions <- function(dfm_stage, label_stage) {
+        expr_df <- rv$expressions_actives_df
+        if (is.null(expr_df) || !is.data.frame(expr_df) || nrow(expr_df) == 0 || !"dic_norm" %in% names(expr_df)) {
+          return(invisible(NULL))
+        }
+        expr_norm <- unique(tolower(trimws(as.character(expr_df$dic_norm))))
+        expr_norm <- expr_norm[nzchar(expr_norm)]
+        if (length(expr_norm) == 0) {
+          return(invisible(NULL))
+        }
+        feats <- tolower(trimws(as.character(quanteda::featnames(dfm_stage))))
+        presents <- intersect(expr_norm, feats)
+        absents <- setdiff(expr_norm, feats)
+        ajouter_log(
+          rv,
+          paste0(
+            "Expressions (dic_norm) présentes ", label_stage, " : ",
+            length(presents), "/", length(expr_norm),
+            " | absentes=", length(absents), "."
+          )
+        )
+        if (length(absents) > 0) {
+          ajouter_log(rv, paste0("Exemples expressions absentes ", label_stage, " : ", paste(utils::head(absents, 10), collapse = ", "), "."))
+        }
+      }
+
+      log_presence_expressions(dfm_obj, "avant filtres morpho/min_docfreq")
+
       if (isTRUE(input$filtrage_morpho) && identical(input$source_dictionnaire, "lexique_fr")) {
         if (is.null(rv$lexique_fr_df) || !is.data.frame(rv$lexique_fr_df) || nrow(rv$lexique_fr_df) == 0) {
           rv$lexique_fr_df <- charger_lexique_fr(app_dir)
@@ -748,11 +776,14 @@ register_events_lancer <- function(input, output, session, rv) {
         }
       }
 
+      log_presence_expressions(dfm_obj, "après filtrage morphosyntaxique")
+
       min_docfreq_val <- lire_min_docfreq_manuel(input$min_docfreq, valeur_defaut = 3L)
       rv$min_docfreq_applique <- min_docfreq_val
       ajouter_log(rv, paste0("min_docfreq appliqué (IRaMuTeQ-lite) = ", min_docfreq_val, " (manuel)."))
 
       dfm_obj <- quanteda::dfm_trim(dfm_obj, min_docfreq = min_docfreq_val)
+      log_presence_expressions(dfm_obj, paste0("après min_docfreq=", min_docfreq_val))
       if (quanteda::nfeat(dfm_obj) < 1L) {
         stop(paste0("Aucun terme ne reste après filtrage min_docfreq=", min_docfreq_val, ". Diminuer cette valeur."))
       }
@@ -920,6 +951,7 @@ register_events_lancer <- function(input, output, session, rv) {
       rv$spacy_tokens_df <- NULL
       rv$lexique_fr_df <- NULL
       rv$expression_fr_df <- NULL
+      rv$expressions_actives_df <- NULL
       rv$textes_indexation <- NULL
       rv$ner_df <- NULL
       rv$ner_nb_segments <- NA_integer_
@@ -1123,13 +1155,14 @@ register_events_lancer <- function(input, output, session, rv) {
 
             expressions_actives_df <- rv$expression_fr_df
             if (!isTRUE(add_expression_actif)) {
-              ajouter_log(rv, "Dictionnaire add_expression.csv non activé (cliquer 'Charger add_expression.csv' dans Paramétrages de l'analyse).")
+              ajouter_log(rv, "Dictionnaire add_expression_fr.csv non activé (cliquer 'Ajouter un dictionnaire d'expression add_expression_fr.csv' dans Paramétrages de l'analyse).")
             }
             if (isTRUE(add_expression_actif) && !is.null(expr_session_df) && nrow(expr_session_df) > 0) {
               expressions_actives_df <- rbind(expr_session_df, rv$expression_fr_df[, c("dic_mot", "dic_norm"), drop = FALSE])
               expressions_actives_df <- expressions_actives_df[!duplicated(expressions_actives_df$dic_mot), , drop = FALSE]
               ajouter_log(rv, paste0("Dictionnaire d'expressions enrichi par l'onglet Annotation : +", nrow(expr_session_df), " entrée(s) session."))
             }
+            rv$expressions_actives_df <- expressions_actives_df
 
             ajouter_log(
               rv,
@@ -1157,6 +1190,9 @@ register_events_lancer <- function(input, output, session, rv) {
             if (isTRUE(input$filtrage_morpho) && !("AUTRE_FORME" %in% toupper(trimws(as.character(input$pos_lexique_a_conserver))))) {
               ajouter_log(rv, "Note: formes normalisées hors lexique (ex. gerald_darmanin) seront exclues si AUTRE_FORME n'est pas sélectionné dans le filtrage morphosyntaxique.")
             }
+          } else {
+            rv$expressions_actives_df <- NULL
+            ajouter_log(rv, "Dictionnaire d'expressions désactivé (expression_utiliser_dictionnaire=0).")
           }
 
           avancer(0.18, "Préparation texte (nettoyage / minuscules)")
