@@ -219,7 +219,9 @@ server <- function(input, output, session) {
     simi_layout = NULL,
     simi_vertex_freq = NULL,
     simi_method = "cooc",
-    simi_seuil_applique = NA_real_
+    simi_seuil_applique = NA_real_,
+
+    parametres_analyse = list()
   )
 
   app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
@@ -352,6 +354,39 @@ server <- function(input, output, session) {
     }
     "Aucun fichier choisi"
   })
+
+  capturer_parametres_analyse <- function() {
+    # Capture défensive des paramètres UI sans dépendre de modifyList.
+    defaults <- list(
+      modele_chd = "iramuteq",
+      segment_size = 40,
+      segmenter_sur_ponctuation_forte = FALSE,
+      iramuteq_max_formes = 3000,
+      iramuteq_mincl_mode = "auto",
+      iramuteq_mincl = 5,
+      iramuteq_classif_mode = "double",
+      iramuteq_rst1 = 12,
+      iramuteq_rst2 = 14,
+      iramuteq_svd_method = "irlba",
+      source_dictionnaire = "lexique_fr",
+      expression_utiliser_dictionnaire = FALSE,
+      utiliser_stopwords = FALSE,
+      min_docfreq = 3,
+      max_p = 0.05,
+      afc_taille_mots = "frequency",
+      top_n = 20
+    )
+
+    entrees <- reactiveValuesToList(input)
+    out <- defaults
+    for (nm in intersect(names(defaults), names(entrees))) {
+      val <- entrees[[nm]]
+      if (!is.null(val)) out[[nm]] <- val
+    }
+
+    rv$parametres_analyse <- out
+    out
+  }
 
   ouvrir_modal_parametres <- function() {
     defaults <- capturer_parametres_analyse()
