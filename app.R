@@ -335,11 +335,90 @@ server <- function(input, output, session) {
     ))
   }
 
+  ouvrir_modal_parametres_similitudes <- function() {
+    showModal(modalDialog(
+      title = "Paramètres de l'analyse de similitudes",
+      easyClose = TRUE,
+      size = "m",
+      ui_form_parametres_similitudes(),
+      footer = tagList(
+        modalButton("Fermer"),
+        actionButton("lancer_simi", "Lancer l'analyse de similitudes", class = "btn-primary")
+      )
+    ))
+  }
+
+  journaliser_evenement <- function(message) {
+    if (exists("ajouter_log", mode = "function", inherits = TRUE)) {
+      ajouter_log(rv, message)
+      return(invisible(NULL))
+    }
+
+    msg <- as.character(message)
+    msg <- msg[!is.na(msg)]
+    msg <- msg[nzchar(msg)]
+    if (!length(msg)) return(invisible(NULL))
+    msg <- paste(msg, collapse = " ")
+
+    horodatage <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+    msg_horodate <- paste0("[", horodatage, "] ", msg)
+
+    precedent <- rv$logs
+    if (is.null(precedent) || !length(precedent) || all(is.na(precedent)) || !any(nzchar(precedent))) {
+      rv$logs <- msg_horodate
+    } else {
+      precedent <- precedent[!is.na(precedent)]
+      precedent <- precedent[nzchar(precedent)]
+      rv$logs <- paste(c(precedent, msg_horodate), collapse = "\n")
+    }
+
+    message("[IRaMuTeQ-lite] ", msg_horodate)
+    flush.console()
+
+    invisible(NULL)
+  }
+
   observeEvent(input$nav_principal, {
     if (input$nav_principal %in% c("chd", "resultats_chd")) {
       ouvrir_modal_parametres()
     }
   }, ignoreInit = TRUE)
+
+  observeEvent(input$nav_principal, {
+    if (isTRUE(identical(input$nav_principal, "similitudes"))) {
+      ouvrir_modal_parametres_similitudes()
+    }
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ouvrir_param_simi, {
+    ouvrir_modal_parametres_similitudes()
+  })
+
+  observeEvent(input$lancer_simi, {
+    removeModal()
+    rv$statut <- paste0(
+      "Paramètres similitudes enregistrés — méthode: ", input$simi_method,
+      ", layout: ", input$simi_layout,
+      if (!is.null(input$simi_max_tree) && isTRUE(input$simi_max_tree)) ", max.tree: oui" else ", max.tree: non"
+    )
+    journaliser_evenement(paste0("Analyse similitudes paramétrée (", rv$statut, ")."))
+    showNotification("Paramètres de similitudes enregistrés.", type = "message")
+  })
+
+  output$ui_simi_statut <- renderUI({
+    seuil_label <- if (is.null(input$simi_seuil) || is.na(input$simi_seuil)) "aucun" else as.character(input$simi_seuil)
+    tags$div(
+      style = "border:1px solid #d9e2ef; background:#f8fbff; border-radius:6px; padding:12px;",
+      tags$strong("Configuration actuelle"),
+      tags$ul(
+        tags$li(paste0("Méthode: ", if (is.null(input$simi_method)) "cooc" else input$simi_method)),
+        tags$li(paste0("Seuil: ", seuil_label)),
+        tags$li(paste0("Layout: ", if (is.null(input$simi_layout)) "frutch" else input$simi_layout)),
+        tags$li(paste0("Arbre max: ", if (isTRUE(input$simi_max_tree)) "oui" else "non")),
+        tags$li(paste0("Labels des arêtes: ", if (isTRUE(input$simi_edge_labels)) "oui" else "non"))
+      )
+    )
+  })
 
   observeEvent(input$charger_add_expression, {
     df_add <- charger_add_expression()
