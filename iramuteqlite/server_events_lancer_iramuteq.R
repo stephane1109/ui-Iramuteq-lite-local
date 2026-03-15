@@ -948,6 +948,18 @@ register_events_lancer <- function(input, output, session, rv) {
 
     observeEvent(input$lancer, {
       rv$logs <- ""
+
+      if (exists("capturer_parametres_analyse", mode = "function", inherits = TRUE)) {
+        tryCatch(
+          capturer_parametres_analyse(),
+          error = function(e) {
+            if (exists("ajouter_log", mode = "function", inherits = TRUE)) {
+              ajouter_log(rv, paste0("Capture des paramètres: erreur non bloquante - ", e$message))
+            }
+            invisible(NULL)
+          }
+        )
+      }
       rv$statut <- "Vérification du fichier..."
       rv$progression <- 0
 
