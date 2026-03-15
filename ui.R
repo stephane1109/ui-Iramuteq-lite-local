@@ -300,6 +300,61 @@ ui_form_parametres_similitudes <- function() {
   )
 }
 
+ui_form_parametres_similitudes <- function() {
+  tagList(
+    tags$p(
+      "Paramétrez l'analyse de similitudes (Vergès). ",
+      "Ces options prépareront la matrice et l'affichage du graphe de similitude."
+    ),
+    selectInput(
+      "simi_method",
+      "Méthode de calcul",
+      choices = c(
+        "Cooccurrence" = "cooc",
+        "Jaccard" = "jaccard",
+        "Binomiale" = "binom"
+      ),
+      selected = "cooc"
+    ),
+    numericInput(
+      "simi_seuil",
+      "Seuil minimal des arêtes (laisser vide pour aucun seuil)",
+      value = NA,
+      min = 0,
+      step = 0.01
+    ),
+    numericInput(
+      "simi_top_terms",
+      "Nombre de termes à conserver (plus fréquents)",
+      value = 40,
+      min = 5,
+      step = 1
+    ),
+    checkboxInput(
+      "simi_max_tree",
+      "Limiter au graphe couvrant maximal (arbre de poids max)",
+      value = TRUE
+    ),
+    selectInput(
+      "simi_layout",
+      "Type de layout",
+      choices = c(
+        "Fruchterman-Reingold" = "frutch",
+        "Kamada-Kawai" = "kawa",
+        "Circulaire" = "circle",
+        "Aléatoire" = "random",
+        "Spirale" = "spirale"
+      ),
+      selected = "frutch"
+    ),
+    checkboxInput(
+      "simi_edge_labels",
+      "Afficher les labels des arêtes",
+      value = TRUE
+    )
+  )
+}
+
 if (!exists("REGEX_CARACTERES_A_SUPPRIMER", inherits = TRUE)) {
   app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
   if (is.null(app_dir) || !nzchar(app_dir)) app_dir <- getwd()
@@ -436,7 +491,8 @@ ui <- page_navbar(
       style = "display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;",
       actionButton("ouvrir_param_simi", "Paramétrer l'analyse de similitudes", class = "btn-primary")
     ),
-    uiOutput("ui_simi_statut")
+    uiOutput("ui_simi_statut"),
+    tags$div(style = "max-width: 1100px;", plotOutput("plot_simi", height = "760px"))
   ),
 
   nav_panel("Aide", value = "aide", ui_aide_huggingface()),

@@ -112,6 +112,8 @@ source("iramuteqlite/ui_options_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/ui_explorateur_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/affichage_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/wordcloud_iramuteq.R", encoding = "UTF-8", local = TRUE)
+source("iramuteqlite/simi.R", encoding = "UTF-8", local = TRUE)
+source("iramuteqlite/simi_graph.R", encoding = "UTF-8", local = TRUE)
 source("ui.R", encoding = "UTF-8", local = TRUE)
 
 source("iramuteqlite/chd_iramuteq.R", encoding = "UTF-8", local = TRUE)
@@ -212,7 +214,12 @@ server <- function(input, output, session) {
     stats_corpus_df = NULL,
     stats_zipf_df = NULL,
     min_docfreq_applique = 3L,
-    parametres_analyse = list()
+
+    simi_graph = NULL,
+    simi_layout = NULL,
+    simi_vertex_freq = NULL,
+    simi_method = "cooc",
+    simi_seuil_applique = NA_real_
   )
 
   app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
@@ -422,26 +429,65 @@ server <- function(input, output, session) {
 
   observeEvent(input$lancer_simi, {
     removeModal()
-    rv$statut <- paste0(
-      "Paramètres similitudes enregistrés — méthode: ", input$simi_method,
-      ", layout: ", input$simi_layout,
-      if (!is.null(input$simi_max_tree) && isTRUE(input$simi_max_tree)) ", max.tree: oui" else ", max.tree: non"
+
+    if (is.null(rv$dfm) || quanteda::ndoc(rv$dfm) < 2 || quanteda::nfeat(rv$dfm) < 2) {
+      showNotification("Analyse CHD/AFC non disponible: lancez d'abord l'analyse principale pour construire le graphe de similitude.", type = "warning")
+      return(invisible(NULL))
+    }
+
+    res_simi <- tryCatch(
+      construire_graphe_similitudes(
+        dfm_obj = rv$dfm,
+        method = input$simi_method,
+        seuil = input$simi_seuil,
+        max_tree = isTRUE(input$simi_max_tree),
+        top_terms = input$simi_top_terms,
+        layout_type = input$simi_layout
+      ),
+      error = function(e) e
     )
-    journaliser_evenement(paste0("Analyse similitudes paramétrée (", rv$statut, ")."))
-    showNotification("Paramètres de similitudes enregistrés.", type = "message")
+
+    if (inherits(res_simi, "error")) {
+      showNotification(paste0("Erreur analyse similitudes: ", res_simi$message), type = "error")
+      journaliser_evenement(paste0("Erreur analyse similitudes: ", res_simi$message))
+      return(invisible(NULL))
+    }
+
+    rv$simi_graph <- res_simi$graph
+    rv$simi_layout <- res_simi$layout
+    rv$simi_vertex_freq <- res_simi$vertex_freq
+    rv$simi_method <- res_simi$method
+    rv$simi_seuil_applique <- res_simi$seuil
+
+    rv$statut <- paste0(
+      "Graphe de similitudes généré — méthode: ", rv$simi_method,
+      ", sommets: ", igraph::vcount(rv$simi_graph),
+      ", arêtes: ", igraph::ecount(rv$simi_graph)
+    )
+    journaliser_evenement(rv$statut)
+    if (igraph::ecount(rv$simi_graph) == 0) {
+      showNotification("Aucune arête après filtrage. Diminuez le seuil ou augmentez le nombre de termes.", type = "warning")
+    } else {
+      showNotification("Graphe de similitudes généré.", type = "message")
+    }
   })
 
   output$ui_simi_statut <- renderUI({
     seuil_label <- if (is.null(input$simi_seuil) || is.na(input$simi_seuil)) "aucun" else as.character(input$simi_seuil)
+    n_vertices <- if (!is.null(rv$simi_graph) && inherits(rv$simi_graph, "igraph")) igraph::vcount(rv$simi_graph) else 0
+    n_edges <- if (!is.null(rv$simi_graph) && inherits(rv$simi_graph, "igraph")) igraph::ecount(rv$simi_graph) else 0
+
     tags$div(
       style = "border:1px solid #d9e2ef; background:#f8fbff; border-radius:6px; padding:12px;",
       tags$strong("Configuration actuelle"),
       tags$ul(
         tags$li(paste0("Méthode: ", if (is.null(input$simi_method)) "cooc" else input$simi_method)),
         tags$li(paste0("Seuil: ", seuil_label)),
+        tags$li(paste0("Top termes: ", if (is.null(input$simi_top_terms)) 40 else input$simi_top_terms)),
         tags$li(paste0("Layout: ", if (is.null(input$simi_layout)) "frutch" else input$simi_layout)),
         tags$li(paste0("Arbre max: ", if (isTRUE(input$simi_max_tree)) "oui" else "non")),
-        tags$li(paste0("Labels des arêtes: ", if (isTRUE(input$simi_edge_labels)) "oui" else "non"))
+        tags$li(paste0("Labels des arêtes: ", if (isTRUE(input$simi_edge_labels)) "oui" else "non")),
+        tags$li(paste0("Graphe courant: ", n_vertices, " sommets / ", n_edges, " arêtes"))
       )
     )
   })
@@ -875,6 +921,16 @@ server <- function(input, output, session) {
       stringsAsFactors = FALSE
     )
   }, rownames = FALSE)
+
+  output$plot_simi <- renderPlot({
+    req(zone_trace_disponible("plot_simi", min_width = 240, min_height = 220))
+    tracer_graphe_similitudes(
+      g = rv$simi_graph,
+      layout = rv$simi_layout,
+      edge_labels = isTRUE(input$simi_edge_labels),
+      main = "Graphe de similitude"
+    )
+  })
 
   output$plot_chd_iramuteq_dendro <- renderPlot({
     req(zone_trace_disponible("plot_chd_iramuteq_dendro", min_width = 200, min_height = 180))
