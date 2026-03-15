@@ -144,11 +144,21 @@ construire_graphe_similitudes <- function(dfm_obj,
     vertex_freq = vfreq,
     method = method,
     seuil = seuil_val,
-    communities = com
+    communities = com,
+    n_terms_used = ncol(mat_bin),
+    n_terms_total = ncol(mat_dfm),
+    top_terms_requested = n_top
   )
 }
 
-tracer_graphe_similitudes <- function(g, layout = NULL, edge_labels = TRUE, main = "Graphe de similitude", communities = NULL, halo = FALSE) {
+tracer_graphe_similitudes <- function(g,
+                                     layout = NULL,
+                                     edge_labels = TRUE,
+                                     main = "Graphe de similitude",
+                                     communities = NULL,
+                                     halo = FALSE,
+                                     zoom = 1,
+                                     info_text = NULL) {
   if (is.null(g) || !inherits(g, "igraph") || igraph::vcount(g) == 0) {
     plot.new()
     text(0.5, 0.5, "Aucun graphe de similitude.\nCliquez sur 'Paramétrer' puis 'Lancer l'analyse de similitudes'.", cex = 1.0)
@@ -167,6 +177,11 @@ tracer_graphe_similitudes <- function(g, layout = NULL, edge_labels = TRUE, main
   edge_width <- igraph::E(g)$width
   if (is.null(edge_width)) edge_width <- 1
 
+  zoom <- suppressWarnings(as.numeric(zoom))
+  if (!is.finite(zoom) || is.na(zoom) || zoom <= 0) zoom <- 1
+  vertex_size <- pmax(3, as.numeric(vertex_size) * zoom)
+  edge_width <- pmax(0.5, as.numeric(edge_width) * (0.8 + 0.4 * zoom))
+
   edge_lab <- if (isTRUE(edge_labels)) round(igraph::E(g)$weight, 3) else NA
 
   vcol <- "#2C7FB8"
@@ -184,19 +199,27 @@ tracer_graphe_similitudes <- function(g, layout = NULL, edge_labels = TRUE, main
     }
   }
 
+  old_par <- graphics::par(no.readonly = TRUE)
+  on.exit(graphics::par(old_par), add = TRUE)
+  graphics::par(mar = c(1.5, 1.5, 3.2, 1.5))
+
   plot(
     g,
     layout = lo,
     vertex.label = vertex_labels,
-    vertex.label.cex = 0.8,
+    vertex.label.cex = min(2.2, 0.75 * zoom),
     vertex.size = vertex_size,
     vertex.color = vcol,
     vertex.frame.color = "#1f4f7a",
     edge.width = edge_width,
     edge.color = grDevices::adjustcolor("#4D4D4D", alpha.f = 0.6),
     edge.label = edge_lab,
-    edge.label.cex = 0.7,
+    edge.label.cex = min(1.6, 0.65 * zoom),
     mark.groups = mark_groups,
     main = main
   )
+
+  if (!is.null(info_text) && nzchar(as.character(info_text))) {
+    graphics::mtext(as.character(info_text), side = 3, line = 0.2, cex = 0.85, col = "#37474F")
+  }
 }

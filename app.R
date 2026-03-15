@@ -221,6 +221,10 @@ server <- function(input, output, session) {
     simi_method = "cooc",
     simi_seuil_applique = NA_real_,
     simi_communities = NULL,
+    simi_zoom = 1,
+    simi_terms_used = 0L,
+    simi_terms_total = 0L,
+    simi_top_terms_requested = 40L,
 
     parametres_analyse = list()
   )
@@ -463,6 +467,18 @@ server <- function(input, output, session) {
     ouvrir_modal_parametres_similitudes()
   })
 
+  observeEvent(input$simi_zoom_in, {
+    rv$simi_zoom <- min(3, rv$simi_zoom + 0.2)
+  })
+
+  observeEvent(input$simi_zoom_out, {
+    rv$simi_zoom <- max(0.6, rv$simi_zoom - 0.2)
+  })
+
+  observeEvent(input$simi_zoom_reset, {
+    rv$simi_zoom <- 1
+  })
+
   observeEvent(input$lancer_simi, {
     removeModal()
 
@@ -497,6 +513,9 @@ server <- function(input, output, session) {
     rv$simi_method <- res_simi$method
     rv$simi_seuil_applique <- res_simi$seuil
     rv$simi_communities <- res_simi$communities
+    rv$simi_terms_used <- res_simi$n_terms_used
+    rv$simi_terms_total <- res_simi$n_terms_total
+    rv$simi_top_terms_requested <- res_simi$top_terms_requested
 
     rv$statut <- paste0(
       "Graphe de similitudes généré — méthode: ", rv$simi_method,
@@ -529,6 +548,9 @@ server <- function(input, output, session) {
         tags$li(paste0("Communautés: ", if (isTRUE(input$simi_communities)) "oui" else "non")),
         tags$li(paste0("Méthode communautés: ", if (is.null(input$simi_community_method)) "edge_betweenness" else input$simi_community_method)),
         tags$li(paste0("Halo: ", if (isTRUE(input$simi_halo)) "oui" else "non")),
+        tags$li(paste0("Mots conservés: ", rv$simi_terms_used, " / ", rv$simi_terms_total,
+                       " (top demandé = ", rv$simi_top_terms_requested, ")")),
+        tags$li(paste0("Zoom affichage: x", format(round(rv$simi_zoom, 2), nsmall = 2))),
         tags$li(paste0("Graphe courant: ", n_vertices, " sommets / ", n_edges, " arêtes"))
       )
     )
@@ -966,13 +988,21 @@ server <- function(input, output, session) {
 
   output$plot_simi <- renderPlot({
     req(zone_trace_disponible("plot_simi", min_width = 240, min_height = 220))
+    info_txt <- paste0(
+      "Méthode: ", rv$simi_method,
+      " | Mots conservés: ", rv$simi_terms_used, "/", rv$simi_terms_total,
+      " (top demandé=", rv$simi_top_terms_requested, ")"
+    )
+
     tracer_graphe_similitudes(
       g = rv$simi_graph,
       layout = rv$simi_layout,
       edge_labels = isTRUE(input$simi_edge_labels),
       main = "Graphe de similitude",
       communities = rv$simi_communities,
-      halo = isTRUE(input$simi_halo)
+      halo = isTRUE(input$simi_halo),
+      zoom = rv$simi_zoom,
+      info_text = info_txt
     )
   })
 
