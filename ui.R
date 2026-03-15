@@ -130,9 +130,9 @@ ui_form_parametres_analyse <- function(defaults = NULL) {
       "Si activé, le découpage recherche la meilleure frontière autour de segment_size avec priorité . ! ?, puis ; :, puis , puis espace ; un retour à la ligne clôture aussi le segment.",
       style = "color: #c00; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
     ),
-    numericInput("min_docfreq", "Fréquence minimale des termes (min_docfreq)", value = valeur_defaut("min_docfreq", 3), min = 1, step = 1),
-    numericInput("max_p", "max_p (p-value)", value = valeur_defaut("max_p", 0.05), min = 0, max = 1, step = 0.01),
-    checkboxInput("filtrer_affichage_pvalue", "Filtrer l'affichage des résultats par p-value (p ≤ max_p)", value = valeur_defaut("filtrer_affichage_pvalue", TRUE)),
+    numericInput("min_docfreq", "Fréquence minimale des termes (min_docfreq)", value = 3, min = 1, step = 1),
+    numericInput("max_p", "max_p (p-value)", value = 0.05, min = 0, max = 1, step = 0.1),
+    checkboxInput("filtrer_affichage_pvalue", "Filtrer l'affichage des résultats par p-value (p ≤ max_p)", value = TRUE),
 
     conditionalPanel(
       condition = "input.modele_chd == 'iramuteq'",
@@ -594,6 +594,87 @@ ui_form_parametres_similitudes <- function() {
       value = NA,
       min = 0,
       step = 0.01
+    ),
+    numericInput(
+      "simi_top_terms",
+      "Nombre de termes à conserver (plus fréquents)",
+      value = 40,
+      min = 5,
+      step = 1
+    ),
+    checkboxInput(
+      "simi_max_tree",
+      "Limiter au graphe couvrant maximal (arbre de poids max)",
+      value = TRUE
+    ),
+    selectInput(
+      "simi_layout",
+      "Type de layout",
+      choices = c(
+        "Fruchterman-Reingold" = "frutch",
+        "Kamada-Kawai" = "kawa",
+        "Circulaire" = "circle",
+        "Aléatoire" = "random",
+        "Spirale" = "spirale"
+      ),
+      selected = "frutch"
+    ),
+    checkboxInput(
+      "simi_edge_labels",
+      "Afficher les labels des arêtes",
+      value = TRUE
+    ),
+    checkboxInput(
+      "simi_communities",
+      "Communautés",
+      value = FALSE
+    ),
+    conditionalPanel(
+      condition = "input.simi_communities == true",
+      selectInput(
+        "simi_community_method",
+        "Méthode de communautés",
+        choices = c(
+          "edge.betweenness.community" = "edge_betweenness",
+          "fastgreedy.community" = "fast_greedy",
+          "label.propagation.community" = "label_propagation",
+          "leading.eigenvector.community" = "leading_eigen",
+          "multilevel.community" = "multilevel",
+          "walktrap.community" = "walktrap"
+        ),
+        selected = "edge_betweenness"
+      ),
+      checkboxInput(
+        "simi_halo",
+        "Halo",
+        value = FALSE
+      )
+    )
+  )
+}
+
+ui_form_parametres_similitudes <- function() {
+  tagList(
+    tags$p(
+      "Paramétrez l'analyse de similitudes (Vergès). ",
+      "Ces options prépareront la matrice et l'affichage du graphe de similitude."
+    ),
+    selectInput(
+      "simi_method",
+      "Méthode de calcul",
+      choices = c(
+        "Cooccurrence" = "cooc",
+        "Jaccard" = "jaccard",
+        "Binomiale" = "binom"
+      ),
+      selected = "cooc"
+    ),
+    numericInput(
+      "simi_seuil",
+      "Seuil minimal des arêtes (laisser vide pour aucun seuil)",
+      value = NA,
+      min = 0,
+      step = 0.1
     ),
     numericInput(
       "simi_top_terms",

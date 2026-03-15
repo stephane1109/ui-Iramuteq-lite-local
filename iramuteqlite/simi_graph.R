@@ -179,44 +179,62 @@ tracer_graphe_similitudes <- function(g,
 
   zoom <- suppressWarnings(as.numeric(zoom))
   if (!is.finite(zoom) || is.na(zoom) || zoom <= 0) zoom <- 1
-  vertex_size <- pmax(3, as.numeric(vertex_size) * zoom)
-  edge_width <- pmax(0.5, as.numeric(edge_width) * (0.8 + 0.4 * zoom))
 
   edge_lab <- if (isTRUE(edge_labels)) round(igraph::E(g)$weight, 3) else NA
 
   vcol <- "#2C7FB8"
   mark_groups <- NULL
+  mark_col <- NULL
+  mark_border <- NULL
   if (!is.null(communities) && inherits(communities, "communities")) {
     memb <- igraph::membership(communities)
     memb <- as.integer(memb)
     if (length(memb) == igraph::vcount(g) && any(is.finite(memb))) {
-      pal <- grDevices::rainbow(max(memb, na.rm = TRUE))
+      ncom <- max(memb, na.rm = TRUE)
+      pal <- grDevices::hcl.colors(ncom, palette = "Dark 3")
       idx <- pmax(1L, pmin(length(pal), memb))
       vcol <- pal[idx]
-    }
-    if (isTRUE(halo)) {
-      mark_groups <- igraph::communities(communities)
+
+      if (isTRUE(halo)) {
+        mark_groups <- igraph::groups(communities)
+        mark_col <- grDevices::adjustcolor(pal, alpha.f = 0.15)
+        mark_border <- grDevices::adjustcolor(pal, alpha.f = 0.85)
+      }
     }
   }
 
   old_par <- graphics::par(no.readonly = TRUE)
   on.exit(graphics::par(old_par), add = TRUE)
-  graphics::par(mar = c(1.5, 1.5, 3.2, 1.5))
+  graphics::par(mar = c(1.2, 1.2, 3.2, 1.2))
+
+  lo_mat <- as.matrix(lo)
+  if (ncol(lo_mat) < 2) {
+    lo_mat <- cbind(lo_mat, rep(0, nrow(lo_mat)))
+  }
+  lo_plot <- lo_mat[, 1:2, drop = FALSE]
+  lo_plot <- igraph::norm_coords(lo_plot, xmin = -1, xmax = 1, ymin = -1, ymax = 1)
+
+  xlim_use <- c(-1 / zoom, 1 / zoom)
+  ylim_use <- c(-1 / zoom, 1 / zoom)
 
   plot(
     g,
-    layout = lo,
+    layout = lo_plot,
     vertex.label = vertex_labels,
-    vertex.label.cex = min(2.2, 0.75 * zoom),
+    vertex.label.cex = 0.95,
     vertex.size = vertex_size,
     vertex.color = vcol,
     vertex.frame.color = "#1f4f7a",
     edge.width = edge_width,
     edge.color = grDevices::adjustcolor("#4D4D4D", alpha.f = 0.6),
     edge.label = edge_lab,
-    edge.label.cex = min(1.6, 0.65 * zoom),
+    edge.label.cex = 0.75,
     mark.groups = mark_groups,
-    main = main
+    mark.col = mark_col,
+    mark.border = mark_border,
+    main = main,
+    xlim = xlim_use,
+    ylim = ylim_use
   )
 
   if (!is.null(info_text) && nzchar(as.character(info_text))) {
