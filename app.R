@@ -112,6 +112,8 @@ source("iramuteqlite/ui_options_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/ui_explorateur_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/affichage_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/wordcloud_iramuteq.R", encoding = "UTF-8", local = TRUE)
+source("iramuteqlite/simi.R", encoding = "UTF-8", local = TRUE)
+source("iramuteqlite/simi_graph.R", encoding = "UTF-8", local = TRUE)
 source("ui.R", encoding = "UTF-8", local = TRUE)
 
 source("iramuteqlite/chd_iramuteq.R", encoding = "UTF-8", local = TRUE)
@@ -211,7 +213,15 @@ server <- function(input, output, session) {
     explor_assets = NULL,
     stats_corpus_df = NULL,
     stats_zipf_df = NULL,
-    min_docfreq_applique = 3L
+    min_docfreq_applique = 3L,
+
+    simi_graph = NULL,
+    simi_layout = NULL,
+    simi_vertex_freq = NULL,
+    simi_method = "cooc",
+    simi_seuil_applique = NA_real_,
+
+    parametres_analyse = list()
   )
 
   app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
@@ -322,6 +332,39 @@ server <- function(input, output, session) {
     "Aucun fichier choisi"
   })
 
+  capturer_parametres_analyse <- function() {
+    # Capture défensive des paramètres UI sans dépendre de modifyList.
+    defaults <- list(
+      modele_chd = "iramuteq",
+      segment_size = 40,
+      segmenter_sur_ponctuation_forte = FALSE,
+      iramuteq_max_formes = 3000,
+      iramuteq_mincl_mode = "auto",
+      iramuteq_mincl = 5,
+      iramuteq_classif_mode = "double",
+      iramuteq_rst1 = 12,
+      iramuteq_rst2 = 14,
+      iramuteq_svd_method = "irlba",
+      source_dictionnaire = "lexique_fr",
+      expression_utiliser_dictionnaire = FALSE,
+      utiliser_stopwords = FALSE,
+      min_docfreq = 3,
+      max_p = 0.05,
+      afc_taille_mots = "frequency",
+      top_n = 20
+    )
+
+    entrees <- reactiveValuesToList(input)
+    out <- defaults
+    for (nm in intersect(names(defaults), names(entrees))) {
+      val <- entrees[[nm]]
+      if (!is.null(val)) out[[nm]] <- val
+    }
+
+    rv$parametres_analyse <- out
+    out
+  }
+
   ouvrir_modal_parametres <- function() {
     showModal(modalDialog(
       title = "Paramétrages de l'analyse",
@@ -335,11 +378,129 @@ server <- function(input, output, session) {
     ))
   }
 
+  ouvrir_modal_parametres_similitudes <- function() {
+    showModal(modalDialog(
+      title = "Paramètres de l'analyse de similitudes",
+      easyClose = TRUE,
+      size = "m",
+      ui_form_parametres_similitudes(),
+      footer = tagList(
+        modalButton("Fermer"),
+        actionButton("lancer_simi", "Lancer l'analyse de similitudes", class = "btn-primary")
+      )
+    ))
+  }
+
+  journaliser_evenement <- function(message) {
+    if (exists("ajouter_log", mode = "function", inherits = TRUE)) {
+      ajouter_log(rv, message)
+      return(invisible(NULL))
+    }
+
+    msg <- as.character(message)
+    msg <- msg[!is.na(msg)]
+    msg <- msg[nzchar(msg)]
+    if (!length(msg)) return(invisible(NULL))
+    msg <- paste(msg, collapse = " ")
+
+    horodatage <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+    msg_horodate <- paste0("[", horodatage, "] ", msg)
+
+    precedent <- rv$logs
+    if (is.null(precedent) || !length(precedent) || all(is.na(precedent)) || !any(nzchar(precedent))) {
+      rv$logs <- msg_horodate
+    } else {
+      precedent <- precedent[!is.na(precedent)]
+      precedent <- precedent[nzchar(precedent)]
+      rv$logs <- paste(c(precedent, msg_horodate), collapse = "\n")
+    }
+
+    message("[IRaMuTeQ-lite] ", msg_horodate)
+    flush.console()
+
+    invisible(NULL)
+  }
+
   observeEvent(input$nav_principal, {
     if (input$nav_principal %in% c("chd", "resultats_chd")) {
       ouvrir_modal_parametres()
     }
   }, ignoreInit = TRUE)
+
+  observeEvent(input$nav_principal, {
+    if (isTRUE(identical(input$nav_principal, "similitudes"))) {
+      ouvrir_modal_parametres_similitudes()
+    }
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ouvrir_param_simi, {
+    ouvrir_modal_parametres_similitudes()
+  })
+
+  observeEvent(input$lancer_simi, {
+    removeModal()
+
+    if (is.null(rv$dfm) || quanteda::ndoc(rv$dfm) < 2 || quanteda::nfeat(rv$dfm) < 2) {
+      showNotification("Analyse CHD/AFC non disponible: lancez d'abord l'analyse principale pour construire le graphe de similitude.", type = "warning")
+      return(invisible(NULL))
+    }
+
+    res_simi <- tryCatch(
+      construire_graphe_similitudes(
+        dfm_obj = rv$dfm,
+        method = input$simi_method,
+        seuil = input$simi_seuil,
+        max_tree = isTRUE(input$simi_max_tree),
+        top_terms = input$simi_top_terms,
+        layout_type = input$simi_layout
+      ),
+      error = function(e) e
+    )
+
+    if (inherits(res_simi, "error")) {
+      showNotification(paste0("Erreur analyse similitudes: ", res_simi$message), type = "error")
+      journaliser_evenement(paste0("Erreur analyse similitudes: ", res_simi$message))
+      return(invisible(NULL))
+    }
+
+    rv$simi_graph <- res_simi$graph
+    rv$simi_layout <- res_simi$layout
+    rv$simi_vertex_freq <- res_simi$vertex_freq
+    rv$simi_method <- res_simi$method
+    rv$simi_seuil_applique <- res_simi$seuil
+
+    rv$statut <- paste0(
+      "Graphe de similitudes généré — méthode: ", rv$simi_method,
+      ", sommets: ", igraph::vcount(rv$simi_graph),
+      ", arêtes: ", igraph::ecount(rv$simi_graph)
+    )
+    journaliser_evenement(rv$statut)
+    if (igraph::ecount(rv$simi_graph) == 0) {
+      showNotification("Aucune arête après filtrage. Diminuez le seuil ou augmentez le nombre de termes.", type = "warning")
+    } else {
+      showNotification("Graphe de similitudes généré.", type = "message")
+    }
+  })
+
+  output$ui_simi_statut <- renderUI({
+    seuil_label <- if (is.null(input$simi_seuil) || is.na(input$simi_seuil)) "aucun" else as.character(input$simi_seuil)
+    n_vertices <- if (!is.null(rv$simi_graph) && inherits(rv$simi_graph, "igraph")) igraph::vcount(rv$simi_graph) else 0
+    n_edges <- if (!is.null(rv$simi_graph) && inherits(rv$simi_graph, "igraph")) igraph::ecount(rv$simi_graph) else 0
+
+    tags$div(
+      style = "border:1px solid #d9e2ef; background:#f8fbff; border-radius:6px; padding:12px;",
+      tags$strong("Configuration actuelle"),
+      tags$ul(
+        tags$li(paste0("Méthode: ", if (is.null(input$simi_method)) "cooc" else input$simi_method)),
+        tags$li(paste0("Seuil: ", seuil_label)),
+        tags$li(paste0("Top termes: ", if (is.null(input$simi_top_terms)) 40 else input$simi_top_terms)),
+        tags$li(paste0("Layout: ", if (is.null(input$simi_layout)) "frutch" else input$simi_layout)),
+        tags$li(paste0("Arbre max: ", if (isTRUE(input$simi_max_tree)) "oui" else "non")),
+        tags$li(paste0("Labels des arêtes: ", if (isTRUE(input$simi_edge_labels)) "oui" else "non")),
+        tags$li(paste0("Graphe courant: ", n_vertices, " sommets / ", n_edges, " arêtes"))
+      )
+    )
+  })
 
   observeEvent(input$charger_add_expression, {
     df_add <- charger_add_expression()
@@ -770,6 +931,16 @@ server <- function(input, output, session) {
       stringsAsFactors = FALSE
     )
   }, rownames = FALSE)
+
+  output$plot_simi <- renderPlot({
+    req(zone_trace_disponible("plot_simi", min_width = 240, min_height = 220))
+    tracer_graphe_similitudes(
+      g = rv$simi_graph,
+      layout = rv$simi_layout,
+      edge_labels = isTRUE(input$simi_edge_labels),
+      main = "Graphe de similitude"
+    )
+  })
 
   output$plot_chd_iramuteq_dendro <- renderPlot({
     req(zone_trace_disponible("plot_chd_iramuteq_dendro", min_width = 200, min_height = 180))
