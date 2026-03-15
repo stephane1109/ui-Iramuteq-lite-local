@@ -73,7 +73,13 @@ if (!exists("ui_aide_morpho", mode = "function")) {
   }
 }
 
-ui_form_parametres_analyse <- function() {
+ui_form_parametres_analyse <- function(defaults = NULL) {
+  valeur_defaut <- function(id, fallback) {
+    if (is.null(defaults) || is.null(defaults[[id]]) || (length(defaults[[id]]) == 1 && is.na(defaults[[id]]))) {
+      return(fallback)
+    }
+    defaults[[id]]
+  }
   lexique_path <- file.path(getwd(), "dictionnaires", "lexique_fr.csv")
   morpho_choices <- c(
     "NOM", "NOM_SUP", "VER", "VER_SUP", "AUX",
@@ -109,28 +115,28 @@ ui_form_parametres_analyse <- function() {
       "modele_chd",
       "Méthode Iramuteq-like",
       choices = c("IRaMuTeQ-lite" = "iramuteq"),
-      selected = "iramuteq",
+      selected = valeur_defaut("modele_chd", "iramuteq"),
       inline = FALSE
     ),
 
     tags$div(class = "sidebar-section-title", "Paramètres généraux CHD"),
-    numericInput("segment_size", "segment_size", value = 40, min = 5, step = 1),
+    numericInput("segment_size", "segment_size", value = valeur_defaut("segment_size", 40), min = 5, step = 1),
     checkboxInput(
       "segmenter_sur_ponctuation_forte",
       "Tenir compte de la ponctuation forte (. ! ?) dans le découpage",
-      value = FALSE
+      value = valeur_defaut("segmenter_sur_ponctuation_forte", FALSE)
     ),
     tags$p(
       "Si activé, le découpage recherche la meilleure frontière autour de segment_size avec priorité . ! ?, puis ; :, puis , puis espace ; un retour à la ligne clôture aussi le segment.",
       style = "color: #c00; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
     ),
-    numericInput("min_docfreq", "Fréquence minimale des termes (min_docfreq)", value = 3, min = 1, step = 1),
-    numericInput("max_p", "max_p (p-value)", value = 0.05, min = 0, max = 1, step = 0.01),
-    checkboxInput("filtrer_affichage_pvalue", "Filtrer l'affichage des résultats par p-value (p ≤ max_p)", value = TRUE),
+    numericInput("min_docfreq", "Fréquence minimale des termes (min_docfreq)", value = valeur_defaut("min_docfreq", 3), min = 1, step = 1),
+    numericInput("max_p", "max_p (p-value)", value = valeur_defaut("max_p", 0.05), min = 0, max = 1, step = 0.01),
+    checkboxInput("filtrer_affichage_pvalue", "Filtrer l'affichage des résultats par p-value (p ≤ max_p)", value = valeur_defaut("filtrer_affichage_pvalue", TRUE)),
 
     conditionalPanel(
       condition = "input.modele_chd == 'iramuteq'",
-      ui_options_iramuteq()
+      ui_options_iramuteq(defaults = defaults)
     ),
 
     tags$div(class = "sidebar-section-title", "Dictionnaire"),
@@ -138,18 +144,18 @@ ui_form_parametres_analyse <- function() {
       "source_dictionnaire",
       "Source de lemmatisation",
       choices = c("Lexique (fr)" = "lexique_fr"),
-      selected = "lexique_fr",
+      selected = valeur_defaut("source_dictionnaire", "lexique_fr"),
       inline = FALSE
     ),
     conditionalPanel(
       condition = "input.source_dictionnaire == 'lexique_fr'",
-      checkboxInput("lexique_utiliser_lemmes", "Lemmatisation via les lemmes de lexique_fr (forme → c_lemme)", value = TRUE)
+      checkboxInput("lexique_utiliser_lemmes", "Lemmatisation via les lemmes de lexique_fr (forme → c_lemme)", value = valeur_defaut("lexique_utiliser_lemmes", TRUE))
     ),
-    checkboxInput("expression_utiliser_dictionnaire", "Utiliser le dictionnaire d'expression (dic_mot → dic_norm)", value = FALSE),
+    checkboxInput("expression_utiliser_dictionnaire", "Utiliser le dictionnaire d'expression (dic_mot → dic_norm)", value = valeur_defaut("expression_utiliser_dictionnaire", FALSE)),
     actionButton("charger_add_expression", "Ajouter un dictionnaire d'expression add_expression_fr.csv", class = "btn-outline-secondary btn-sm"),
 
     tags$div(class = "sidebar-section-title", "Nettoyage"),
-    checkboxInput("nettoyage_caracteres", "Nettoyage caractères (regex)", value = FALSE),
+    checkboxInput("nettoyage_caracteres", "Nettoyage caractères (regex)", value = valeur_defaut("nettoyage_caracteres", FALSE)),
     tags$p(
       "[^a-zA-Z0-9àÀâÂäÄáÁåÅãéÉèÈêÊëËìÌîÎïÏíÍóÓòÒôÔöÖõÕøØùÙûÛüÜúÚçÇßœŒ’ñÑ_\\.:,;!\\?']",
       style = "color: #c00; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
@@ -158,43 +164,139 @@ ui_form_parametres_analyse <- function() {
       "Les caractères présents dans la liste entre crochets sont conservés (dont _ pour les expressions normalisées) ; tous les autres (ex. @ # & / emoji) sont remplacés par des espaces.",
       style = "color: #c00; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
     ),
-    checkboxInput("supprimer_ponctuation", "Supprimer la ponctuation", value = FALSE),
+    checkboxInput("supprimer_ponctuation", "Supprimer la ponctuation", value = valeur_defaut("supprimer_ponctuation", FALSE)),
     tags$p(
       "Supprime la ponctuation à la tokenisation quanteda (remove_punct), par ex. . , ; : ! ? ' ’ \" - ( ) [ ] …",
       style = "color: #c00; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
     ),
-    checkboxInput("supprimer_chiffres", "Supprimer les chiffres (0-9)", value = FALSE),
-    checkboxInput("supprimer_apostrophes", "Traiter les élisions FR (c'est→est, m'écrire→écrire)", value = FALSE),
-    checkboxInput("remplacer_tirets_espaces", "Remplacer les tirets (-) par des espaces", value = FALSE),
-    checkboxInput("retirer_stopwords", "Retirer les stopwords (liste française quanteda)", value = FALSE),
-    checkboxInput("filtrage_morpho", "Filtrage morphosyntaxique", value = FALSE),
+    checkboxInput("supprimer_chiffres", "Supprimer les chiffres (0-9)", value = valeur_defaut("supprimer_chiffres", FALSE)),
+    checkboxInput("supprimer_apostrophes", "Traiter les élisions FR (c'est→est, m'écrire→écrire)", value = valeur_defaut("supprimer_apostrophes", FALSE)),
+    checkboxInput("remplacer_tirets_espaces", "Remplacer les tirets (-) par des espaces", value = valeur_defaut("remplacer_tirets_espaces", FALSE)),
+    checkboxInput("retirer_stopwords", "Retirer les stopwords (liste française quanteda)", value = valeur_defaut("retirer_stopwords", FALSE)),
+    checkboxInput("filtrage_morpho", "Filtrage morphosyntaxique", value = valeur_defaut("filtrage_morpho", FALSE)),
     conditionalPanel(
       condition = "input.filtrage_morpho == true && input.source_dictionnaire == 'lexique_fr'",
       selectizeInput(
         "pos_lexique_a_conserver",
         "Catégories c_morpho à conserver (lexique_fr)",
         choices = morpho_choices_labels,
-        selected = c("NOM", "VER", "ADJ"),
+        selected = valeur_defaut("pos_lexique_a_conserver", c("NOM", "VER", "ADJ")),
         multiple = TRUE,
         options = list(plugins = list("remove_button"))
       ),
       checkboxInput(
         "morpho_conserver_hors_lexique",
         "Conserver les formes non reconnues par le lexique (AUTRE_FORME)",
-        value = TRUE
+        value = valeur_defaut("morpho_conserver_hors_lexique", TRUE)
       )
     ),
 
     tags$div(class = "sidebar-section-title", "Paramètres AFC"),
-    checkboxInput("afc_reduire_chevauchement", "Réduire les chevauchements des mots (AFC)", value = FALSE),
+    checkboxInput("afc_reduire_chevauchement", "Réduire les chevauchements des mots (AFC)", value = valeur_defaut("afc_reduire_chevauchement", FALSE)),
     radioButtons(
       "afc_taille_mots",
       "Taille des mots (AFC termes)",
       choices = c("Fréquence" = "frequency", "Chi2" = "chi2"),
-      selected = "frequency",
+      selected = valeur_defaut("afc_taille_mots", "frequency"),
       inline = FALSE
     ),
-    numericInput("top_n", "Top N mots par classe (nuages)", value = 20, min = 5, step = 1)
+    numericInput("top_n", "Top N mots par classe (nuages)", value = valeur_defaut("top_n", 20), min = 5, step = 1)
+  )
+}
+
+ui_form_parametres_similitudes <- function() {
+  tagList(
+    tags$p(
+      "Paramétrez l'analyse de similitudes (Vergès). ",
+      "Ces options prépareront la matrice et l'affichage du graphe de similitude."
+    ),
+    selectInput(
+      "simi_method",
+      "Méthode de calcul",
+      choices = c(
+        "Cooccurrence" = "cooc",
+        "Jaccard" = "jaccard",
+        "Binomiale" = "binom"
+      ),
+      selected = "cooc"
+    ),
+    numericInput(
+      "simi_seuil",
+      "Seuil minimal des arêtes (laisser vide pour aucun seuil)",
+      value = NA,
+      min = 0,
+      step = 0.01
+    ),
+    checkboxInput(
+      "simi_max_tree",
+      "Limiter au graphe couvrant maximal (arbre de poids max)",
+      value = TRUE
+    ),
+    selectInput(
+      "simi_layout",
+      "Type de layout",
+      choices = c(
+        "Fruchterman-Reingold" = "frutch",
+        "Kamada-Kawai" = "kawa",
+        "Circulaire" = "circle",
+        "Aléatoire" = "random",
+        "Spirale" = "spirale"
+      ),
+      selected = "frutch"
+    ),
+    checkboxInput(
+      "simi_edge_labels",
+      "Afficher les labels des arêtes",
+      value = TRUE
+    )
+  )
+}
+
+ui_form_parametres_similitudes <- function() {
+  tagList(
+    tags$p(
+      "Paramétrez l'analyse de similitudes (Vergès). ",
+      "Ces options prépareront la matrice et l'affichage du graphe de similitude."
+    ),
+    selectInput(
+      "simi_method",
+      "Méthode de calcul",
+      choices = c(
+        "Cooccurrence" = "cooc",
+        "Jaccard" = "jaccard",
+        "Binomiale" = "binom"
+      ),
+      selected = "cooc"
+    ),
+    numericInput(
+      "simi_seuil",
+      "Seuil minimal des arêtes (laisser vide pour aucun seuil)",
+      value = NA,
+      min = 0,
+      step = 0.01
+    ),
+    checkboxInput(
+      "simi_max_tree",
+      "Limiter au graphe couvrant maximal (arbre de poids max)",
+      value = TRUE
+    ),
+    selectInput(
+      "simi_layout",
+      "Type de layout",
+      choices = c(
+        "Fruchterman-Reingold" = "frutch",
+        "Kamada-Kawai" = "kawa",
+        "Circulaire" = "circle",
+        "Aléatoire" = "random",
+        "Spirale" = "spirale"
+      ),
+      selected = "frutch"
+    ),
+    checkboxInput(
+      "simi_edge_labels",
+      "Afficher les labels des arêtes",
+      value = TRUE
+    )
   )
 }
 

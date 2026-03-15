@@ -323,6 +323,29 @@ server <- function(input, output, session) {
     )
   })
 
+
+  ids_parametres_analyse <- c(
+    "modele_chd", "segment_size", "segmenter_sur_ponctuation_forte", "min_docfreq", "max_p", "filtrer_affichage_pvalue",
+    "k_iramuteq", "iramuteq_max_formes", "iramuteq_mincl_mode", "iramuteq_mincl", "iramuteq_classif_mode",
+    "iramuteq_rst1", "iramuteq_rst2", "iramuteq_svd_method", "iramuteq_stats_mode",
+    "source_dictionnaire", "lexique_utiliser_lemmes", "expression_utiliser_dictionnaire",
+    "nettoyage_caracteres", "supprimer_ponctuation", "supprimer_chiffres", "supprimer_apostrophes",
+    "remplacer_tirets_espaces", "retirer_stopwords", "filtrage_morpho", "pos_lexique_a_conserver",
+    "morpho_conserver_hors_lexique", "afc_reduire_chevauchement", "afc_taille_mots", "top_n"
+  )
+
+  capturer_parametres_analyse <- function() {
+    valeurs <- lapply(ids_parametres_analyse, function(id) isolate(input[[id]]))
+    names(valeurs) <- ids_parametres_analyse
+    valeurs <- valeurs[!vapply(valeurs, is.null, logical(1))]
+
+    if (length(valeurs)) {
+      rv$parametres_analyse <- modifyList(rv$parametres_analyse, valeurs, keep.null = FALSE)
+    }
+
+    rv$parametres_analyse
+  }
+
   output$nom_fichier_selectionne <- renderText({
     if (!is.null(input$fichier_corpus$name) && nzchar(input$fichier_corpus$name)) {
       return(as.character(input$fichier_corpus$name))
@@ -331,11 +354,13 @@ server <- function(input, output, session) {
   })
 
   ouvrir_modal_parametres <- function() {
+    defaults <- capturer_parametres_analyse()
+
     showModal(modalDialog(
       title = "Paramétrages de l'analyse",
       easyClose = TRUE,
       size = "m",
-      ui_form_parametres_analyse(),
+      ui_form_parametres_analyse(defaults = defaults),
       footer = tagList(
         modalButton("Fermer"),
         actionButton("lancer", "Lancer l'analyse", class = "btn-primary")
@@ -935,6 +960,7 @@ Installez-le puis relancez l'analyse.", cex = 1.0)
   register_events_lancer(input, output, session, rv)
 
   observeEvent(input$lancer, {
+    capturer_parametres_analyse()
     rv$afc_zoom_terms <- NULL
   }, ignoreInit = TRUE)
 
