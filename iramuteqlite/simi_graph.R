@@ -1,5 +1,28 @@
 # Rôle du fichier: simi_graph.R centralise la construction et le tracé du graphe de similitudes.
 
+
+calculer_communautes_simi <- function(g, method = "edge_betweenness") {
+  if (is.null(g) || !inherits(g, "igraph") || igraph::vcount(g) < 2 || igraph::ecount(g) < 1) {
+    return(NULL)
+  }
+
+  tryCatch({
+    if (identical(method, "fast_greedy")) {
+      igraph::cluster_fast_greedy(g, weights = igraph::E(g)$weight)
+    } else if (identical(method, "label_propagation")) {
+      igraph::cluster_label_prop(g, weights = igraph::E(g)$weight)
+    } else if (identical(method, "leading_eigen")) {
+      igraph::cluster_leading_eigen(g, weights = igraph::E(g)$weight)
+    } else if (identical(method, "multilevel")) {
+      igraph::cluster_louvain(g, weights = igraph::E(g)$weight)
+    } else if (identical(method, "walktrap")) {
+      igraph::cluster_walktrap(g, weights = igraph::E(g)$weight)
+    } else {
+      igraph::cluster_edge_betweenness(g, weights = 1 / pmax(igraph::E(g)$weight, 1e-9))
+    }
+  }, error = function(e) NULL)
+}
+
 normaliser_vecteur_simi <- function(x, min_out = 0, max_out = 1) {
   x <- as.numeric(x)
   if (!length(x) || all(!is.finite(x))) return(rep((min_out + max_out) / 2, length(x)))
@@ -21,7 +44,9 @@ construire_graphe_similitudes <- function(dfm_obj,
                                          seuil = NA_real_,
                                          max_tree = TRUE,
                                          top_terms = 40L,
-                                         layout_type = "frutch") {
+                                         layout_type = "frutch",
+                                         communities = FALSE,
+                                         community_method = "edge_betweenness") {
   if (is.null(dfm_obj) || quanteda::ndoc(dfm_obj) < 2 || quanteda::nfeat(dfm_obj) < 2) {
     stop("DFM insuffisant pour construire un graphe de similitudes.")
   }
@@ -108,16 +133,22 @@ construire_graphe_similitudes <- function(dfm_obj,
     igraph::layout_with_fr(g)
   )
 
+  com <- NULL
+  if (isTRUE(communities)) {
+    com <- calculer_communautes_simi(g, method = community_method)
+  }
+
   list(
     graph = g,
     layout = lo,
     vertex_freq = vfreq,
     method = method,
-    seuil = seuil_val
+    seuil = seuil_val,
+    communities = com
   )
 }
 
-tracer_graphe_similitudes <- function(g, layout = NULL, edge_labels = TRUE, main = "Graphe de similitude") {
+tracer_graphe_similitudes <- function(g, layout = NULL, edge_labels = TRUE, main = "Graphe de similitude", communities = NULL, halo = FALSE) {
   if (is.null(g) || !inherits(g, "igraph") || igraph::vcount(g) == 0) {
     plot.new()
     text(0.5, 0.5, "Aucun graphe de similitude.\nCliquez sur 'Paramétrer' puis 'Lancer l'analyse de similitudes'.", cex = 1.0)
@@ -138,18 +169,34 @@ tracer_graphe_similitudes <- function(g, layout = NULL, edge_labels = TRUE, main
 
   edge_lab <- if (isTRUE(edge_labels)) round(igraph::E(g)$weight, 3) else NA
 
+  vcol <- "#2C7FB8"
+  mark_groups <- NULL
+  if (!is.null(communities) && inherits(communities, "communities")) {
+    memb <- igraph::membership(communities)
+    memb <- as.integer(memb)
+    if (length(memb) == igraph::vcount(g) && any(is.finite(memb))) {
+      pal <- grDevices::rainbow(max(memb, na.rm = TRUE))
+      idx <- pmax(1L, pmin(length(pal), memb))
+      vcol <- pal[idx]
+    }
+    if (isTRUE(halo)) {
+      mark_groups <- igraph::communities(communities)
+    }
+  }
+
   plot(
     g,
     layout = lo,
     vertex.label = vertex_labels,
     vertex.label.cex = 0.8,
     vertex.size = vertex_size,
-    vertex.color = "#2C7FB8",
+    vertex.color = vcol,
     vertex.frame.color = "#1f4f7a",
     edge.width = edge_width,
     edge.color = grDevices::adjustcolor("#4D4D4D", alpha.f = 0.6),
     edge.label = edge_lab,
     edge.label.cex = 0.7,
+    mark.groups = mark_groups,
     main = main
   )
 }

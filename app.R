@@ -220,6 +220,7 @@ server <- function(input, output, session) {
     simi_vertex_freq = NULL,
     simi_method = "cooc",
     simi_seuil_applique = NA_real_,
+    simi_communities = NULL,
 
     parametres_analyse = list()
   )
@@ -477,7 +478,9 @@ server <- function(input, output, session) {
         seuil = input$simi_seuil,
         max_tree = isTRUE(input$simi_max_tree),
         top_terms = input$simi_top_terms,
-        layout_type = input$simi_layout
+        layout_type = input$simi_layout,
+        communities = isTRUE(input$simi_communities),
+        community_method = input$simi_community_method
       ),
       error = function(e) e
     )
@@ -493,6 +496,7 @@ server <- function(input, output, session) {
     rv$simi_vertex_freq <- res_simi$vertex_freq
     rv$simi_method <- res_simi$method
     rv$simi_seuil_applique <- res_simi$seuil
+    rv$simi_communities <- res_simi$communities
 
     rv$statut <- paste0(
       "Graphe de similitudes généré — méthode: ", rv$simi_method,
@@ -522,6 +526,9 @@ server <- function(input, output, session) {
         tags$li(paste0("Layout: ", if (is.null(input$simi_layout)) "frutch" else input$simi_layout)),
         tags$li(paste0("Arbre max: ", if (isTRUE(input$simi_max_tree)) "oui" else "non")),
         tags$li(paste0("Labels des arêtes: ", if (isTRUE(input$simi_edge_labels)) "oui" else "non")),
+        tags$li(paste0("Communautés: ", if (isTRUE(input$simi_communities)) "oui" else "non")),
+        tags$li(paste0("Méthode communautés: ", if (is.null(input$simi_community_method)) "edge_betweenness" else input$simi_community_method)),
+        tags$li(paste0("Halo: ", if (isTRUE(input$simi_halo)) "oui" else "non")),
         tags$li(paste0("Graphe courant: ", n_vertices, " sommets / ", n_edges, " arêtes"))
       )
     )
@@ -963,7 +970,9 @@ server <- function(input, output, session) {
       g = rv$simi_graph,
       layout = rv$simi_layout,
       edge_labels = isTRUE(input$simi_edge_labels),
-      main = "Graphe de similitude"
+      main = "Graphe de similitude",
+      communities = rv$simi_communities,
+      halo = isTRUE(input$simi_halo)
     )
   })
 

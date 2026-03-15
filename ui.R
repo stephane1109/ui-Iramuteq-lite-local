@@ -410,6 +410,87 @@ ui_form_parametres_similitudes <- function() {
   )
 }
 
+ui_form_parametres_similitudes <- function() {
+  tagList(
+    tags$p(
+      "Paramétrez l'analyse de similitudes (Vergès). ",
+      "Ces options prépareront la matrice et l'affichage du graphe de similitude."
+    ),
+    selectInput(
+      "simi_method",
+      "Méthode de calcul",
+      choices = c(
+        "Cooccurrence" = "cooc",
+        "Jaccard" = "jaccard",
+        "Binomiale" = "binom"
+      ),
+      selected = "cooc"
+    ),
+    numericInput(
+      "simi_seuil",
+      "Seuil minimal des arêtes (laisser vide pour aucun seuil)",
+      value = NA,
+      min = 0,
+      step = 0.01
+    ),
+    numericInput(
+      "simi_top_terms",
+      "Nombre de termes à conserver (plus fréquents)",
+      value = 40,
+      min = 5,
+      step = 1
+    ),
+    checkboxInput(
+      "simi_max_tree",
+      "Limiter au graphe couvrant maximal (arbre de poids max)",
+      value = TRUE
+    ),
+    selectInput(
+      "simi_layout",
+      "Type de layout",
+      choices = c(
+        "Fruchterman-Reingold" = "frutch",
+        "Kamada-Kawai" = "kawa",
+        "Circulaire" = "circle",
+        "Aléatoire" = "random",
+        "Spirale" = "spirale"
+      ),
+      selected = "frutch"
+    ),
+    checkboxInput(
+      "simi_edge_labels",
+      "Afficher les labels des arêtes",
+      value = TRUE
+    ),
+    checkboxInput(
+      "simi_communities",
+      "Communautés",
+      value = FALSE
+    ),
+    conditionalPanel(
+      condition = "input.simi_communities == true",
+      selectInput(
+        "simi_community_method",
+        "Méthode de communautés",
+        choices = c(
+          "edge.betweenness.community" = "edge_betweenness",
+          "fastgreedy.community" = "fast_greedy",
+          "label.propagation.community" = "label_propagation",
+          "leading.eigenvector.community" = "leading_eigen",
+          "multilevel.community" = "multilevel",
+          "walktrap.community" = "walktrap"
+        ),
+        selected = "edge_betweenness"
+      ),
+      checkboxInput(
+        "simi_halo",
+        "Halo",
+        value = FALSE
+      )
+    )
+  )
+}
+
 if (!exists("REGEX_CARACTERES_A_SUPPRIMER", inherits = TRUE)) {
   app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
   if (is.null(app_dir) || !nzchar(app_dir)) app_dir <- getwd()
