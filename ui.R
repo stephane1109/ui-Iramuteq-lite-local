@@ -252,6 +252,54 @@ ui_form_parametres_similitudes <- function() {
   )
 }
 
+ui_form_parametres_similitudes <- function() {
+  tagList(
+    tags$p(
+      "Paramétrez l'analyse de similitudes (Vergès). ",
+      "Ces options prépareront la matrice et l'affichage du graphe de similitude."
+    ),
+    selectInput(
+      "simi_method",
+      "Méthode de calcul",
+      choices = c(
+        "Cooccurrence" = "cooc",
+        "Jaccard" = "jaccard",
+        "Binomiale" = "binom"
+      ),
+      selected = "cooc"
+    ),
+    numericInput(
+      "simi_seuil",
+      "Seuil minimal des arêtes (laisser vide pour aucun seuil)",
+      value = NA,
+      min = 0,
+      step = 0.01
+    ),
+    checkboxInput(
+      "simi_max_tree",
+      "Limiter au graphe couvrant maximal (arbre de poids max)",
+      value = TRUE
+    ),
+    selectInput(
+      "simi_layout",
+      "Type de layout",
+      choices = c(
+        "Fruchterman-Reingold" = "frutch",
+        "Kamada-Kawai" = "kawa",
+        "Circulaire" = "circle",
+        "Aléatoire" = "random",
+        "Spirale" = "spirale"
+      ),
+      selected = "frutch"
+    ),
+    checkboxInput(
+      "simi_edge_labels",
+      "Afficher les labels des arêtes",
+      value = TRUE
+    )
+  )
+}
+
 if (!exists("REGEX_CARACTERES_A_SUPPRIMER", inherits = TRUE)) {
   app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
   if (is.null(app_dir) || !nzchar(app_dir)) app_dir <- getwd()

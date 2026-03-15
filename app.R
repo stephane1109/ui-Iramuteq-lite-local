@@ -374,6 +374,36 @@ server <- function(input, output, session) {
     ))
   }
 
+  journaliser_evenement <- function(message) {
+    if (exists("ajouter_log", mode = "function", inherits = TRUE)) {
+      ajouter_log(rv, message)
+      return(invisible(NULL))
+    }
+
+    msg <- as.character(message)
+    msg <- msg[!is.na(msg)]
+    msg <- msg[nzchar(msg)]
+    if (!length(msg)) return(invisible(NULL))
+    msg <- paste(msg, collapse = " ")
+
+    horodatage <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+    msg_horodate <- paste0("[", horodatage, "] ", msg)
+
+    precedent <- rv$logs
+    if (is.null(precedent) || !length(precedent) || all(is.na(precedent)) || !any(nzchar(precedent))) {
+      rv$logs <- msg_horodate
+    } else {
+      precedent <- precedent[!is.na(precedent)]
+      precedent <- precedent[nzchar(precedent)]
+      rv$logs <- paste(c(precedent, msg_horodate), collapse = "\n")
+    }
+
+    message("[IRaMuTeQ-lite] ", msg_horodate)
+    flush.console()
+
+    invisible(NULL)
+  }
+
   observeEvent(input$nav_principal, {
     if (input$nav_principal %in% c("chd", "resultats_chd")) {
       ouvrir_modal_parametres()
@@ -397,7 +427,7 @@ server <- function(input, output, session) {
       ", layout: ", input$simi_layout,
       if (!is.null(input$simi_max_tree) && isTRUE(input$simi_max_tree)) ", max.tree: oui" else ", max.tree: non"
     )
-    ajouter_log(rv, paste0("Analyse similitudes paramétrée (", rv$statut, ")."))
+    journaliser_evenement(paste0("Analyse similitudes paramétrée (", rv$statut, ")."))
     showNotification("Paramètres de similitudes enregistrés.", type = "message")
   })
 
