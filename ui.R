@@ -124,13 +124,13 @@ ui_form_parametres_analyse <- function(defaults = NULL) {
   tagList(
     radioButtons(
       "modele_chd",
-      "Méthode Iramuteq-like",
+      "Méthode Iramuteq-lite",
       choices = c("IRaMuTeQ-lite" = "iramuteq"),
       selected = valeur_defaut("modele_chd", "iramuteq"),
       inline = FALSE
     ),
 
-    tags$div(class = "sidebar-section-title", "Paramètres généraux CHD"),
+    tags$div(class = "sidebar-section-title", "Paramètres CHD"),
     numericInput("segment_size", "segment_size", value = valeur_defaut("segment_size", 40), min = 5, step = 1),
     checkboxInput(
       "segmenter_sur_ponctuation_forte",
@@ -296,7 +296,7 @@ ui <- page_navbar(
 
   nav_panel("Corpus", value = "corpus", tags$h3("Corpus importé"), uiOutput("ui_corpus_preview")),
   nav_panel(
-    "Annotation expressions", value = "annotation_expressions",
+    "Annotation", value = "annotation_expressions",
     tags$h3("Annotation du corpus => add_expression_fr.csv"),
     fileInput("annotation_import_csv", "Charger un dictionnaire d'expression (.csv)", accept = c(".csv")),
     tags$p("Vous pouvez réimporter un fichier d'expressions déjà annoté (il doit impérativement être nommé : add_expression_fr.csv)."),
