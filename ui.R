@@ -302,7 +302,7 @@ ui <- page_navbar(
     tags$p("Vous pouvez réimporter un fichier d'expressions déjà annoté (il doit impérativement être nommé : add_expression_fr.csv)."),
     tags$p("Sélectionnez un extrait dans la zone ci-dessous puis ajoutez-le à votre propre dictionnaire (dic_mot, dic_norm, dic_morpho) qui sera fusionné avec le dictionnaire d'expressions IRAMUTEQ."),
     tags$p("Vous devez surligner, copier/coller les expressions pour les ajouter au dictionnaire."),
-    textAreaInput("annotation_corpus_text", "Corpus (zone d'annotation)", value = "", rows = 14, width = "100%"),
+    textAreaInput("annotation_corpus_text", NULL, value = "", rows = 14, width = "100%"),
     tags$h4("Prévisualisation annotée"),
     uiOutput("annotation_corpus_colore"),
     tags$div(
@@ -311,7 +311,6 @@ ui <- page_navbar(
       tags$div(style = "flex:1; min-width:220px;", textInput("annotation_norm", "Normalisation (dic_norm)", value = "")),
       tags$div(style = "flex:1; min-width:220px;", textInput("annotation_morpho", "Type morpho (dic_morpho, optionnel)", value = ""))
     ),
-    uiOutput("ui_annotation_highlight_preview"),
     tags$div(style = "display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-bottom:10px;",
       actionButton("annotation_add_entry", "Ajouter / mettre à jour", class = "annotation-action-btn"),
       textInput("annotation_remove_key", NULL, value = "", placeholder = "dic_mot à supprimer", width = "190px"),
