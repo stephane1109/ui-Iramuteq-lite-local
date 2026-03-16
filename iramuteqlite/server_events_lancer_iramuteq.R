@@ -900,6 +900,7 @@ register_events_lancer <- function(input, output, session, rv) {
 
     output$ui_wordcloud_iramuteq <- renderUI({
       req(rv$export_dir, rv$exports_prefix)
+      rv$wordcloud_refresh_token
 
       wc_files <- list.files(
         file.path(rv$export_dir, "wordclouds"),
@@ -1789,6 +1790,8 @@ register_events_lancer <- function(input, output, session, rv) {
             )
             ajouter_log(rv, "Mode IRaMuTeQ-lite : nuages de mots générés via wordcloud_iramuteq.R.")
           }
+
+          rv$wordcloud_refresh_token <- rv$wordcloud_refresh_token + 1
 
           explor_assets <- NULL
           ok_chd_png <- FALSE
