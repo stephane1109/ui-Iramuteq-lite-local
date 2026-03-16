@@ -4,7 +4,7 @@ ui_explorateur_iramuteq <- function(id) {
   ns <- shiny::NS(id)
 
   bslib::card(
-    full_screen = FALSE,
+    full_screen = TRUE,
     bslib::card_header(tags$strong("Explorateur")),
     bslib::card_body(uiOutput(ns("tree")))
   )
