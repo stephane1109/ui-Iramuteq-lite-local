@@ -244,46 +244,22 @@ server <- function(input, output, session) {
   }
 
   normaliser_add_expression_df <- function(df) {
-    if (is.null(df) || !is.data.frame(df) || ncol(df) == 0) return(NULL)
-
-    normaliser_nom_colonne <- function(nm) {
-      nm <- gsub("^\ufeff", "", as.character(nm), perl = TRUE)
-      nm <- tolower(trimws(nm))
-      gsub("[^a-z0-9]+", "_", nm)
-    }
-
-    names(df) <- vapply(names(df), normaliser_nom_colonne, character(1))
-
-    trouver_colonne <- function(candidats) {
-      candidats <- vapply(candidats, normaliser_nom_colonne, character(1))
-      idx <- match(candidats, names(df))
-      idx <- idx[!is.na(idx)]
-      if (length(idx) == 0) return(NA_integer_)
-      idx[[1]]
-    }
-
-    idx_mot <- trouver_colonne(c("dic_mot", "mot", "expression", "dicmot"))
-    idx_norm <- trouver_colonne(c("dic_norm", "norm", "normalise", "normalisation", "dicnorm"))
-    idx_morpho <- trouver_colonne(c("dic_morpho", "morpho", "pos", "categorie", "cat"))
-
-    if (is.na(idx_mot) || is.na(idx_norm)) return(NULL)
-
-    df_std <- data.frame(
-      dic_mot = as.character(df[[idx_mot]]),
-      dic_norm = as.character(df[[idx_norm]]),
-      dic_morpho = if (is.na(idx_morpho)) "" else as.character(df[[idx_morpho]]),
-      stringsAsFactors = FALSE
-    )
-
-    df_std$dic_mot[is.na(df_std$dic_mot)] <- ""
-    df_std$dic_norm[is.na(df_std$dic_norm)] <- ""
-    df_std$dic_morpho[is.na(df_std$dic_morpho)] <- ""
-    df_std$dic_mot <- tolower(trimws(df_std$dic_mot))
-    df_std$dic_norm <- tolower(trimws(df_std$dic_norm))
-    df_std$dic_morpho <- trimws(df_std$dic_morpho)
-    df_std <- df_std[nzchar(df_std$dic_mot) & nzchar(df_std$dic_norm), , drop = FALSE]
-    df_std <- df_std[!duplicated(df_std$dic_mot), , drop = FALSE]
-    df_std
+    if (is.null(df) || !is.data.frame(df)) return(NULL)
+    noms <- names(df)
+    noms <- gsub("^\ufeff", "", noms, perl = TRUE)
+    names(df) <- noms
+    if (!all(c("dic_mot", "dic_norm") %in% names(df))) return(NULL)
+    if (!"dic_morpho" %in% names(df)) df$dic_morpho <- ""
+    df <- df[, c("dic_mot", "dic_norm", "dic_morpho"), drop = FALSE]
+    df$dic_mot[is.na(df$dic_mot)] <- ""
+    df$dic_norm[is.na(df$dic_norm)] <- ""
+    df$dic_morpho[is.na(df$dic_morpho)] <- ""
+    df$dic_mot <- tolower(trimws(as.character(df$dic_mot)))
+    df$dic_norm <- tolower(trimws(as.character(df$dic_norm)))
+    df$dic_morpho <- trimws(as.character(df$dic_morpho))
+    df <- df[nzchar(df$dic_mot) & nzchar(df$dic_norm), , drop = FALSE]
+    df <- df[!duplicated(df$dic_mot), , drop = FALSE]
+    df
   }
 
   lire_add_expression_depuis_upload <- function(path_in) {
@@ -297,7 +273,7 @@ server <- function(input, output, session) {
     for (lecteur in lecteurs) {
       df <- tryCatch(lecteur(), error = function(e) NULL)
       df_norm <- normaliser_add_expression_df(df)
-      if (!is.null(df_norm) && nrow(df_norm) >= 0) return(df_norm)
+      if (!is.null(df_norm)) return(df_norm)
     }
 
     NULL
@@ -586,20 +562,6 @@ server <- function(input, output, session) {
     )
   })
 
-  observeEvent(input$charger_add_expression, {
-    showModal(modalDialog(
-      title = "Charger un dictionnaire d'expression (.csv)",
-      easyClose = TRUE,
-      size = "s",
-      fileInput(
-        "charger_add_expression_file",
-        "Choisir le fichier CSV (ex. add_expressions.csv)",
-        accept = c(".csv")
-      ),
-      footer = modalButton("Fermer")
-    ))
-  })
-
   observeEvent(input$charger_add_expression_file, {
     f <- input$charger_add_expression_file
     if (is.null(f) || is.null(f$datapath) || !file.exists(f$datapath)) return(invisible(NULL))
@@ -615,7 +577,6 @@ server <- function(input, output, session) {
       rv$expression_annotations_df <- df_add
       rv$utiliser_add_expression <- TRUE
       sauvegarder_add_expression(rv$expression_annotations_df)
-      removeModal()
       showNotification(
         paste0("Dictionnaire importé depuis ", f$name, " (", nrow(df_add), " entrées) et activé pour l'analyse."),
         type = "message"
