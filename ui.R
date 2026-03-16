@@ -267,6 +267,11 @@ ui <- page_navbar(
       .navbar .navbar-brand small { color: #ffffff !important; }
       .navbar .navbar-nav { margin-top: 0.5rem; }
       span.highlight { background-color: yellow; color: inherit; font-weight: inherit; padding: 0; border-radius: 0; }
+      #annotation_add_entry,
+      #annotation_remove_entry {
+        min-width: 190px;
+        height: 38px;
+      }
     ")),
     tags$script(HTML("
       document.addEventListener('click', function(ev) {
