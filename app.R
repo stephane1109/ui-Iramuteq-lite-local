@@ -631,21 +631,6 @@ server <- function(input, output, session) {
     )
   })
 
-  observeEvent(input$annotation_charger_corpus, {
-    fichier <- input$fichier_corpus
-    if (is.null(fichier) || is.null(fichier$datapath) || !file.exists(fichier$datapath)) {
-      showNotification("Aucun corpus importé.", type = "warning")
-      return(invisible(NULL))
-    }
-    lignes <- tryCatch(readLines(fichier$datapath, encoding = "UTF-8", warn = FALSE), error = function(e) character(0))
-    if (length(lignes) == 0) {
-      showNotification("Corpus vide ou illisible.", type = "warning")
-      return(invisible(NULL))
-    }
-    updateTextAreaInput(session, "annotation_corpus_text", value = paste(lignes, collapse = "\n"))
-    showNotification("Corpus chargé dans l'onglet Annotation.", type = "message")
-  })
-
   .annotation_regex_escape <- function(x) {
     x <- as.character(x)
     if (!nzchar(x)) return("")
@@ -663,7 +648,7 @@ server <- function(input, output, session) {
       return(tags$em("Aucun corpus chargé dans la zone d'annotation."))
     }
     if (!nzchar(terme)) {
-      return(tags$em("Sélectionnez un terme puis cliquez sur 'Capturer la sélection' pour voir toutes ses occurrences surlignées."))
+      return(tags$em("Surlignez une expression dans la zone de corpus, copiez/collez-la dans le champ 'Texte sélectionné (dic_mot)' pour voir toutes ses occurrences surlignées."))
     }
 
     motif <- .annotation_regex_escape(terme)
