@@ -1804,7 +1804,7 @@ register_events_lancer <- function(input, output, session, rv) {
               rv = rv,
               top_n_terms = 4,
               orientation = "horizontal",
-              style_affichage = "iramuteq_bars"
+              style_affichage = "factoextra"
             )
             TRUE
           }, error = function(e) {
