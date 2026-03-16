@@ -245,6 +245,9 @@ server <- function(input, output, session) {
 
   normaliser_add_expression_df <- function(df) {
     if (is.null(df) || !is.data.frame(df)) return(NULL)
+    noms <- names(df)
+    noms <- gsub("^\ufeff", "", noms, perl = TRUE)
+    names(df) <- noms
     if (!all(c("dic_mot", "dic_norm") %in% names(df))) return(NULL)
     if (!"dic_morpho" %in% names(df)) df$dic_morpho <- ""
     df <- df[, c("dic_mot", "dic_norm", "dic_morpho"), drop = FALSE]
@@ -259,19 +262,35 @@ server <- function(input, output, session) {
     df
   }
 
-  charger_add_expression <- function() {
-    paths_in <- c(
-      file.path(app_dir, "dictionnaires", "add_expression_fr.csv"),
-      file.path(app_dir, "dictionnaires", "add_expression.csv")
+  lire_add_expression_depuis_upload <- function(path_in) {
+    lecteurs <- list(
+      function() utils::read.csv2(path_in, stringsAsFactors = FALSE, encoding = "UTF-8", na.strings = character()),
+      function() utils::read.csv(path_in, stringsAsFactors = FALSE, encoding = "UTF-8", na.strings = character(), sep = ","),
+      function() utils::read.csv(path_in, stringsAsFactors = FALSE, encoding = "UTF-8", na.strings = character(), sep = ";"),
+      function() utils::read.delim(path_in, stringsAsFactors = FALSE, encoding = "UTF-8", na.strings = character(), sep = "\t")
     )
-    path_in <- paths_in[file.exists(paths_in)][1]
-    if (is.na(path_in) || !nzchar(path_in) || !file.exists(path_in)) return(NULL)
-    df <- tryCatch(
-      utils::read.csv2(path_in, stringsAsFactors = FALSE, encoding = "UTF-8", na.strings = character()),
-      error = function(e) NULL
-    )
-    normaliser_add_expression_df(df)
+
+    for (lecteur in lecteurs) {
+      df <- tryCatch(lecteur(), error = function(e) NULL)
+      df_norm <- normaliser_add_expression_df(df)
+      if (!is.null(df_norm)) return(df_norm)
+    }
+
+    NULL
   }
+
+  charger_add_expression_travail <- function() {
+    path_in <- file.path(app_dir, "dictionnaires", "add_expression_fr.csv")
+    if (!file.exists(path_in)) return(NULL)
+    lire_add_expression_depuis_upload(path_in)
+  }
+
+  df_add_init <- charger_add_expression_travail()
+  if (!is.null(df_add_init) && nrow(df_add_init) > 0) {
+    rv$expression_annotations_df <- df_add_init
+    rv$utiliser_add_expression <- TRUE
+  }
+
 
   if (exists("register_outputs_status", mode = "function", inherits = TRUE)) {
     register_outputs_status(input, output, session, rv)
@@ -556,17 +575,6 @@ server <- function(input, output, session) {
     )
   })
 
-  observeEvent(input$charger_add_expression, {
-    df_add <- charger_add_expression()
-    if (is.null(df_add) || nrow(df_add) == 0) {
-      showNotification("add_expression.csv introuvable ou vide.", type = "warning")
-      return(invisible(NULL))
-    }
-    rv$expression_annotations_df <- df_add
-    rv$utiliser_add_expression <- TRUE
-    showNotification(paste0("add_expression.csv chargé (", nrow(df_add), " entrées) et activé pour l'analyse."), type = "message")
-  })
-
   observeEvent(input$menu_importer_fichier_sidebar, {
     showModal(modalDialog(
       title = "Importer un fichier corpus",
@@ -810,18 +818,22 @@ server <- function(input, output, session) {
   observeEvent(input$annotation_import_csv, {
     f <- input$annotation_import_csv
     if (is.null(f) || is.null(f$datapath) || !file.exists(f$datapath)) return(invisible(NULL))
-    df <- tryCatch(
-      utils::read.csv2(f$datapath, stringsAsFactors = FALSE, encoding = "UTF-8", na.strings = character()),
-      error = function(e) NULL
-    )
-    df <- normaliser_add_expression_df(df)
-    if (is.null(df)) {
-      showNotification("CSV invalide: colonnes requises dic_mot, dic_norm.", type = "error")
-      return(invisible(NULL))
-    }
-    rv$expression_annotations_df <- df
-    sauvegarder_add_expression(rv$expression_annotations_df)
-    showNotification(paste0("Dictionnaire importé (", nrow(df), " entrées)."), type = "message")
+
+    tryCatch({
+      df <- lire_add_expression_depuis_upload(f$datapath)
+      if (is.null(df) || nrow(df) == 0) {
+        showNotification("CSV invalide/vide : colonnes attendues dic_mot et dic_norm (séparateur ; ou , accepté).", type = "warning")
+        return(invisible(NULL))
+      }
+      rv$expression_annotations_df <- df
+      rv$utiliser_add_expression <- TRUE
+      sauvegarder_add_expression(rv$expression_annotations_df)
+      showNotification(paste0("Dictionnaire importé depuis ", f$name, " (", nrow(df), " entrées) et activé pour l'analyse."), type = "message")
+      invisible(NULL)
+    }, error = function(e) {
+      showNotification(paste0("Erreur pendant l'import du dictionnaire : ", conditionMessage(e)), type = "error")
+      invisible(NULL)
+    })
   })
 
   output$table_annotation_dict <- renderTable({
