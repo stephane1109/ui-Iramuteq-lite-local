@@ -265,12 +265,14 @@ server <- function(input, output, session) {
       file.path(app_dir, "dictionnaires", "add_expression.csv")
     )
     path_in <- paths_in[file.exists(paths_in)][1]
-    if (is.na(path_in) || !nzchar(path_in) || !file.exists(path_in)) return(NULL)
+    if (is.na(path_in) || !nzchar(path_in) || !file.exists(path_in)) {
+      return(list(df = NULL, path = NULL, paths_tested = paths_in))
+    }
     df <- tryCatch(
       utils::read.csv2(path_in, stringsAsFactors = FALSE, encoding = "UTF-8", na.strings = character()),
       error = function(e) NULL
     )
-    normaliser_add_expression_df(df)
+    list(df = normaliser_add_expression_df(df), path = path_in, paths_tested = paths_in)
   }
 
   if (exists("register_outputs_status", mode = "function", inherits = TRUE)) {
@@ -557,14 +559,22 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$charger_add_expression, {
-    df_add <- charger_add_expression()
+    chargement <- charger_add_expression()
+    df_add <- chargement$df
     if (is.null(df_add) || nrow(df_add) == 0) {
-      showNotification("add_expression.csv introuvable ou vide.", type = "warning")
+      chemins <- paste(chargement$paths_tested, collapse = " ; ")
+      showNotification(paste0("Aucun dictionnaire chargé : fichier introuvable ou vide (chemins testés : ", chemins, ")."), type = "warning")
       return(invisible(NULL))
     }
     rv$expression_annotations_df <- df_add
     rv$utiliser_add_expression <- TRUE
-    showNotification(paste0("add_expression.csv chargé (", nrow(df_add), " entrées) et activé pour l'analyse."), type = "message")
+    showNotification(
+      paste0(
+        "Dictionnaire chargé depuis ", chargement$path,
+        " (", nrow(df_add), " entrées) et activé pour l'analyse."
+      ),
+      type = "message"
+    )
   })
 
   observeEvent(input$menu_importer_fichier_sidebar, {
