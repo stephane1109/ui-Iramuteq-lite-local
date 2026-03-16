@@ -1740,6 +1740,14 @@ register_events_lancer <- function(input, output, session, rv) {
 
           wordcloud_dir <- file.path(rv$export_dir, "wordclouds")
           dir.create(wordcloud_dir, showWarnings = FALSE, recursive = TRUE)
+          anciens_wordclouds <- list.files(
+            wordcloud_dir,
+            pattern = "^cluster_[0-9]+_wordcloud\\.png$",
+            full.names = TRUE
+          )
+          if (length(anciens_wordclouds) > 0) {
+            suppressWarnings(unlink(anciens_wordclouds, force = TRUE))
+          }
           cooc_dir <- file.path(rv$export_dir, "cooccurrences")
           dir.create(cooc_dir, showWarnings = FALSE, recursive = TRUE)
 
