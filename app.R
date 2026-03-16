@@ -279,6 +279,17 @@ server <- function(input, output, session) {
     NULL
   }
 
+  reinitialiser_add_expression_travail <- function() {
+    path_in <- file.path(app_dir, "dictionnaires", "add_expression_fr.csv")
+    if (file.exists(path_in)) {
+      tryCatch(unlink(path_in), error = function(e) invisible(NULL))
+    }
+    invisible(NULL)
+  }
+
+  reinitialiser_add_expression_travail()
+
+
   if (exists("register_outputs_status", mode = "function", inherits = TRUE)) {
     register_outputs_status(input, output, session, rv)
   } else {
