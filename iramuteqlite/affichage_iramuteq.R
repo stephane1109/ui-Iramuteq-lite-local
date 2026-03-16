@@ -17,7 +17,7 @@ ui_resultats_chd_iramuteq <- function() {
       uiOutput("ui_tables_stats_chd_iramuteq")
     ),
     tabPanel(
-      "Concordancier IRaMuTeQ-lite",
+      "Concordancier",
       tags$h3("Concordancier"),
       uiOutput("ui_concordancier_iramuteq"),
       tags$hr(),
