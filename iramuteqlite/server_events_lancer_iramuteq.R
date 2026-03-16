@@ -1169,13 +1169,16 @@ register_events_lancer <- function(input, output, session, rv) {
             }
 
             expressions_actives_df <- rv$expression_fr_df
-            if (!isTRUE(add_expression_actif)) {
-              ajouter_log(rv, "Dictionnaire add_expression_fr.csv non activé (cliquer 'Ajouter un dictionnaire d'expression add_expression_fr.csv' dans Paramétrages de l'analyse).")
-            }
             if (isTRUE(add_expression_actif) && !is.null(expr_session_df) && nrow(expr_session_df) > 0) {
-              expressions_actives_df <- rbind(expr_session_df, rv$expression_fr_df[, c("dic_mot", "dic_norm"), drop = FALSE])
+              deja_base <- expr_session_df$dic_mot %in% rv$expression_fr_df$dic_mot
+              expr_session_ajouts <- expr_session_df[!deja_base, c("dic_mot", "dic_norm"), drop = FALSE]
+              expressions_actives_df <- rbind(rv$expression_fr_df[, c("dic_mot", "dic_norm"), drop = FALSE], expr_session_ajouts)
               expressions_actives_df <- expressions_actives_df[!duplicated(expressions_actives_df$dic_mot), , drop = FALSE]
-              ajouter_log(rv, paste0("Dictionnaire d'expressions enrichi par l'onglet Annotation : +", nrow(expr_session_df), " entrée(s) session."))
+              ajouter_log(rv, paste0("Dictionnaire utilisateur ajouté au dictionnaire de base : +", nrow(expr_session_ajouts), " nouvelle(s) entrée(s) (", sum(deja_base), " déjà présentes ignorées)."))
+            } else if (isTRUE(add_expression_actif)) {
+              ajouter_log(rv, "add_expression_fr.csv activé mais vide/invalide ; utilisation du dictionnaire de base uniquement.")
+            } else {
+              ajouter_log(rv, "add_expression_fr.csv non activé ; utilisation du dictionnaire de base uniquement.")
             }
             rv$expressions_actives_df <- expressions_actives_df
 
@@ -1184,10 +1187,7 @@ register_events_lancer <- function(input, output, session, rv) {
               paste0(
                 "Dictionnaire d'expressions chargé: ",
                 nrow(expressions_actives_df),
-                " entrées actives (source base: ",
-                basename(attr(rv$expression_fr_df, "source_file")),
-                ")."
-              )
+                " entrées actives (base + ajouts utilisateur non présents dans la base).")
             )
 
             remplacements_expr <- appliquer_dictionnaire_expressions(textes_orig, expressions_actives_df)
