@@ -163,7 +163,7 @@ ui_form_parametres_analyse <- function(defaults = NULL) {
       checkboxInput("lexique_utiliser_lemmes", "Lemmatisation via les lemmes de lexique_fr (forme → c_lemme)", value = valeur_defaut("lexique_utiliser_lemmes", TRUE))
     ),
     checkboxInput("expression_utiliser_dictionnaire", "Utiliser le dictionnaire d'expression (dic_mot → dic_norm)", value = valeur_defaut("expression_utiliser_dictionnaire", FALSE)),
-    actionButton("charger_add_expression", "Charger un dictionnaire d'expression (.csv)", class = "btn-outline-secondary btn-sm"),
+    tags$p("Upload du dictionnaire dans l'onglet Annotation expressions.", style = "font-size: 0.9em; color: #555;"),
 
     tags$div(class = "sidebar-section-title", "Nettoyage"),
     checkboxInput("nettoyage_caracteres", "Nettoyage caractères (regex)", value = valeur_defaut("nettoyage_caracteres", FALSE)),
@@ -319,7 +319,7 @@ ui <- page_navbar(
       textInput("annotation_remove_key", "dic_mot à supprimer", value = ""),
       actionButton("annotation_remove_entry", "Supprimer")
     ),
-    fileInput("annotation_import_csv", "Importer add_expression_fr.csv", accept = c(".csv")),
+    fileInput("annotation_import_csv", "Charger un dictionnaire d'expression (.csv)", accept = c(".csv")),
     downloadButton("dl_expression_csv", "Télécharger add_expression_fr.csv"),
     tags$h4("Dictionnaire d'expressions (session)"),
     tableOutput("table_annotation_dict")
