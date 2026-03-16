@@ -259,20 +259,6 @@ server <- function(input, output, session) {
     df
   }
 
-  charger_add_expression <- function() {
-    paths_in <- c(
-      file.path(app_dir, "dictionnaires", "add_expression_fr.csv"),
-      file.path(app_dir, "dictionnaires", "add_expression.csv")
-    )
-    path_in <- paths_in[file.exists(paths_in)][1]
-    if (is.na(path_in) || !nzchar(path_in) || !file.exists(path_in)) return(NULL)
-    df <- tryCatch(
-      utils::read.csv2(path_in, stringsAsFactors = FALSE, encoding = "UTF-8", na.strings = character()),
-      error = function(e) NULL
-    )
-    normaliser_add_expression_df(df)
-  }
-
   if (exists("register_outputs_status", mode = "function", inherits = TRUE)) {
     register_outputs_status(input, output, session, rv)
   } else {
@@ -557,14 +543,42 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$charger_add_expression, {
-    df_add <- charger_add_expression()
+    showModal(modalDialog(
+      title = "Charger un dictionnaire d'expression (.csv)",
+      easyClose = TRUE,
+      size = "s",
+      fileInput(
+        "charger_add_expression_file",
+        "Choisir le fichier CSV (ex. add_dictionnaire.csv)",
+        accept = c(".csv")
+      ),
+      footer = modalButton("Fermer")
+    ))
+  })
+
+  observeEvent(input$charger_add_expression_file, {
+    f <- input$charger_add_expression_file
+    if (is.null(f) || is.null(f$datapath) || !file.exists(f$datapath)) return(invisible(NULL))
+
+    df_add <- tryCatch(
+      utils::read.csv2(f$datapath, stringsAsFactors = FALSE, encoding = "UTF-8", na.strings = character()),
+      error = function(e) NULL
+    )
+    df_add <- normaliser_add_expression_df(df_add)
+
     if (is.null(df_add) || nrow(df_add) == 0) {
-      showNotification("add_expression.csv introuvable ou vide.", type = "warning")
+      showNotification("CSV invalide ou vide : colonnes requises dic_mot, dic_norm.", type = "warning")
       return(invisible(NULL))
     }
+
     rv$expression_annotations_df <- df_add
     rv$utiliser_add_expression <- TRUE
-    showNotification(paste0("add_expression.csv chargé (", nrow(df_add), " entrées) et activé pour l'analyse."), type = "message")
+    sauvegarder_add_expression(rv$expression_annotations_df)
+    removeModal()
+    showNotification(
+      paste0("Dictionnaire importé depuis ", f$name, " (", nrow(df_add), " entrées) et activé pour l'analyse."),
+      type = "message"
+    )
   })
 
   observeEvent(input$menu_importer_fichier_sidebar, {
