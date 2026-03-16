@@ -276,15 +276,6 @@ ui <- page_navbar(
       }
     ")),
     tags$script(HTML("
-      document.addEventListener('click', function(ev) {
-        if (!ev.target || ev.target.id !== 'annotation_capture_selection') return;
-        var area = document.getElementById('annotation_corpus_text');
-        if (!area) return;
-        var selected = area.value.substring(area.selectionStart, area.selectionEnd) || '';
-        if (window.Shiny) {
-          Shiny.setInputValue('annotation_selection', selected, {priority: 'event'});
-        }
-      });
     "))
   ),
 
@@ -306,16 +297,15 @@ ui <- page_navbar(
   nav_panel("Corpus", value = "corpus", tags$h3("Corpus importé"), uiOutput("ui_corpus_preview")),
   nav_panel(
     "Annotation expressions", value = "annotation_expressions",
-    tags$h3("Annotation du corpus pour add_expression_fr.csv"),
-    tags$p("Sélectionnez un extrait dans la zone ci-dessous puis ajoutez-le au dictionnaire (dic_mot, dic_norm, dic_morpho)."),
+    tags$h3("Annotation du corpus => add_expression_fr.csv"),
+    fileInput("annotation_import_csv", "Charger un dictionnaire d'expression (.csv)", accept = c(".csv")),
+    tags$p("Vous pouvez réimporter un fichier d'expressions déjà annoté (il doit impérativement être nommé : add_expression_fr.csv)."),
+    tags$p("Sélectionnez un extrait dans la zone ci-dessous puis ajoutez-le à votre propre dictionnaire (dic_mot, dic_norm, dic_morpho) qui sera fusionné avec le dictionnaire d'expressions IRAMUTEQ."),
+    tags$p("Vous devez surligner, copier/coller les expressions pour les ajouter au dictionnaire."),
     textAreaInput("annotation_corpus_text", "Corpus (zone d'annotation)", value = "", rows = 14, width = "100%"),
     tags$h4("Prévisualisation annotée"),
-    tags$p("Les formes présentes dans le dictionnaire de session (dont add_expression_fr.csv importé) sont surlignées en orange."),
+    tags$p("Les formes présentes dans le dictionnaire sont surlignées en jaune."),
     uiOutput("annotation_corpus_colore"),
-    tags$div(style = "display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-bottom:10px;",
-      actionButton("annotation_capture_selection", "Capturer la sélection"),
-      actionButton("annotation_charger_corpus", "Charger le corpus importé")
-    ),
     textInput("annotation_selection", "Texte sélectionné (dic_mot)", value = ""),
     textInput("annotation_norm", "Normalisation (dic_norm)", value = ""),
     textInput("annotation_morpho", "Type morpho (dic_morpho, optionnel)", value = ""),
@@ -325,7 +315,6 @@ ui <- page_navbar(
       textInput("annotation_remove_key", NULL, value = "", placeholder = "dic_mot à supprimer", width = "190px"),
       actionButton("annotation_remove_entry", "Supprimer", class = "annotation-action-btn")
     ),
-    fileInput("annotation_import_csv", "Charger un dictionnaire d'expression (.csv)", accept = c(".csv")),
     downloadButton("dl_expression_csv", "Télécharger add_expression_fr.csv"),
     tags$h4("Dictionnaire d'expressions (session)"),
     tableOutput("table_annotation_dict")
