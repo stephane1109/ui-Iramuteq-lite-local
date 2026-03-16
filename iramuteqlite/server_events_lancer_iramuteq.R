@@ -702,6 +702,11 @@ register_events_lancer <- function(input, output, session, rv) {
         }
       }
 
+      ajouter_log(
+        rv,
+        "Contrôle des expressions (dic_norm) exécuté à 3 étapes: avant filtres, après filtrage morphosyntaxique, puis après min_docfreq."
+      )
+
       log_presence_expressions(dfm_obj, "avant filtres morpho/min_docfreq")
 
       if (isTRUE(input$filtrage_morpho) && identical(input$source_dictionnaire, "lexique_fr")) {
