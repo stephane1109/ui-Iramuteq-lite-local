@@ -706,16 +706,46 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
   # Conserver toutes les feuilles détectées pour le placement du tree,
   # sinon certaines branches peuvent disparaître si `terminales` est incomplet.
   tip_nodes <- detected_tips
-  
-  # Les classes affichées restent strictement celles des terminales CHD.
-  # On n'invente pas de classes de fallback pour préserver la fidélité au découpage.
+  children_map <- split(edges_df$child, edges_df$parent)
+  children_map <- lapply(children_map, function(x) as.integer(unique(x)))
+
+  .descendants_tips <- function(node, children_map, tip_nodes) {
+    node <- suppressWarnings(as.integer(node))
+    if (!is.finite(node)) return(integer(0))
+    out <- integer(0)
+    pile <- node
+    vus <- integer(0)
+
+    while (length(pile)) {
+      cur <- pile[[1]]
+      pile <- pile[-1]
+      if (cur %in% vus) next
+      vus <- c(vus, cur)
+
+      cur_key <- as.character(cur)
+      kids <- children_map[[cur_key]]
+      kids <- kids[is.finite(kids)]
+      if (!length(kids)) {
+        if (cur %in% tip_nodes) out <- c(out, cur)
+      } else {
+        pile <- c(kids, pile)
+      }
+    }
+
+    unique(out)
+  }
+
+  # Les classes affichées suivent la numérotation CHD (ordre des terminales).
+  # En mode double, une "terminale" peut être un noeud interne : on mappe alors
+  # la classe à toutes ses feuilles descendantes (comportement make.classes IRaMuTeQ).
   class_by_tip <- stats::setNames(rep(NA_integer_, length(tip_nodes)), as.character(tip_nodes))
   if (length(terminales)) {
-    # Les identifiants de classes suivent la numérotation CHD (ordre des terminales).
-    class_ids <- seq_along(terminales)
     for (i in seq_along(terminales)) {
-      node <- as.character(terminales[[i]])
-      if (node %in% names(class_by_tip)) class_by_tip[[node]] <- class_ids[[i]]
+      desc_tips <- .descendants_tips(terminales[[i]], children_map = children_map, tip_nodes = tip_nodes)
+      if (!length(desc_tips)) next
+      for (tip in as.character(desc_tips)) {
+        if (!is.finite(class_by_tip[[tip]])) class_by_tip[[tip]] <- as.integer(i)
+      }
     }
   }
   class_tip_keys <- names(class_by_tip)[is.finite(class_by_tip)]
@@ -785,8 +815,6 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
     }
   }, FUN.VALUE = character(1))
   
-  children_map <- split(edges_df$child, edges_df$parent)
-  children_map <- lapply(children_map, function(x) as.integer(unique(x)))
   roots <- setdiff(parent_nodes, edges_df$child)
   if (!length(roots)) roots <- parent_nodes[1]
   
