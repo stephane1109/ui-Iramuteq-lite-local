@@ -900,6 +900,7 @@ register_events_lancer <- function(input, output, session, rv) {
 
     output$ui_wordcloud_iramuteq <- renderUI({
       req(rv$export_dir, rv$exports_prefix)
+      rv$wordcloud_refresh_token
 
       wc_files <- list.files(
         file.path(rv$export_dir, "wordclouds"),
@@ -1739,6 +1740,14 @@ register_events_lancer <- function(input, output, session, rv) {
 
           wordcloud_dir <- file.path(rv$export_dir, "wordclouds")
           dir.create(wordcloud_dir, showWarnings = FALSE, recursive = TRUE)
+          anciens_wordclouds <- list.files(
+            wordcloud_dir,
+            pattern = "^cluster_[0-9]+_wordcloud\\.png$",
+            full.names = TRUE
+          )
+          if (length(anciens_wordclouds) > 0) {
+            suppressWarnings(unlink(anciens_wordclouds, force = TRUE))
+          }
           cooc_dir <- file.path(rv$export_dir, "cooccurrences")
           dir.create(cooc_dir, showWarnings = FALSE, recursive = TRUE)
 
@@ -1789,6 +1798,8 @@ register_events_lancer <- function(input, output, session, rv) {
             )
             ajouter_log(rv, "Mode IRaMuTeQ-lite : nuages de mots générés via wordcloud_iramuteq.R.")
           }
+
+          rv$wordcloud_refresh_token <- rv$wordcloud_refresh_token + 1
 
           explor_assets <- NULL
           ok_chd_png <- FALSE

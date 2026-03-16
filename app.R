@@ -188,6 +188,7 @@ server <- function(input, output, session) {
     res_type = "simple",
 
     exports_prefix = paste0("exports_", session$token),
+    wordcloud_refresh_token = 0,
 
     lexique_fr_df = NULL,
     expression_fr_df = NULL,
