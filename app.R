@@ -648,7 +648,7 @@ server <- function(input, output, session) {
       return(tags$em("Aucun corpus chargé dans la zone d'annotation."))
     }
     if (!nzchar(terme)) {
-      return(tags$em("Surlignez une expression dans la zone de corpus, copiez/collez-la dans le champ 'Texte sélectionné (dic_mot)' pour voir toutes ses occurrences surlignées."))
+      return(tags$em("Sélectionnez un terme puis copiez/collez."))
     }
 
     motif <- .annotation_regex_escape(terme)

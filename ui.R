@@ -306,9 +306,12 @@ ui <- page_navbar(
     tags$h4("Prévisualisation annotée"),
     tags$p("Les formes présentes dans le dictionnaire sont surlignées en jaune."),
     uiOutput("annotation_corpus_colore"),
-    textInput("annotation_selection", "Texte sélectionné (dic_mot)", value = ""),
-    textInput("annotation_norm", "Normalisation (dic_norm)", value = ""),
-    textInput("annotation_morpho", "Type morpho (dic_morpho, optionnel)", value = ""),
+    tags$div(
+      style = "display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;",
+      tags$div(style = "flex:1; min-width:220px;", textInput("annotation_selection", "Texte sélectionné (dic_mot)", value = "")),
+      tags$div(style = "flex:1; min-width:220px;", textInput("annotation_norm", "Normalisation (dic_norm)", value = "")),
+      tags$div(style = "flex:1; min-width:220px;", textInput("annotation_morpho", "Type morpho (dic_morpho, optionnel)", value = ""))
+    ),
     uiOutput("ui_annotation_highlight_preview"),
     tags$div(style = "display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-bottom:10px;",
       actionButton("annotation_add_entry", "Ajouter / mettre à jour", class = "annotation-action-btn"),
