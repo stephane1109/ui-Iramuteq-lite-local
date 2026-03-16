@@ -14,6 +14,11 @@ Deux configurations principales dans l'interface sont possibles :
 1. Si vous **ne cochez pas** le filtrage morphosyntaxique, **tout le corpus** est pris en compte.
 2. Si vous **filtrez** sur des catégories morphosyntaxiques (voir la liste ci-dessous), l’analyse porte sur le **corpus filtré** par les catégories sélectionnées.
 
+Option complémentaire :
+
+- **Autre forme** : permet de repérer les termes qui n'ont pas de catégorie morphosyntaxique renseignée (cellule `c_morpho` vide).
+  Cette option est utile pour compléter l’analyse avec des éléments non catégorisés, par exemple des **noms propres**.
+
 Noms des catégories de Lexique_fr
 
 - **NOM** : nom commun
