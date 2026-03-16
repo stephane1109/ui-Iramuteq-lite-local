@@ -279,6 +279,19 @@ server <- function(input, output, session) {
     NULL
   }
 
+  charger_add_expression_travail <- function() {
+    path_in <- file.path(app_dir, "dictionnaires", "add_expression_fr.csv")
+    if (!file.exists(path_in)) return(NULL)
+    lire_add_expression_depuis_upload(path_in)
+  }
+
+  df_add_init <- charger_add_expression_travail()
+  if (!is.null(df_add_init) && nrow(df_add_init) > 0) {
+    rv$expression_annotations_df <- df_add_init
+    rv$utiliser_add_expression <- TRUE
+  }
+
+
   if (exists("register_outputs_status", mode = "function", inherits = TRUE)) {
     register_outputs_status(input, output, session, rv)
   } else {
