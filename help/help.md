@@ -84,7 +84,7 @@ Dans l’UI, vous avez 2 modes :
 - Dans l'application, ces segments sont **exclus des calculs CHD/AFC finaux** et des statistiques de classes.
 - Conséquence pratique : les effectifs `Eff. s.t.` et `Eff. total` sont calculés sur le **corpus classé** (segments avec classe `> 0`) et non sur l'ensemble brut des segments importés.
 
-### Paramètres de l’analyse (appliqués au calcul IRaMuTeQ-lite)
+### Paramètres de l’analyse
 
 - **segment_size** : taille des segments pour la segmentation (valeur UI par défaut: 40).
 - **Fréquence minimale des termes (`min_docfreq`)** : valeur recommandée **3** (comme dans le logiciel). Une forme doit apparaître dans au moins 3 segments pour être conservée.
@@ -112,7 +112,7 @@ Dans l’UI, vous avez 2 modes :
 - **Retirer les stopwords** (`retirer_stopwords`) : enlève les mots-outils français via la liste `quanteda::stopwords("fr")`.
 - **Passage en minuscules** : appliqué automatiquement avant la construction des tokens/termes (option non configurable).
 
-#### Stopwords en mode IRaMuTeQ-like
+#### Stopwords en mode IRaMuTeQ-lite
 
 - En mode **IRaMuTeQ-lite**, la source de lemmatisation est forcée sur **Lexique (fr)**.
 - Donc, quand l'option **Retirer les stopwords** est activée, le filtrage se fait avec les stopwords **français de quanteda**.
