@@ -254,7 +254,9 @@ ui <- page_navbar(
     tags$div(style = "margin-top: 10px;"),
     tags$strong("Nom du fichier :"),
     tags$div(textOutput("nom_fichier_selectionne"), style = "margin-bottom: 12px;"),
-    downloadButton("dl_zip", "Télécharger les résultats")
+    downloadButton("dl_zip", "Télécharger les résultats"),
+    tags$div(style = "margin-top: 10px;"),
+    actionButton("btn_plein_ecran", "Ouvrir en pleine page", class = "btn-outline-secondary")
   ),
 
   tags$head(
@@ -276,6 +278,38 @@ ui <- page_navbar(
       }
     ")),
     tags$script(HTML("
+      document.addEventListener('DOMContentLoaded', function () {
+        var docEl = document.documentElement;
+        var bouton = document.getElementById('btn_plein_ecran');
+
+        function entrerPleinePage() {
+          if (document.fullscreenElement) return;
+          if (!docEl.requestFullscreen) return;
+          docEl.requestFullscreen().catch(function () {
+            // Certains navigateurs exigent une interaction utilisateur explicite.
+          });
+        }
+
+        // Tentative automatique au chargement.
+        entrerPleinePage();
+
+        // Fallback: première interaction utilisateur.
+        var activerSurInteraction = function () {
+          entrerPleinePage();
+          document.removeEventListener('click', activerSurInteraction, true);
+          document.removeEventListener('keydown', activerSurInteraction, true);
+          document.removeEventListener('touchstart', activerSurInteraction, true);
+        };
+        document.addEventListener('click', activerSurInteraction, true);
+        document.addEventListener('keydown', activerSurInteraction, true);
+        document.addEventListener('touchstart', activerSurInteraction, true);
+
+        if (bouton) {
+          bouton.addEventListener('click', function () {
+            entrerPleinePage();
+          });
+        }
+      });
     "))
   ),
 
