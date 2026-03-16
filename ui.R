@@ -267,6 +267,13 @@ ui <- page_navbar(
       .navbar .navbar-brand small { color: #ffffff !important; }
       .navbar .navbar-nav { margin-top: 0.5rem; }
       span.highlight { background-color: yellow; color: inherit; font-weight: inherit; padding: 0; border-radius: 0; }
+      .annotation-action-btn {
+        min-width: 190px !important;
+        height: 38px !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
     ")),
     tags$script(HTML("
       document.addEventListener('click', function(ev) {
@@ -305,19 +312,18 @@ ui <- page_navbar(
     tags$h4("Prévisualisation annotée"),
     tags$p("Les formes présentes dans le dictionnaire de session (dont add_expression_fr.csv importé) sont surlignées en orange."),
     uiOutput("annotation_corpus_colore"),
-    tags$div(style = "display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;",
+    tags$div(style = "display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-bottom:10px;",
       actionButton("annotation_capture_selection", "Capturer la sélection"),
       actionButton("annotation_charger_corpus", "Charger le corpus importé")
     ),
     textInput("annotation_selection", "Texte sélectionné (dic_mot)", value = ""),
     textInput("annotation_norm", "Normalisation (dic_norm)", value = ""),
     textInput("annotation_morpho", "Type morpho (dic_morpho, optionnel)", value = ""),
-    tags$h4("Aperçu des occurrences surlignées"),
     uiOutput("ui_annotation_highlight_preview"),
-    tags$div(style = "display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;",
-      actionButton("annotation_add_entry", "Ajouter / mettre à jour"),
-      textInput("annotation_remove_key", "dic_mot à supprimer", value = ""),
-      actionButton("annotation_remove_entry", "Supprimer")
+    tags$div(style = "display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-bottom:10px;",
+      actionButton("annotation_add_entry", "Ajouter / mettre à jour", class = "annotation-action-btn"),
+      textInput("annotation_remove_key", NULL, value = "", placeholder = "dic_mot à supprimer", width = "190px"),
+      actionButton("annotation_remove_entry", "Supprimer", class = "annotation-action-btn")
     ),
     fileInput("annotation_import_csv", "Charger un dictionnaire d'expression (.csv)", accept = c(".csv")),
     downloadButton("dl_expression_csv", "Télécharger add_expression_fr.csv"),
