@@ -697,8 +697,8 @@ register_events_lancer <- function(input, output, session, rv) {
             " | absentes=", length(absents), "."
           )
         )
-        if (length(absents) > 0) {
-          ajouter_log(rv, paste0("Exemples expressions absentes ", label_stage, " : ", paste(utils::head(absents, 10), collapse = ", "), "."))
+        if (length(presents) > 0) {
+          ajouter_log(rv, paste0("Exemples expressions présentes ", label_stage, " : ", paste(utils::head(presents, 10), collapse = ", "), "."))
         }
       }
 
