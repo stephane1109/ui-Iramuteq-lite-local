@@ -648,7 +648,10 @@ server <- function(input, output, session) {
       return(tags$em("Aucun corpus chargé dans la zone d'annotation."))
     }
     if (!nzchar(terme)) {
-      return(tags$em("Sélectionnez un terme puis copiez/collez."))
+      return(tags$div(
+        style = "white-space: pre-wrap; max-height: 320px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #fafafa; border-radius: 6px;",
+        htmltools::htmlEscape(texte)
+      ))
     }
 
     motif <- .annotation_regex_escape(terme)
@@ -680,14 +683,8 @@ server <- function(input, output, session) {
     }
 
     tags$div(
-      tags$small(
-        style = "display:block; margin-bottom:6px; color:#555;",
-        paste0("Occurrences trouvées : ", length(locs))
-      ),
-      tags$div(
-        style = "white-space: pre-wrap; max-height: 320px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #fafafa; border-radius: 6px;",
-        do.call(tagList, morceaux)
-      )
+      style = "white-space: pre-wrap; max-height: 320px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #fafafa; border-radius: 6px;",
+      do.call(tagList, morceaux)
     )
   }
 
