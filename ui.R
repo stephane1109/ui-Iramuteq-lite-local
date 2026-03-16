@@ -304,7 +304,6 @@ ui <- page_navbar(
     tags$p("Vous devez surligner, copier/coller les expressions pour les ajouter au dictionnaire."),
     textAreaInput("annotation_corpus_text", "Corpus (zone d'annotation)", value = "", rows = 14, width = "100%"),
     tags$h4("Prévisualisation annotée"),
-    tags$p("Les formes présentes dans le dictionnaire sont surlignées en jaune."),
     uiOutput("annotation_corpus_colore"),
     textInput("annotation_selection", "Texte sélectionné (dic_mot)", value = ""),
     textInput("annotation_norm", "Normalisation (dic_norm)", value = ""),
