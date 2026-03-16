@@ -152,7 +152,7 @@ ui_form_parametres_analyse <- function(defaults = NULL) {
       checkboxInput("lexique_utiliser_lemmes", "Lemmatisation via les lemmes de lexique_fr (forme → c_lemme)", value = valeur_defaut("lexique_utiliser_lemmes", TRUE))
     ),
     checkboxInput("expression_utiliser_dictionnaire", "Utiliser le dictionnaire d'expression (dic_mot → dic_norm)", value = valeur_defaut("expression_utiliser_dictionnaire", FALSE)),
-    actionButton("charger_add_expression", "Ajouter un dictionnaire d'expression add_expression_fr.csv", class = "btn-outline-secondary btn-sm"),
+    actionButton("charger_add_expression", "Charger un dictionnaire d'expression (.csv)", class = "btn-outline-secondary btn-sm"),
 
     tags$div(class = "sidebar-section-title", "Nettoyage"),
     checkboxInput("nettoyage_caracteres", "Nettoyage caractères (regex)", value = valeur_defaut("nettoyage_caracteres", FALSE)),
