@@ -48,33 +48,33 @@ if (file.exists("help/help.md")) {
   }
 }
 
+surligner_segment_afc <- function(segment, terme) {
+  segment <- ifelse(is.na(segment), "", as.character(segment))
+  terme <- ifelse(is.na(terme), "", as.character(terme))
+  if (!nzchar(trimws(segment)) || !nzchar(trimws(terme))) {
+    return(htmltools::htmlEscape(segment))
+  }
+
+  motifs <- preparer_motifs_surlignage_nfd(terme, taille_lot = 1)
+  if (!length(motifs)) return(htmltools::htmlEscape(segment))
+
+  segment_hl <- surligner_vecteur_html_unicode(
+    segment,
+    motifs,
+    "<span style='background-color: yellow;'>",
+    "</span>"
+  )
+
+  echapper_segments_en_preservant_surlignage(
+    segment_hl,
+    "<span style='background-color: yellow;'>",
+    "</span>"
+  )
+}
+
 generer_table_html_afc_mots <- function(df) {
   if (is.null(df) || nrow(df) == 0) {
     return(tags$p("Aucun mot disponible pour cette classe."))
-  }
-  
-  surligner_segment_afc <- function(segment, terme) {
-    segment <- ifelse(is.na(segment), "", as.character(segment))
-    terme <- ifelse(is.na(terme), "", as.character(terme))
-    if (!nzchar(trimws(segment)) || !nzchar(trimws(terme))) {
-      return(htmltools::htmlEscape(segment))
-    }
-    
-    motifs <- preparer_motifs_surlignage_nfd(terme, taille_lot = 1)
-    if (!length(motifs)) return(htmltools::htmlEscape(segment))
-    
-    segment_hl <- surligner_vecteur_html_unicode(
-      segment,
-      motifs,
-      "<span style='background-color: yellow;'>",
-      "</span>"
-    )
-    
-    echapper_segments_en_preservant_surlignage(
-      segment_hl,
-      "<span style='background-color: yellow;'>",
-      "</span>"
-    )
   }
   
   htmltools::div(
@@ -120,6 +120,7 @@ source("iramuteqlite/chd_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/dendrogramme_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/iramuteq_bars.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/stats_chd.R", encoding = "UTF-8", local = TRUE)
+source("iramuteqlite/popup.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/chd_engine_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/server_outputs_status_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/server_events_lancer_iramuteq.R", encoding = "UTF-8", local = TRUE)
@@ -146,7 +147,7 @@ server <- function(input, output, session) {
     
     is.finite(largeur) && is.finite(hauteur) && largeur >= min_width && hauteur >= min_height
   }
-  
+
   creer_zip_depuis_dossier <- function(dossier_source, fichier_zip) {
     if (!dir.exists(dossier_source)) {
       stop("Dossier d'exports introuvable.")
@@ -1080,6 +1081,14 @@ server <- function(input, output, session) {
           style = "iramuteq_clone"
         )
       }, rownames = FALSE, sanitize.text.function = function(x) x)
+
+      enregistrer_popup_forme_stats_chd(
+        input = input,
+        rv = rv,
+        classe = cl,
+        output_id = output_id,
+        seuil_p_significativite = function() input$max_p
+      )
       
       tabPanel(
         title = paste0("Classe ", cl),
