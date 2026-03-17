@@ -102,3 +102,84 @@ tracer_dendrogramme_iramuteq_bars <- function(edges_df,
 
   invisible(NULL)
 }
+
+tracer_dendrogramme_iramuteq_bars_hclust <- function(hc,
+                                                     classes = NULL,
+                                                     main = "Dendrogramme CHD") {
+  if (is.null(hc) || !inherits(hc, "hclust")) return(FALSE)
+
+  .palette_classes <- function(ids) {
+    ids <- as.integer(ids)
+    ids <- ids[is.finite(ids)]
+    if (!length(ids)) return(character(0))
+    palette_base <- c("#F8766D", "#7CAE00", "#00BFC4", "#C77CFF", "#00BA38", "#619CFF", "#F564E3", "#B79F00")
+    uniq <- sort(unique(ids))
+    stats::setNames(rep_len(palette_base, length(uniq)), as.character(uniq))
+  }
+
+  pct_par_classe <- NULL
+  if (!is.null(classes)) {
+    classes_int <- suppressWarnings(as.integer(classes))
+    classes_int <- classes_int[is.finite(classes_int) & classes_int > 0]
+    if (length(classes_int)) pct_par_classe <- prop.table(table(classes_int)) * 100
+  }
+
+  ord <- hc$order
+  ord <- ord[is.finite(ord) & ord >= 1 & ord <= length(hc$labels)]
+  if (!length(ord)) return(FALSE)
+
+  labels_ord <- hc$labels[ord]
+  classes_tip <- suppressWarnings(as.integer(sub("^\\s*Classe\\s+([0-9]+).*$", "\\1", labels_ord, perl = TRUE)))
+  classes_tip[!is.finite(classes_tip)] <- seq_along(classes_tip)[!is.finite(classes_tip)]
+
+  pct_tip <- vapply(classes_tip, function(cl) {
+    if (is.null(pct_par_classe)) return(NA_real_)
+    suppressWarnings(as.numeric(pct_par_classe[[as.character(cl)]]))
+  }, numeric(1))
+  if (!length(pct_tip) || all(!is.finite(pct_tip))) pct_tip <- rep(100 / max(1, length(classes_tip)), length(classes_tip))
+  pct_tip[!is.finite(pct_tip) | pct_tip < 0] <- 0
+
+  cols_map <- .palette_classes(classes_tip)
+  tip_cols <- if (length(cols_map)) unname(cols_map[as.character(classes_tip)]) else rep("#7aa6ff", length(classes_tip))
+  tip_cols[is.na(tip_cols) | !nzchar(tip_cols)] <- "#7aa6ff"
+
+  hmax <- max(c(1, hc$height), na.rm = TRUE)
+  x_left <- hmax * 1.08
+  x_right <- -hmax * 0.9
+
+  plot(
+    hc,
+    horiz = TRUE,
+    axes = FALSE,
+    ann = FALSE,
+    labels = FALSE,
+    hang = -1,
+    frame.plot = FALSE,
+    xlim = c(x_left, x_right),
+    main = main
+  )
+
+  y_pos <- seq_along(classes_tip)
+  label_x <- -hmax * 0.08
+  bar_left <- -hmax * 0.28
+  bar_max <- hmax * 0.42
+
+  for (i in seq_along(classes_tip)) {
+    cl <- classes_tip[[i]]
+    pct <- pct_tip[[i]]
+    col_bar <- tip_cols[[i]]
+
+    text(label_x, y_pos[[i]], labels = paste0("classe ", cl), cex = 1.2, pos = 2, col = col_bar, font = 3, xpd = TRUE)
+
+    width <- bar_max * (pct / 100)
+    rect(bar_left, y_pos[[i]] - 0.42, bar_left + width, y_pos[[i]] + 0.42,
+         col = grDevices::adjustcolor(col_bar, alpha.f = 0.95), border = "#6f6f6f", lwd = 1.2, xpd = TRUE)
+
+    pct_lab <- paste0(format(round(pct, 1), nsmall = 1), " %")
+    txt_x <- if (width >= bar_max * 0.22) bar_left + width - 0.08 else bar_left + width + 0.08
+    txt_pos <- if (width >= bar_max * 0.22) 2 else 4
+    text(txt_x, y_pos[[i]], labels = pct_lab, pos = txt_pos, cex = 1.05, col = "#1f1f1f", xpd = TRUE)
+  }
+
+  TRUE
+}
