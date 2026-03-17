@@ -7,6 +7,20 @@ ui_resultats_chd_iramuteq <- function() {
       "Dendrogramme",
       tags$h3("Dendrogramme CHD"),
       tags$div(
+        style = "width: 800px; max-width: 100%; margin: 0 auto 12px auto;",
+        selectInput(
+          inputId = "chd_dendro_style",
+          label = "Style d'affichage",
+          choices = c(
+            "factoextra" = "factoextra",
+            "ape" = "ape",
+            "dendextend" = "dendextend",
+            "ggdendro" = "ggdendro"
+          ),
+          selected = "factoextra"
+        )
+      ),
+      tags$div(
         style = "width: 800px; max-width: 100%; margin: 0 auto;",
         plotOutput("plot_chd_iramuteq_dendro", height = "420px", width = "800px")
       )

@@ -545,7 +545,7 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
                                              res_stats_df = NULL,
                                              top_n_terms = 4,
                                              orientation = c("vertical", "horizontal"),
-                                             style_affichage = c("factoextra", "iramuteq_bars", "classique"),
+                                             style_affichage = c("factoextra", "ape", "dendextend", "ggdendro", "iramuteq_bars", "classique"),
                                              edge_style = c("diagonal", "orthogonal"),
                                              edge_lwd = 1.6) {
   orientation <- match.arg(orientation)
@@ -638,6 +638,18 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
       if (isTRUE(ok_facto)) return(TRUE)
       # Si le rendu factoextra échoue, on signale l'échec (pas de tracé CHD legacy).
     }
+
+    if (identical(style_affichage, "ape")) {
+      if (isTRUE(tracer_dendrogramme_ape(hc = hc, orientation = orientation))) return(TRUE)
+    }
+
+    if (identical(style_affichage, "dendextend")) {
+      if (isTRUE(tracer_dendrogramme_dendextend(hc = hc, orientation = orientation))) return(TRUE)
+    }
+
+    if (identical(style_affichage, "ggdendro")) {
+      if (isTRUE(tracer_dendrogramme_ggdendro(hc = hc, orientation = orientation))) return(TRUE)
+    }
     
     FALSE
   }
@@ -657,9 +669,9 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
     return(invisible(NULL))
   }
   
-  if (identical(style_affichage, "factoextra")) {
+  if (style_affichage %in% c("factoextra", "ape", "dendextend", "ggdendro")) {
     plot.new()
-    text(0.5, 0.5, "Impossible de tracer le dendrogramme avec factoextra.", cex = 1.0)
+    text(0.5, 0.5, paste0("Impossible de tracer le dendrogramme avec le style '", style_affichage, "'."), cex = 1.0)
     return(invisible(NULL))
   }
   
