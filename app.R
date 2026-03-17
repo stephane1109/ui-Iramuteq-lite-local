@@ -118,6 +118,7 @@ source("ui.R", encoding = "UTF-8", local = TRUE)
 
 source("iramuteqlite/chd_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/dendrogramme_iramuteq.R", encoding = "UTF-8", local = TRUE)
+source("iramuteqlite/iramuteq_bars.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/stats_chd.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/chd_engine_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/server_outputs_status_iramuteq.R", encoding = "UTF-8", local = TRUE)
@@ -1007,14 +1008,23 @@ server <- function(input, output, session) {
       return(invisible(NULL))
     }
 
-    if (!requireNamespace("factoextra", quietly = TRUE)) {
+    style_dendro <- input$chd_dendro_style %||% "iramuteq_bars"
+    package_par_style <- c(
+      factoextra = "factoextra",
+      iramuteq_bars = NA_character_
+    )
+    pkg <- unname(package_par_style[[style_dendro]])
+    pkg_requis <- is.character(pkg) && length(pkg) == 1 && !is.na(pkg) && nzchar(pkg)
+    if (isTRUE(pkg_requis) && !requireNamespace(pkg, quietly = TRUE)) {
       plot.new()
-      text(0.5, 0.5, "Le package 'factoextra' est requis pour afficher le dendrogramme.
-Installez-le puis relancez l'analyse.", cex = 1.0)
+      text(
+        0.5,
+        0.5,
+        paste0("Le package '", pkg, "' est requis pour ce style de dendrogramme.\nInstallez-le puis relancez l'analyse."),
+        cex = 1.0
+      )
       return(invisible(NULL))
     }
-
-    style_dendro <- "factoextra"
 
     tracer_dendrogramme_iramuteq_ui(
       rv = rv,
