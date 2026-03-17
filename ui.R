@@ -331,7 +331,6 @@ ui <- page_navbar(
     tags$p("Vous pouvez réimporter un fichier d'expressions déjà annoté (il doit impérativement être nommé : add_expression_fr.csv)."),
     tags$p("Sélectionnez un extrait dans la zone ci-dessous puis ajoutez-le à votre propre dictionnaire (dic_mot, dic_norm, dic_morpho) qui sera fusionné avec le dictionnaire d'expressions IRAMUTEQ."),
     tags$p("Vous devez surligner, copier/coller les expressions pour les ajouter au dictionnaire."),
-    textAreaInput("annotation_corpus_text", NULL, value = "", rows = 14, width = "100%"),
     tags$h4("Prévisualisation annotée"),
     uiOutput("annotation_corpus_colore"),
     tags$div(
