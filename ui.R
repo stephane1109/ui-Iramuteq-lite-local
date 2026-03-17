@@ -300,7 +300,7 @@ ui <- page_navbar(
         }
 
         document.addEventListener('click', function (evt) {
-          var cible = evt.target && evt.target.closest ? evt.target.closest('[data-value="resultats_chd"]') : null;
+          var cible = evt.target && evt.target.closest ? evt.target.closest('[data-value=resultats_chd]') : null;
           if (!cible || !window.Shiny || !window.Shiny.setInputValue) return;
           window.Shiny.setInputValue('ouvrir_param_chd_depuis_nav', Date.now(), { priority: 'event' });
         });
