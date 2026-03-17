@@ -35,9 +35,10 @@ tracer_dendrogramme_iramuteq_bars <- function(edges_df,
   tip_cols[is.na(tip_cols) | !nzchar(tip_cols)] <- "#7aa6ff"
 
   tree_xmax <- max_depth + 0.35
-  bar_left <- tree_xmax + 1.2
-  bar_max <- 4.8
-  x_right <- bar_left + bar_max + 0.8
+  label_x <- tree_xmax + 1.45
+  bar_left <- tree_xmax + 2.15
+  bar_max <- 5.4
+  x_right <- bar_left + bar_max + 1.0
 
   plot(0, 0,
        type = "n",
@@ -74,7 +75,7 @@ tracer_dendrogramme_iramuteq_bars <- function(edges_df,
     col_bar <- tip_cols[[i]]
 
     classe_txt <- paste0("classe ", cl)
-    text(tree_xmax + 0.08, xy[["x"]], labels = classe_txt, cex = 1.1, pos = 4, xpd = TRUE,
+    text(label_x, xy[["x"]], labels = classe_txt, cex = 1.45, pos = 2, xpd = TRUE,
          col = col_bar, font = 3)
 
     width <- bar_max * (pct / 100)
@@ -90,7 +91,13 @@ tracer_dendrogramme_iramuteq_bars <- function(edges_df,
     )
 
     pct_lab <- paste0(format(round(pct, 1), nsmall = 1), " %")
-    text(bar_left + width - 0.12, xy[["x"]], labels = pct_lab, pos = 2, cex = 0.95, xpd = TRUE, col = "#1f1f1f")
+    txt_x <- if (width >= 1.15) {
+      bar_left + width - 0.15
+    } else {
+      bar_left + width + 0.14
+    }
+    txt_pos <- if (width >= 1.15) 2 else 4
+    text(txt_x, xy[["x"]], labels = pct_lab, pos = txt_pos, cex = 1.2, xpd = TRUE, col = "#1f1f1f")
   }
 
   invisible(NULL)
