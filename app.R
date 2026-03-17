@@ -475,6 +475,10 @@ server <- function(input, output, session) {
       ouvrir_modal_parametres()
     }
   }, ignoreInit = TRUE)
+
+  observeEvent(input$ouvrir_param_chd_depuis_nav, {
+    ouvrir_modal_parametres()
+  }, ignoreInit = TRUE)
   
   observeEvent(input$nav_principal, {
     if (isTRUE(identical(input$nav_principal, "similitudes"))) {

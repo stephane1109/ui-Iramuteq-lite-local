@@ -905,7 +905,7 @@ register_events_lancer <- function(input, output, session, rv) {
 
     output$ui_wordcloud_iramuteq <- renderUI({
       req(rv$export_dir, rv$exports_prefix)
-      rv$wordcloud_refresh_token
+      token_cache <- rv$wordcloud_refresh_token
 
       wc_files <- list.files(
         file.path(rv$export_dir, "wordclouds"),
@@ -928,7 +928,7 @@ register_events_lancer <- function(input, output, session, rv) {
             style = "text-align: center; margin-bottom: 18px;",
             tags$h4(paste("Classe", classe_lbl)),
             tags$img(
-              src = paste0("/", rv$exports_prefix, "/", src_rel),
+              src = paste0("/", rv$exports_prefix, "/", src_rel, "?v=", token_cache),
               style = "max-width: 100%; height: auto; border: 1px solid #999; display: inline-block;"
             )
           )
