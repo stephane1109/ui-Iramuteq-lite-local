@@ -256,7 +256,11 @@ ui <- page_navbar(
     tags$div(textOutput("nom_fichier_selectionne"), style = "margin-bottom: 12px;"),
     downloadButton("dl_zip", "Télécharger les résultats"),
     tags$div(style = "margin-top: 10px;"),
-    actionButton("btn_plein_ecran", "Ouvrir en pleine page", class = "btn-outline-secondary")
+    actionButton("btn_plein_ecran", "Ouvrir en pleine page", class = "btn-outline-secondary"),
+    tags$small(
+      "Le mode plein écran dépend du navigateur (peut être limité dans certains viewers).",
+      style = "display:block; margin-top: 6px; color: #666;"
+    )
   ),
 
   tags$head(
@@ -281,32 +285,23 @@ ui <- page_navbar(
       document.addEventListener('DOMContentLoaded', function () {
         var docEl = document.documentElement;
         var bouton = document.getElementById('btn_plein_ecran');
+        var estDansIframe = window.self !== window.top;
 
         function entrerPleinePage() {
-          if (document.fullscreenElement) return;
-          if (!docEl.requestFullscreen) return;
-          docEl.requestFullscreen().catch(function () {
-            // Certains navigateurs exigent une interaction utilisateur explicite.
-          });
+          if (document.fullscreenElement) return Promise.resolve(true);
+          if (!document.fullscreenEnabled || !docEl.requestFullscreen) {
+            return Promise.resolve(false);
+          }
+          return docEl.requestFullscreen().then(function () { return true; }).catch(function () { return false; });
         }
-
-        // Tentative automatique au chargement.
-        entrerPleinePage();
-
-        // Fallback: première interaction utilisateur.
-        var activerSurInteraction = function () {
-          entrerPleinePage();
-          document.removeEventListener('click', activerSurInteraction, true);
-          document.removeEventListener('keydown', activerSurInteraction, true);
-          document.removeEventListener('touchstart', activerSurInteraction, true);
-        };
-        document.addEventListener('click', activerSurInteraction, true);
-        document.addEventListener('keydown', activerSurInteraction, true);
-        document.addEventListener('touchstart', activerSurInteraction, true);
 
         if (bouton) {
           bouton.addEventListener('click', function () {
-            entrerPleinePage();
+            entrerPleinePage().then(function (ok) {
+              if (!ok && estDansIframe) {
+                console.warn('Plein écran refusé en contexte embarqué (iframe/viewer).');
+              }
+            });
           });
         }
       });
@@ -336,7 +331,6 @@ ui <- page_navbar(
     tags$p("Vous pouvez réimporter un fichier d'expressions déjà annoté (il doit impérativement être nommé : add_expression_fr.csv)."),
     tags$p("Sélectionnez un extrait dans la zone ci-dessous puis ajoutez-le à votre propre dictionnaire (dic_mot, dic_norm, dic_morpho) qui sera fusionné avec le dictionnaire d'expressions IRAMUTEQ."),
     tags$p("Vous devez surligner, copier/coller les expressions pour les ajouter au dictionnaire."),
-    textAreaInput("annotation_corpus_text", NULL, value = "", rows = 14, width = "100%"),
     tags$h4("Prévisualisation annotée"),
     uiOutput("annotation_corpus_colore"),
     tags$div(
