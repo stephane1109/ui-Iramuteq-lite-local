@@ -95,9 +95,23 @@ boostana<-function (tab, ndim = 2, svd.method = 'svdR', libsvdc.path=NULL)
             sv <- svd(z, nu = qdim, nv = qdim)
             print('end svd (fallback)')
         } else {
-            print('irlba')
-            sv <- irlba::irlba(z, nv = qdim, nu = qdim)
-            print('end irlba')
+            min_dim <- min(nrow(z), ncol(z))
+            if (qdim >= min_dim) {
+                warning(
+                    paste0(
+                        "Méthode 'irlba' non applicable (nu/nv=", qdim,
+                        " doit être strictement < min(nrow, ncol)=", min_dim,
+                        "). Bascule automatique vers 'svdR'."
+                    )
+                )
+                print('start R svd (fallback: qdim >= min_dim)')
+                sv <- svd(z, nu = qdim, nv = qdim)
+                print('end svd (fallback: qdim >= min_dim)')
+            } else {
+                print('irlba')
+                sv <- irlba::irlba(z, nv = qdim, nu = qdim)
+                print('end irlba')
+            }
         }
     }
     sigmavec <- (sv$d)[2:qdim]
