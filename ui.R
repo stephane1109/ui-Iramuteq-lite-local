@@ -300,39 +300,16 @@ ui <- page_navbar(
           if (!document.fullscreenEnabled || !docEl.requestFullscreen) {
             return Promise.resolve(false);
           }
-
-          return docEl.requestFullscreen().then(function () {
-            return true;
-          }).catch(function () {
-            return false;
-          });
+          return docEl.requestFullscreen().then(function () { return true; }).catch(function () { return false; });
         }
-
-        function tenterPleinePageOuNouvelOnglet() {
-          entrerPleinePage().then(function (ok) {
-            if (!ok && estDansIframe) {
-              ouvrirNouvelOnglet();
-            }
-          });
-        }
-
-        // Tentative automatique au chargement.
-        tenterPleinePageOuNouvelOnglet();
-
-        // Fallback: première interaction utilisateur.
-        var activerSurInteraction = function () {
-          tenterPleinePageOuNouvelOnglet();
-          document.removeEventListener('click', activerSurInteraction, true);
-          document.removeEventListener('keydown', activerSurInteraction, true);
-          document.removeEventListener('touchstart', activerSurInteraction, true);
-        };
-        document.addEventListener('click', activerSurInteraction, true);
-        document.addEventListener('keydown', activerSurInteraction, true);
-        document.addEventListener('touchstart', activerSurInteraction, true);
 
         if (bouton) {
           bouton.addEventListener('click', function () {
-            tenterPleinePageOuNouvelOnglet();
+            entrerPleinePage().then(function (ok) {
+              if (!ok && estDansIframe) {
+                ouvrirNouvelOnglet();
+              }
+            });
           });
         }
       });
