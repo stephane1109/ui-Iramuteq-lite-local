@@ -1822,7 +1822,7 @@ register_events_lancer <- function(input, output, session, rv) {
               rv = rv,
               top_n_terms = 4,
               orientation = "horizontal",
-              style_affichage = input$chd_dendro_style %||% "factoextra"
+              style_affichage = input$chd_dendro_style %||% "iramuteq_bars"
             )
             TRUE
           }, error = function(e) {

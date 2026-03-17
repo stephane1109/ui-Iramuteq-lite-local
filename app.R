@@ -118,6 +118,7 @@ source("ui.R", encoding = "UTF-8", local = TRUE)
 
 source("iramuteqlite/chd_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/dendrogramme_iramuteq.R", encoding = "UTF-8", local = TRUE)
+source("iramuteqlite/iramuteq_bars.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/dendrogramme_ape.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/dendogramme_dendextend.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/dendrogramme_ggdendro.R", encoding = "UTF-8", local = TRUE)
@@ -1010,7 +1011,7 @@ server <- function(input, output, session) {
       return(invisible(NULL))
     }
 
-    style_dendro <- input$chd_dendro_style %||% "factoextra"
+    style_dendro <- input$chd_dendro_style %||% "iramuteq_bars"
     package_par_style <- c(
       factoextra = "factoextra",
       ape = "ape",
