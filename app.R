@@ -1010,7 +1010,7 @@ server <- function(input, output, session) {
       text(0.5, 0.5, "Dendrogramme CHD indisponible. Lance une analyse.", cex = 1.1)
       return(invisible(NULL))
     }
-    
+
     style_dendro <- input$chd_dendro_style %||% "iramuteq_bars"
     package_par_style <- c(
       factoextra = "factoextra",
@@ -1021,7 +1021,8 @@ server <- function(input, output, session) {
       classique = NA_character_
     )
     pkg <- unname(package_par_style[[style_dendro]])
-    if (is.character(pkg) && nzchar(pkg) && !requireNamespace(pkg, quietly = TRUE)) {
+    pkg_requis <- is.character(pkg) && length(pkg) == 1 && !is.na(pkg) && nzchar(pkg)
+    if (isTRUE(pkg_requis) && !requireNamespace(pkg, quietly = TRUE)) {
       plot.new()
       text(
         0.5,
@@ -1031,7 +1032,7 @@ server <- function(input, output, session) {
       )
       return(invisible(NULL))
     }
-    
+
     tracer_dendrogramme_iramuteq_ui(
       rv = rv,
       top_n_terms = 4,

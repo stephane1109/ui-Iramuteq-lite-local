@@ -12,7 +12,7 @@ ui_resultats_chd_iramuteq <- function() {
           inputId = "chd_dendro_style",
           label = "Style d'affichage",
           choices = c(
-            "iramuteq_bars (IRaMuTeQ-like)" = "iramuteq_bars",
+            "iramuteq_bars" = "iramuteq_bars",
             "factoextra" = "factoextra",
             "ape" = "ape",
             "dendextend" = "dendextend",
