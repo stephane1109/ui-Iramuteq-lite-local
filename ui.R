@@ -258,7 +258,7 @@ ui <- page_navbar(
     tags$div(style = "margin-top: 10px;"),
     actionButton("btn_plein_ecran", "Ouvrir en pleine page", class = "btn-outline-secondary"),
     tags$small(
-      "Si le mode plein écran est bloqué (Viewer RStudio/iframe), le bouton ouvre un nouvel onglet.",
+      "Le mode plein écran dépend du navigateur (peut être limité dans certains viewers).",
       style = "display:block; margin-top: 6px; color: #666;"
     )
   ),
@@ -287,14 +287,6 @@ ui <- page_navbar(
         var bouton = document.getElementById('btn_plein_ecran');
         var estDansIframe = window.self !== window.top;
 
-        function ouvrirNouvelOnglet() {
-          try {
-            window.open(window.location.href, '_blank', 'noopener,noreferrer');
-          } catch (e) {
-            // Ignorer: certains environnements verrouillent window.open.
-          }
-        }
-
         function entrerPleinePage() {
           if (document.fullscreenElement) return Promise.resolve(true);
           if (!document.fullscreenEnabled || !docEl.requestFullscreen) {
@@ -307,7 +299,7 @@ ui <- page_navbar(
           bouton.addEventListener('click', function () {
             entrerPleinePage().then(function (ok) {
               if (!ok && estDansIframe) {
-                ouvrirNouvelOnglet();
+                console.warn('Plein écran refusé en contexte embarqué (iframe/viewer).');
               }
             });
           });
