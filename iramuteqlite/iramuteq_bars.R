@@ -143,8 +143,11 @@ tracer_dendrogramme_iramuteq_bars_hclust <- function(hc,
   tip_cols <- if (length(cols_map)) unname(cols_map[as.character(classes_tip)]) else rep("#7aa6ff", length(classes_tip))
   tip_cols[is.na(tip_cols) | !nzchar(tip_cols)] <- "#7aa6ff"
 
-  hmax <- max(c(1, hc$height), na.rm = TRUE)
-  extra_right <- max(1, hmax * 0.9)
+  old_mar <- par("mar")
+  old_xpd <- par("xpd")
+  on.exit(par(mar = old_mar, xpd = old_xpd), add = TRUE)
+
+  par(mar = c(1, 1, 3, 10), xpd = NA)
 
   plot(
     hc,
@@ -154,14 +157,17 @@ tracer_dendrogramme_iramuteq_bars_hclust <- function(hc,
     labels = FALSE,
     hang = -1,
     frame.plot = FALSE,
-    xlim = c(hmax * 1.05, -extra_right),
     main = main
   )
 
+  usr <- par("usr")
+  span_x <- abs(usr[[1]] - usr[[2]])
+  if (!is.finite(span_x) || span_x <= 0) span_x <- 1
+
   y_pos <- seq_along(classes_tip)
-  label_x <- -extra_right * 0.10
-  bar_left <- -extra_right * 0.32
-  bar_max <- extra_right * 0.55
+  label_x <- usr[[2]] - span_x * 0.12
+  bar_left <- usr[[2]] - span_x * 0.30
+  bar_max <- span_x * 0.22
 
   for (i in seq_along(classes_tip)) {
     cl <- classes_tip[[i]]
