@@ -545,7 +545,7 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
                                              res_stats_df = NULL,
                                              top_n_terms = 4,
                                              orientation = c("vertical", "horizontal"),
-                                             style_affichage = c("factoextra", "ape", "dendextend", "ggdendro", "iramuteq_bars", "classique"),
+                                             style_affichage = c("iramuteq_bars", "factoextra"),
                                              edge_style = c("diagonal", "orthogonal"),
                                              edge_lwd = 1.6) {
   orientation <- match.arg(orientation)
@@ -554,7 +554,7 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
   edge_lwd <- suppressWarnings(as.numeric(edge_lwd))
   if (!is.finite(edge_lwd) || is.na(edge_lwd) || edge_lwd <= 0) edge_lwd <- 1.6
   
-  .tracer_dendrogramme_hclust <- function(res_stats_df, classes, top_n_terms, orientation, style_affichage = "classique") {
+  .tracer_dendrogramme_hclust <- function(res_stats_df, classes, top_n_terms, orientation, style_affichage = "iramuteq_bars") {
     if (is.null(res_stats_df) || !is.data.frame(res_stats_df)) return(FALSE)
     if (!all(c("Classe", "Terme") %in% names(res_stats_df))) return(FALSE)
     
@@ -639,18 +639,6 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
       # Si le rendu factoextra échoue, on signale l'échec (pas de tracé CHD legacy).
     }
 
-    if (identical(style_affichage, "ape")) {
-      if (isTRUE(tracer_dendrogramme_ape(hc = hc, orientation = orientation))) return(TRUE)
-    }
-
-    if (identical(style_affichage, "dendextend")) {
-      if (isTRUE(tracer_dendrogramme_dendextend(hc = hc, orientation = orientation))) return(TRUE)
-    }
-
-    if (identical(style_affichage, "ggdendro")) {
-      if (isTRUE(tracer_dendrogramme_ggdendro(hc = hc, orientation = orientation))) return(TRUE)
-    }
-    
     FALSE
   }
   
@@ -929,52 +917,7 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
       }
     }
   } else {
-    if (identical(style_affichage, "classique")) {
-      par(mar = c(1, 2, 3, 2))
-      plot(0, 0,
-           type = "n",
-           xlim = c(-0.5, max_depth + 0.8),
-           ylim = c(min(x_vals) - 0.5, max(x_vals) + 0.5),
-           axes = FALSE,
-           xlab = "", ylab = "",
-           main = "Dendrogramme CHD"
-      )
-      
-      for (i in seq_len(nrow(edges_df))) {
-        p_key <- as.character(edges_df$parent[[i]])
-        c_key <- as.character(edges_df$child[[i]])
-        p_xy <- node_xy[[p_key]]
-        c_xy <- node_xy[[c_key]]
-        if (is.null(p_xy) || is.null(c_xy)) next
-        .draw_tree_edge(
-          x1 = p_xy[["y"]], y1 = p_xy[["x"]],
-          x2 = c_xy[["y"]], y2 = c_xy[["x"]],
-          mode = "horizontal_tree",
-          lwd = 2.3,
-          col = "#5f5f5f",
-          xpd = TRUE
-        )
-      }
-      
-      for (tip in class_tip_keys) {
-        xy <- node_xy[[tip]]
-        if (is.null(xy)) next
-        lignes <- strsplit(tip_label[[tip]], "\n", fixed = TRUE)[[1]]
-        classe_txt <- lignes[[1]]
-        termes_txt <- if (length(lignes) > 1) lignes[[2]] else ""
-        text(xy[["y"]] + 0.15, xy[["x"]] + 0.1, labels = classe_txt, cex = 0.75, pos = 4, xpd = TRUE)
-        if (nzchar(termes_txt)) {
-          termes_vec <- trimws(strsplit(termes_txt, ",", fixed = TRUE)[[1]])
-          termes_vec <- termes_vec[nzchar(termes_vec)]
-          if (length(termes_vec)) {
-            offsets_y <- seq(-0.35, 0.35, length.out = length(termes_vec))
-            tailles <- seq(0.85, 0.65, length.out = length(termes_vec))
-            text(xy[["y"]] + 0.55, xy[["x"]] + offsets_y, labels = termes_vec, cex = tailles, pos = 4, xpd = TRUE)
-          }
-        }
-      }
-      return(invisible(NULL))
-    }
+
     
     tracer_dendrogramme_iramuteq_bars(
       edges_df = edges_df,
