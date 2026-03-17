@@ -669,7 +669,7 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
     return(invisible(NULL))
   }
   
-  if (identical(style_affichage, "factoextra")) {
+  if (style_affichage %in% c("factoextra", "ape", "dendextend", "ggdendro")) {
     plot.new()
     text(0.5, 0.5, paste0("Impossible de tracer le dendrogramme avec le style '", style_affichage, "'."), cex = 1.0)
     return(invisible(NULL))
