@@ -33,7 +33,7 @@
 tracer_dendrogramme_iramuteq_ui <- function(rv,
                                             top_n_terms = 4,
                                             orientation = "horizontal",
-                                            style_affichage = c("iramuteq_bars", "classique", "factoextra"),
+                                            style_affichage = c("iramuteq_bars", "factoextra"),
                                             edge_style = c("orthogonal", "diagonal"),
                                             edge_lwd = 2.2) {
   orientation <- match.arg(orientation, c("vertical", "horizontal"))
