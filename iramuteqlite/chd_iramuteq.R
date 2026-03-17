@@ -639,6 +639,18 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
       # Si le rendu factoextra échoue, on signale l'échec (pas de tracé CHD legacy).
     }
 
+    if (identical(style_affichage, "iramuteq_bars")) {
+      ok_bars <- tryCatch(
+        isTRUE(tracer_dendrogramme_iramuteq_bars_hclust(
+          hc = hc,
+          classes = classes,
+          main = "Dendrogramme CHD"
+        )),
+        error = function(e) FALSE
+      )
+      if (isTRUE(ok_bars)) return(TRUE)
+    }
+
     FALSE
   }
   
