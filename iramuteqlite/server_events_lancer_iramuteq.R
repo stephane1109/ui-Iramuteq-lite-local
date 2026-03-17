@@ -1157,7 +1157,7 @@ register_events_lancer <- function(input, output, session, rv) {
 
           if (isTRUE(input$expression_utiliser_dictionnaire)) {
             rv$expression_fr_df <- charger_expression_fr(app_dir)
-            ajouter_log(rv, paste0("expression_fr chargé: ", nrow(rv$expression_fr_df), " entrées."))
+            ajouter_log(rv, paste0("Expression (fr) chargé: ", nrow(rv$expression_fr_df), " entrées."))
 
             expr_session_df <- NULL
             add_expression_actif <- isTRUE(rv$utiliser_add_expression)
