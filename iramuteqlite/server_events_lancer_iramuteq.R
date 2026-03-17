@@ -1157,6 +1157,7 @@ register_events_lancer <- function(input, output, session, rv) {
 
           if (isTRUE(input$expression_utiliser_dictionnaire)) {
             rv$expression_fr_df <- charger_expression_fr(app_dir)
+            ajouter_log(rv, paste0("Expression (fr) chargé: ", nrow(rv$expression_fr_df), " entrées."))
 
             expr_session_df <- NULL
             add_expression_actif <- isTRUE(rv$utiliser_add_expression)
@@ -1176,6 +1177,7 @@ register_events_lancer <- function(input, output, session, rv) {
 
             expressions_actives_df <- rv$expression_fr_df
             if (isTRUE(add_expression_actif) && !is.null(expr_session_df) && nrow(expr_session_df) > 0) {
+              ajouter_log(rv, paste0("add_expression_fr.csv chargé: ", nrow(expr_session_df), " entrées."))
               deja_base <- expr_session_df$dic_mot %in% rv$expression_fr_df$dic_mot
               expr_session_ajouts <- expr_session_df[!deja_base, c("dic_mot", "dic_norm"), drop = FALSE]
               expressions_actives_df <- rbind(rv$expression_fr_df[, c("dic_mot", "dic_norm"), drop = FALSE], expr_session_ajouts)
