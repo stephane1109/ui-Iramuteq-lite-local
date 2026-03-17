@@ -256,7 +256,11 @@ ui <- page_navbar(
     tags$div(textOutput("nom_fichier_selectionne"), style = "margin-bottom: 12px;"),
     downloadButton("dl_zip", "Télécharger les résultats"),
     tags$div(style = "margin-top: 10px;"),
-    actionButton("btn_plein_ecran", "Ouvrir en pleine page", class = "btn-outline-secondary")
+    actionButton("btn_plein_ecran", "Ouvrir en pleine page", class = "btn-outline-secondary"),
+    tags$small(
+      "Si le mode plein écran est bloqué (Viewer RStudio/iframe), le bouton ouvre un nouvel onglet.",
+      style = "display:block; margin-top: 6px; color: #666;"
+    )
   ),
 
   tags$head(
@@ -281,32 +285,31 @@ ui <- page_navbar(
       document.addEventListener('DOMContentLoaded', function () {
         var docEl = document.documentElement;
         var bouton = document.getElementById('btn_plein_ecran');
+        var estDansIframe = window.self !== window.top;
 
-        function entrerPleinePage() {
-          if (document.fullscreenElement) return;
-          if (!docEl.requestFullscreen) return;
-          docEl.requestFullscreen().catch(function () {
-            // Certains navigateurs exigent une interaction utilisateur explicite.
-          });
+        function ouvrirNouvelOnglet() {
+          try {
+            window.open(window.location.href, '_blank', 'noopener,noreferrer');
+          } catch (e) {
+            // Ignorer: certains environnements verrouillent window.open.
+          }
         }
 
-        // Tentative automatique au chargement.
-        entrerPleinePage();
-
-        // Fallback: première interaction utilisateur.
-        var activerSurInteraction = function () {
-          entrerPleinePage();
-          document.removeEventListener('click', activerSurInteraction, true);
-          document.removeEventListener('keydown', activerSurInteraction, true);
-          document.removeEventListener('touchstart', activerSurInteraction, true);
-        };
-        document.addEventListener('click', activerSurInteraction, true);
-        document.addEventListener('keydown', activerSurInteraction, true);
-        document.addEventListener('touchstart', activerSurInteraction, true);
+        function entrerPleinePage() {
+          if (document.fullscreenElement) return Promise.resolve(true);
+          if (!document.fullscreenEnabled || !docEl.requestFullscreen) {
+            return Promise.resolve(false);
+          }
+          return docEl.requestFullscreen().then(function () { return true; }).catch(function () { return false; });
+        }
 
         if (bouton) {
           bouton.addEventListener('click', function () {
-            entrerPleinePage();
+            entrerPleinePage().then(function (ok) {
+              if (!ok && estDansIframe) {
+                ouvrirNouvelOnglet();
+              }
+            });
           });
         }
       });
