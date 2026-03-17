@@ -476,11 +476,6 @@ server <- function(input, output, session) {
       ouvrir_modal_parametres()
     }
   }, ignoreInit = TRUE)
-
-  observeEvent(input$ouvrir_param_chd_depuis_nav, {
-    ouvrir_modal_parametres()
-  }, ignoreInit = TRUE)
-  
   observeEvent(input$nav_principal, {
     if (isTRUE(identical(input$nav_principal, "similitudes"))) {
       ouvrir_modal_parametres_similitudes()
@@ -1074,7 +1069,7 @@ server <- function(input, output, session) {
     panneaux <- lapply(classes, function(cl) {
       output_id <- paste0("table_stats_chd_iramuteq_cl_", cl)
       
-      output[[output_id]] <- renderTable({
+      output[[output_id]] <- DT::renderDT({
         extraire_stats_chd_classe(
           rv$res_stats_df,
           classe = cl,
@@ -1084,7 +1079,18 @@ server <- function(input, output, session) {
           seuil_p_significativite = input$max_p,
           style = "iramuteq_clone"
         )
-      }, rownames = FALSE, sanitize.text.function = function(x) x)
+      },
+      rownames = FALSE,
+      escape = FALSE,
+      selection = "none",
+      options = list(
+        dom = "t",
+        paging = FALSE,
+        searching = FALSE,
+        info = FALSE,
+        ordering = FALSE,
+        autoWidth = TRUE
+      ))
 
       enregistrer_popup_forme_stats_chd(
         input = input,
@@ -1096,7 +1102,7 @@ server <- function(input, output, session) {
       
       tabPanel(
         title = paste0("Classe ", cl),
-        tableOutput(output_id)
+        DT::DTOutput(output_id)
       )
     })
     
