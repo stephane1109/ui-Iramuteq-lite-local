@@ -178,8 +178,8 @@ tracer_dendrogramme_iramuteq_bars_hclust <- function(hc,
 
   max_h <- max(c(1, hc$height), na.rm = TRUE)
   bar_space <- max_h * 0.9
-  bar_left <- -bar_space * 0.78
-  bar_max <- bar_space * 0.58
+  bar_left <- -bar_space * 0.82
+  bar_max <- bar_space * 0.72
   label_x <- -bar_space * 0.30
 
   old_mar <- par("mar")
@@ -224,5 +224,4 @@ tracer_dendrogramme_iramuteq_bars_hclust <- function(hc,
 
   TRUE
 }
-
 
