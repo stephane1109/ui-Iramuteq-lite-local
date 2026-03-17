@@ -545,7 +545,7 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
                                              res_stats_df = NULL,
                                              top_n_terms = 4,
                                              orientation = c("vertical", "horizontal"),
-                                             style_affichage = c("factoextra", "iramuteq_bars", "classique"),
+                                             style_affichage = c("iramuteq_bars", "factoextra"),
                                              edge_style = c("diagonal", "orthogonal"),
                                              edge_lwd = 1.6) {
   orientation <- match.arg(orientation)
@@ -554,7 +554,7 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
   edge_lwd <- suppressWarnings(as.numeric(edge_lwd))
   if (!is.finite(edge_lwd) || is.na(edge_lwd) || edge_lwd <= 0) edge_lwd <- 1.6
   
-  .tracer_dendrogramme_hclust <- function(res_stats_df, classes, top_n_terms, orientation, style_affichage = "classique") {
+  .tracer_dendrogramme_hclust <- function(res_stats_df, classes, top_n_terms, orientation, style_affichage = "iramuteq_bars") {
     if (is.null(res_stats_df) || !is.data.frame(res_stats_df)) return(FALSE)
     if (!all(c("Classe", "Terme") %in% names(res_stats_df))) return(FALSE)
     
@@ -638,7 +638,7 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
       if (isTRUE(ok_facto)) return(TRUE)
       # Si le rendu factoextra échoue, on signale l'échec (pas de tracé CHD legacy).
     }
-    
+
     FALSE
   }
   
@@ -659,7 +659,7 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
   
   if (identical(style_affichage, "factoextra")) {
     plot.new()
-    text(0.5, 0.5, "Impossible de tracer le dendrogramme avec factoextra.", cex = 1.0)
+    text(0.5, 0.5, paste0("Impossible de tracer le dendrogramme avec le style '", style_affichage, "'."), cex = 1.0)
     return(invisible(NULL))
   }
   
@@ -917,136 +917,19 @@ tracer_dendrogramme_chd_iramuteq <- function(chd_obj,
       }
     }
   } else {
-    if (identical(style_affichage, "classique")) {
-      par(mar = c(1, 2, 3, 2))
-      plot(0, 0,
-           type = "n",
-           xlim = c(-0.5, max_depth + 0.8),
-           ylim = c(min(x_vals) - 0.5, max(x_vals) + 0.5),
-           axes = FALSE,
-           xlab = "", ylab = "",
-           main = "Dendrogramme CHD"
-      )
-      
-      for (i in seq_len(nrow(edges_df))) {
-        p_key <- as.character(edges_df$parent[[i]])
-        c_key <- as.character(edges_df$child[[i]])
-        p_xy <- node_xy[[p_key]]
-        c_xy <- node_xy[[c_key]]
-        if (is.null(p_xy) || is.null(c_xy)) next
-        .draw_tree_edge(
-          x1 = p_xy[["y"]], y1 = p_xy[["x"]],
-          x2 = c_xy[["y"]], y2 = c_xy[["x"]],
-          mode = "horizontal_tree",
-          lwd = 2.3,
-          col = "#5f5f5f",
-          xpd = TRUE
-        )
-      }
-      
-      for (tip in class_tip_keys) {
-        xy <- node_xy[[tip]]
-        if (is.null(xy)) next
-        lignes <- strsplit(tip_label[[tip]], "\n", fixed = TRUE)[[1]]
-        classe_txt <- lignes[[1]]
-        termes_txt <- if (length(lignes) > 1) lignes[[2]] else ""
-        text(xy[["y"]] + 0.15, xy[["x"]] + 0.1, labels = classe_txt, cex = 0.75, pos = 4, xpd = TRUE)
-        if (nzchar(termes_txt)) {
-          termes_vec <- trimws(strsplit(termes_txt, ",", fixed = TRUE)[[1]])
-          termes_vec <- termes_vec[nzchar(termes_vec)]
-          if (length(termes_vec)) {
-            offsets_y <- seq(-0.35, 0.35, length.out = length(termes_vec))
-            tailles <- seq(0.85, 0.65, length.out = length(termes_vec))
-            text(xy[["y"]] + 0.55, xy[["x"]] + offsets_y, labels = termes_vec, cex = tailles, pos = 4, xpd = TRUE)
-          }
-        }
-      }
-      return(invisible(NULL))
-    }
+
     
-    par(mar = c(1, 1, 3, 1))
-    
-    tip_keys <- class_tip_keys
-    tip_pos <- vapply(tip_keys, function(k) {
-      xy <- node_xy[[k]]
-      if (is.null(xy)) return(NA_real_)
-      as.numeric(xy[["x"]])
-    }, numeric(1))
-    ok_tip <- is.finite(tip_pos)
-    tip_keys <- tip_keys[ok_tip]
-    
-    classes_tip <- as.integer(class_by_tip[tip_keys])
-    pct_tip <- vapply(classes_tip, function(cl) {
-      if (is.null(pct_par_classe)) return(NA_real_)
-      suppressWarnings(as.numeric(pct_par_classe[[as.character(cl)]]))
-    }, numeric(1))
-    if (!length(pct_tip) || all(!is.finite(pct_tip))) {
-      pct_tip <- rep(100 / max(1, length(tip_keys)), length(tip_keys))
-    }
-    pct_tip[!is.finite(pct_tip) | pct_tip < 0] <- 0
-    
-    cols_map <- .palette_classes_iramuteq(classes_tip)
-    tip_cols <- if (length(cols_map)) unname(cols_map[as.character(classes_tip)]) else rep("#7aa6ff", length(classes_tip))
-    tip_cols[is.na(tip_cols) | !nzchar(tip_cols)] <- "#7aa6ff"
-    
-    tree_xmax <- max_depth + 0.35
-    bar_left <- tree_xmax + 1.2
-    bar_max <- 4.8
-    x_right <- bar_left + bar_max + 0.8
-    
-    plot(0, 0,
-         type = "n",
-         xlim = c(-0.5, x_right),
-         ylim = c(min(x_vals) - 0.5, max(x_vals) + 0.5),
-         axes = FALSE,
-         xlab = "", ylab = "",
-         main = "Dendrogramme CHD"
+    tracer_dendrogramme_iramuteq_bars(
+      edges_df = edges_df,
+      node_xy = node_xy,
+      class_tip_keys = class_tip_keys,
+      class_by_tip = class_by_tip,
+      pct_par_classe = pct_par_classe,
+      max_depth = max_depth,
+      x_vals = x_vals,
+      .palette_classes_iramuteq = .palette_classes_iramuteq,
+      .draw_tree_edge = .draw_tree_edge
     )
-    
-    for (i in seq_len(nrow(edges_df))) {
-      p_key <- as.character(edges_df$parent[[i]])
-      c_key <- as.character(edges_df$child[[i]])
-      p_xy <- node_xy[[p_key]]
-      c_xy <- node_xy[[c_key]]
-      if (is.null(p_xy) || is.null(c_xy)) next
-      .draw_tree_edge(
-        x1 = p_xy[["y"]], y1 = p_xy[["x"]],
-        x2 = c_xy[["y"]], y2 = c_xy[["x"]],
-        mode = "horizontal_tree",
-        col = "#707070",
-        lwd = 2.4,
-        xpd = TRUE
-      )
-    }
-    
-    for (i in seq_along(tip_keys)) {
-      tip <- tip_keys[[i]]
-      xy <- node_xy[[tip]]
-      if (is.null(xy)) next
-      
-      cl <- classes_tip[[i]]
-      pct <- pct_tip[[i]]
-      col_bar <- tip_cols[[i]]
-      
-      classe_txt <- paste0("classe ", cl)
-      text(tree_xmax + 0.08, xy[["x"]], labels = classe_txt, cex = 1.1, pos = 4, xpd = TRUE,
-           col = col_bar, font = 3)
-      
-      width <- bar_max * (pct / 100)
-      rect(
-        xleft = bar_left,
-        ybottom = xy[["x"]] - 0.42,
-        xright = bar_left + width,
-        ytop = xy[["x"]] + 0.42,
-        col = grDevices::adjustcolor(col_bar, alpha.f = 0.95),
-        border = "#6f6f6f",
-        lwd = 1.2,
-        xpd = TRUE
-      )
-      
-      pct_lab <- paste0(format(round(pct, 1), nsmall = 1), " %")
-      text(bar_left + width - 0.12, xy[["x"]], labels = pct_lab, pos = 2, cex = 0.95, xpd = TRUE, col = "#1f1f1f")
-    }
   }
   
   invisible(NULL)
