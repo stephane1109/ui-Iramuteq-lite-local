@@ -275,7 +275,37 @@ ui <- page_navbar(
         justify-content: center;
       }
     ")),
+    tags$script(HTML("
+      document.addEventListener('DOMContentLoaded', function () {
+        var docEl = document.documentElement;
+        var bouton = document.getElementById('btn_plein_ecran');
+        var estDansIframe = window.self !== window.top;
 
+        function entrerPleinePage() {
+          if (document.fullscreenElement) return Promise.resolve(true);
+          if (!document.fullscreenEnabled || !docEl.requestFullscreen) {
+            return Promise.resolve(false);
+          }
+          return docEl.requestFullscreen().then(function () { return true; }).catch(function () { return false; });
+        }
+
+        if (bouton) {
+          bouton.addEventListener('click', function () {
+            entrerPleinePage().then(function (ok) {
+              if (!ok && estDansIframe) {
+                console.warn('Plein écran refusé en contexte embarqué (iframe/viewer).');
+              }
+            });
+          });
+        }
+
+        document.addEventListener('click', function (evt) {
+          var cible = evt.target && evt.target.closest ? evt.target.closest('[data-value="resultats_chd"]') : null;
+          if (!cible || !window.Shiny || !window.Shiny.setInputValue) return;
+          window.Shiny.setInputValue('ouvrir_param_chd_depuis_nav', Date.now(), { priority: 'event' });
+        });
+      });
+    "))
   ),
 
   nav_panel(
