@@ -124,11 +124,44 @@ tracer_dendrogramme_iramuteq_bars_hclust <- function(hc,
     if (length(classes_int)) pct_par_classe <- prop.table(table(classes_int)) * 100
   }
 
-  ord <- hc$order
-  ord <- ord[is.finite(ord) & ord >= 1 & ord <= length(hc$labels)]
-  if (!length(ord)) return(FALSE)
+  dnd <- tryCatch(as.dendrogram(hc), error = function(e) NULL)
+  if (is.null(dnd)) return(FALSE)
 
-  labels_ord <- hc$labels[ord]
+  leaf_idx <- 0L
+  edges <- data.frame(px = numeric(0), py = numeric(0), cx = numeric(0), cy = numeric(0))
+
+  .walk <- function(node) {
+    if (is.leaf(node)) {
+      leaf_idx <<- leaf_idx + 1L
+      lbl <- as.character(attr(node, "label"))
+      return(list(x = 0, y = as.numeric(leaf_idx), labels = lbl, ys = as.numeric(leaf_idx)))
+    }
+
+    kids <- lapply(node, .walk)
+    x_parent <- as.numeric(attr(node, "height"))
+    y_parent <- mean(vapply(kids, function(k) k$y, numeric(1)))
+
+    for (k in kids) {
+      edges <<- rbind(
+        edges,
+        data.frame(px = x_parent, py = y_parent, cx = x_parent, cy = k$y),
+        data.frame(px = x_parent, py = k$y, cx = k$x, cy = k$y)
+      )
+    }
+
+    list(
+      x = x_parent,
+      y = y_parent,
+      labels = unlist(lapply(kids, function(k) k$labels), use.names = FALSE),
+      ys = unlist(lapply(kids, function(k) k$ys), use.names = FALSE)
+    )
+  }
+
+  root <- .walk(dnd)
+  if (!length(root$labels) || !length(root$ys)) return(FALSE)
+
+  labels_ord <- root$labels
+  y_pos <- root$ys
   classes_tip <- suppressWarnings(as.integer(sub("^\\s*Classe\\s+([0-9]+).*$", "\\1", labels_ord, perl = TRUE)))
   classes_tip[!is.finite(classes_tip)] <- seq_along(classes_tip)[!is.finite(classes_tip)]
 
@@ -143,49 +176,53 @@ tracer_dendrogramme_iramuteq_bars_hclust <- function(hc,
   tip_cols <- if (length(cols_map)) unname(cols_map[as.character(classes_tip)]) else rep("#7aa6ff", length(classes_tip))
   tip_cols[is.na(tip_cols) | !nzchar(tip_cols)] <- "#7aa6ff"
 
+  max_h <- max(c(1, hc$height), na.rm = TRUE)
+  bar_space <- max_h * 0.9
+  bar_left <- -bar_space * 0.78
+  bar_max <- bar_space * 0.58
+  label_x <- -bar_space * 0.30
+
   old_mar <- par("mar")
-  old_xpd <- par("xpd")
-  on.exit(par(mar = old_mar, xpd = old_xpd), add = TRUE)
+  on.exit(par(mar = old_mar), add = TRUE)
+  par(mar = c(1, 1, 3, 8))
 
-  par(mar = c(1, 1, 3, 10), xpd = NA)
-
-  plot(
-    hc,
-    horiz = TRUE,
-    axes = FALSE,
-    ann = FALSE,
-    labels = FALSE,
-    hang = -1,
-    frame.plot = FALSE,
-    main = main
+  plot(0, 0,
+       type = "n",
+       xlim = c(max_h * 1.05, -bar_space),
+       ylim = c(min(y_pos) - 0.8, max(y_pos) + 0.8),
+       axes = FALSE,
+       xlab = "", ylab = "",
+       main = main
   )
 
-  usr <- par("usr")
-  span_x <- abs(usr[[1]] - usr[[2]])
-  if (!is.finite(span_x) || span_x <= 0) span_x <- 1
-
-  y_pos <- seq_along(classes_tip)
-  label_x <- usr[[2]] - span_x * 0.12
-  bar_left <- usr[[2]] - span_x * 0.30
-  bar_max <- span_x * 0.22
+  if (nrow(edges)) {
+    segments(edges$px, edges$py, edges$cx, edges$cy, col = "#1f1f1f", lwd = 1.4, xpd = TRUE)
+  }
 
   for (i in seq_along(classes_tip)) {
     cl <- classes_tip[[i]]
     pct <- pct_tip[[i]]
     col_bar <- tip_cols[[i]]
+    y <- y_pos[[i]]
 
-    text(label_x, y_pos[[i]], labels = paste0("classe ", cl), cex = 1.1, pos = 2, col = col_bar, font = 3, xpd = TRUE)
+    text(label_x, y, labels = paste0("classe ", cl), cex = 1.15, pos = 2, col = col_bar, font = 3, xpd = TRUE)
 
     width <- bar_max * (pct / 100)
-    rect(bar_left, y_pos[[i]] - 0.42, bar_left + width, y_pos[[i]] + 0.42,
-         col = grDevices::adjustcolor(col_bar, alpha.f = 0.95), border = "#6f6f6f", lwd = 1.2, xpd = TRUE)
+    rect(bar_left, y - 0.36, bar_left + width, y + 0.36,
+         col = grDevices::adjustcolor(col_bar, alpha.f = 0.95), border = "#6f6f6f", lwd = 1.1, xpd = TRUE)
 
     pct_lab <- paste0(format(round(pct, 1), nsmall = 1), " %")
-    txt_x <- if (width >= bar_max * 0.24) bar_left + width - 0.08 else bar_left + width + 0.10
-    txt_pos <- if (width >= bar_max * 0.24) 2 else 4
-    text(txt_x, y_pos[[i]], labels = pct_lab, pos = txt_pos, cex = 1.0, col = "#1f1f1f", xpd = TRUE)
+    inside <- width >= (bar_max * 0.22)
+    text(if (inside) bar_left + width - 0.06 else bar_left + width + 0.08,
+         y,
+         labels = pct_lab,
+         pos = if (inside) 2 else 4,
+         cex = 1.0,
+         col = "#1f1f1f",
+         xpd = TRUE)
   }
 
   TRUE
 }
+
 
