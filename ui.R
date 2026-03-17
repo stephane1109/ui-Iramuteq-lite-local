@@ -254,13 +254,7 @@ ui <- page_navbar(
     tags$div(style = "margin-top: 10px;"),
     tags$strong("Nom du fichier :"),
     tags$div(textOutput("nom_fichier_selectionne"), style = "margin-bottom: 12px;"),
-    downloadButton("dl_zip", "Télécharger les résultats"),
-    tags$div(style = "margin-top: 10px;"),
-    actionButton("btn_plein_ecran", "Ouvrir en pleine page", class = "btn-outline-secondary"),
-    tags$small(
-      "Le mode plein écran dépend du navigateur (peut être limité dans certains viewers).",
-      style = "display:block; margin-top: 6px; color: #666;"
-    )
+    downloadButton("dl_zip", "Télécharger les résultats")
   ),
 
   tags$head(
