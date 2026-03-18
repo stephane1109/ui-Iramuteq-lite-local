@@ -118,6 +118,19 @@ if (!exists("echapper_segments_en_preservant_surlignage", mode = "function")) {
   }
 }
 
+if (!exists("normaliser_espacement_ponctuation_fr", mode = "function")) {
+  normaliser_espacement_ponctuation_fr <- function(textes) {
+    textes <- as.character(textes)
+    if (!length(textes)) return(textes)
+
+    # Corrige les artefacts de concaténation tokenisée, ex: "propositions ."
+    textes <- gsub("\\s+([\\.,;:!?%\\)\\]\\}»])", "\\1", textes, perl = TRUE)
+    # Évite les doubles espaces et retire les bords.
+    textes <- gsub("[[:space:]]{2,}", " ", textes, perl = TRUE)
+    trimws(textes)
+  }
+}
+
 if (!exists("detecter_segments_contenant_termes_unicode", mode = "function")) {
   detecter_segments_contenant_termes_unicode <- function(textes, termes) {
     textes <- as.character(textes)
@@ -251,7 +264,8 @@ generer_concordancier_iramuteq_html <- function(
     }
 
     if (length(termes_cl) == 0) {
-      for (seg in echapper_segments_en_preservant_surlignage(unname(segments_keep), "<span class='highlight'>", "</span>")) {
+      segments_keep <- normaliser_espacement_ponctuation_fr(unname(segments_keep))
+      for (seg in echapper_segments_en_preservant_surlignage(segments_keep, "<span class='highlight'>", "</span>")) {
         writeLines(paste0("<p class='segment'>", seg, "</p>"), con)
       }
       writeLines("</div>", con)
@@ -289,6 +303,7 @@ generer_concordancier_iramuteq_html <- function(
       segments_hl <- unname(segments_keep)
     }
 
+    segments_hl <- normaliser_espacement_ponctuation_fr(segments_hl)
     for (seg in echapper_segments_en_preservant_surlignage(segments_hl, "<span class='highlight'>", "</span>")) {
       writeLines(paste0("<p class='segment'>", seg, "</p>"), con)
     }
