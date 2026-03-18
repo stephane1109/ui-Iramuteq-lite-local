@@ -11,6 +11,54 @@ if (!exists("expandir_variantes_termes", mode = "function")) {
   }
 }
 
+
+if (!exists(".normaliser_cle_terme_concordancier", mode = "function")) {
+  .normaliser_cle_terme_concordancier <- function(x) {
+    x <- tolower(trimws(as.character(x)))
+    x[is.na(x)] <- ""
+    x <- iconv(x, from = "", to = "ASCII//TRANSLIT")
+    x[is.na(x)] <- ""
+    x <- gsub("[^[:alnum:]_]+", "", x, perl = TRUE)
+    x
+  }
+}
+
+if (!exists("expandir_termes_avec_lexique", mode = "function")) {
+  expandir_termes_avec_lexique <- function(termes, lexique_fr_df = NULL) {
+    termes <- expandir_variantes_termes(termes)
+    if (!length(termes)) return(character(0))
+
+    if (is.null(lexique_fr_df) || !is.data.frame(lexique_fr_df) || nrow(lexique_fr_df) == 0) {
+      return(termes)
+    }
+    colonnes_requises <- c("c_mot", "c_lemme")
+    if (!all(colonnes_requises %in% names(lexique_fr_df))) {
+      return(termes)
+    }
+
+    lex <- lexique_fr_df[, colonnes_requises, drop = FALSE]
+    lex$c_mot <- trimws(as.character(lex$c_mot))
+    lex$c_lemme <- trimws(as.character(lex$c_lemme))
+    idx_ok <- nzchar(lex$c_mot) & nzchar(lex$c_lemme)
+    lex <- lex[idx_ok, , drop = FALSE]
+    if (!nrow(lex)) return(termes)
+
+    key_lemme <- .normaliser_cle_terme_concordancier(lex$c_lemme)
+    key_mot <- .normaliser_cle_terme_concordancier(lex$c_mot)
+
+    map_lemme_to_mot <- split(lex$c_mot[nzchar(key_lemme)], key_lemme[nzchar(key_lemme)])
+    map_mot_to_lemme <- split(lex$c_lemme[nzchar(key_mot)], key_mot[nzchar(key_mot)])
+
+    keys <- unique(.normaliser_cle_terme_concordancier(termes))
+    keys <- keys[nzchar(keys)]
+
+    formes <- unlist(map_lemme_to_mot[keys], use.names = FALSE)
+    lemmes <- unlist(map_mot_to_lemme[keys], use.names = FALSE)
+
+    expandir_variantes_termes(unique(c(termes, formes, lemmes)))
+  }
+}
+
 if (!exists(".echapper_regex", mode = "function")) {
   .echapper_regex <- function(x) {
     gsub("([][{}()+*^$|\\?.])", "\\\\\\1", x, perl = TRUE)
@@ -183,7 +231,7 @@ generer_concordancier_iramuteq_html <- function(
       }
     }
 
-    termes_cl <- expandir_variantes_termes(termes_cl)
+    termes_cl <- expandir_termes_avec_lexique(termes_cl, if (!is.null(rv)) rv$lexique_fr_df else NULL)
     keep <- detecter_segments_contenant_termes_unicode(textes_filtrage, termes_cl)
     keep[is.na(keep)] <- FALSE
 

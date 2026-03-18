@@ -32,9 +32,18 @@ construire_type_lexique_fr <- function(termes, lexique_fr_df) {
   indexer <- function(cles, valeurs) {
     cles <- tolower(trimws(as.character(cles)))
     cles[is.na(cles)] <- ""
-    idx <- nzchar(cles)
+    valeurs <- .normaliser_type_terme_iramuteq(valeurs)
+    idx <- nzchar(cles) & nzchar(valeurs)
     if (!any(idx)) return(character(0))
-    stats::setNames(as.character(valeurs[idx]), cles[idx])
+
+    split_vals <- split(valeurs[idx], cles[idx])
+    agreges <- vapply(
+      split_vals,
+      function(v) paste(sort(unique(v[nzchar(v)])), collapse = "|"),
+      character(1),
+      USE.NAMES = TRUE
+    )
+    agreges[nzchar(agreges)]
   }
 
   map_mot <- indexer(lex$c_mot, lex$c_morpho)

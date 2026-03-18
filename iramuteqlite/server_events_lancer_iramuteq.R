@@ -763,6 +763,37 @@ register_events_lancer <- function(input, output, session, rv) {
             case_insensitive = FALSE
           )
           n_feat_apres_morpho <- quanteda::nfeat(dfm_obj)
+
+          repartition_categories <- character(0)
+          if (length(morpho_selection_lexique) > 0) {
+            feat_ret_norm <- featnames_norm[keep_mask]
+            feat_ret_core <- featnames_core[keep_mask]
+            repartition_categories <- vapply(
+              morpho_selection_lexique,
+              function(cat) {
+                idx_cat <- idx & lex_morpho == cat
+                termes_cat <- unique(c(
+                  tolower(trimws(as.character(lex$c_mot[idx_cat]))),
+                  tolower(trimws(as.character(lex$c_lemme[idx_cat])))
+                ))
+                termes_cat <- termes_cat[nzchar(termes_cat)]
+                if (!length(termes_cat)) return("0")
+                as.character(sum((feat_ret_norm %in% termes_cat) | (feat_ret_core %in% termes_cat)))
+              },
+              character(1)
+            )
+          }
+          if (length(repartition_categories) > 0) {
+            ajouter_log(
+              rv,
+              paste0(
+                "Répartition des termes conservés par c_morpho: ",
+                paste0(names(repartition_categories), "=", repartition_categories, collapse = "; "),
+                "."
+              )
+            )
+          }
+
           ajouter_log(
             rv,
             paste0(
