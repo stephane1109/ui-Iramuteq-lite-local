@@ -154,6 +154,8 @@ construire_graphe_similitudes <- function(dfm_obj,
 tracer_graphe_similitudes <- function(g,
                                      layout = NULL,
                                      edge_labels = TRUE,
+                                     vertex_text_by_freq = FALSE,
+                                     vertex_freq = NULL,
                                      main = "Graphe de similitude",
                                      communities = NULL,
                                      halo = FALSE,
@@ -173,6 +175,16 @@ tracer_graphe_similitudes <- function(g,
   vertex_labels <- igraph::V(g)$name
   vertex_size <- igraph::V(g)$size
   if (is.null(vertex_size)) vertex_size <- 8
+  vertex_label_cex <- 0.95
+  if (isTRUE(vertex_text_by_freq)) {
+    vf <- suppressWarnings(as.numeric(vertex_freq))
+    if (!length(vf) || length(vf) != igraph::vcount(g)) {
+      vf <- suppressWarnings(as.numeric(vertex_size))
+    }
+    if (length(vf) == igraph::vcount(g)) {
+      vertex_label_cex <- as.numeric(normaliser_vecteur_simi(vf, 0.75, 1.5))
+    }
+  }
 
   edge_width <- igraph::E(g)$width
   if (is.null(edge_width)) edge_width <- 1
@@ -221,7 +233,7 @@ tracer_graphe_similitudes <- function(g,
     g,
     layout = lo_plot,
     vertex.label = vertex_labels,
-    vertex.label.cex = 0.95,
+    vertex.label.cex = vertex_label_cex,
     vertex.size = vertex_size,
     vertex.color = vcol,
     vertex.frame.color = "#1f4f7a",

@@ -53,6 +53,11 @@ ui_form_parametres_similitudes <- function() {
       value = TRUE
     ),
     checkboxInput(
+      "simi_vertex_text_by_freq",
+      "Taille du texte des sommets proportionnelle aux fréquences",
+      value = FALSE
+    ),
+    checkboxInput(
       "simi_communities",
       "Communautés",
       value = FALSE
