@@ -175,6 +175,7 @@ construire_graphe_similitudes <- function(dfm_obj,
 tracer_graphe_similitudes <- function(g,
                                      layout = NULL,
                                      edge_labels = TRUE,
+                                     edge_width_by_index = TRUE,
                                      vertex_text_by_freq = FALSE,
                                      vertex_freq = NULL,
                                      main = "Graphe de similitude",
@@ -208,7 +209,7 @@ tracer_graphe_similitudes <- function(g,
   }
 
   edge_width <- igraph::E(g)$width
-  if (is.null(edge_width)) edge_width <- 1
+  if (!isTRUE(edge_width_by_index) || is.null(edge_width)) edge_width <- 1
 
   zoom <- suppressWarnings(as.numeric(zoom))
   if (!is.finite(zoom) || is.na(zoom) || zoom <= 0) zoom <- 1
