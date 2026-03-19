@@ -472,14 +472,25 @@ server <- function(input, output, session) {
     invisible(NULL)
   }
   
+  nav_principal_precedent <- reactiveVal(NULL)
   observeEvent(input$nav_principal, {
-    if (input$nav_principal %in% c("chd", "resultats_chd")) {
+    nav_actuel <- input$nav_principal
+    nav_precedent <- nav_principal_precedent()
+    nav_principal_precedent(nav_actuel)
+    if (isTRUE(identical(nav_actuel, nav_precedent))) return(invisible(NULL))
+    
+    if (nav_actuel %in% c("chd", "resultats_chd")) {
       ouvrir_modal_parametres()
     }
-  }, ignoreInit = TRUE)
-  observeEvent(input$nav_principal, {
-    if (isTRUE(identical(input$nav_principal, "similitudes"))) {
+    if (isTRUE(identical(nav_actuel, "similitudes"))) {
       ouvrir_modal_parametres_similitudes()
+      peupler_termes_similitudes(
+        input = input,
+        session = session,
+        dfm_obj = rv$dfm,
+        preselect_top = TRUE,
+        current_selection = input$simi_terms_selected
+      )
     }
   }, ignoreInit = TRUE)
   
@@ -495,18 +506,6 @@ server <- function(input, output, session) {
       preselect_top = TRUE,
       current_selection = input$simi_terms_selected
     )
-  }, ignoreInit = TRUE)
-
-  observeEvent(input$nav_principal, {
-    if (isTRUE(identical(input$nav_principal, "similitudes"))) {
-      peupler_termes_similitudes(
-        input = input,
-        session = session,
-        dfm_obj = rv$dfm,
-        preselect_top = TRUE,
-        current_selection = input$simi_terms_selected
-      )
-    }
   }, ignoreInit = TRUE)
 
   observeEvent(input$simi_top_terms, {
