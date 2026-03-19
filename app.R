@@ -114,6 +114,7 @@ source("iramuteqlite/affichage_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/wordcloud_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_graph.R", encoding = "UTF-8", local = TRUE)
+source("iramuteq/select_mots.R", encoding = "UTF-8", local = TRUE)
 source("ui.R", encoding = "UTF-8", local = TRUE)
 
 source("iramuteqlite/chd_iramuteq.R", encoding = "UTF-8", local = TRUE)
@@ -440,7 +441,7 @@ server <- function(input, output, session) {
       )
     ))
   }
-  
+
   journaliser_evenement <- function(message) {
     if (exists("ajouter_log", mode = "function", inherits = TRUE)) {
       ajouter_log(rv, message)
@@ -485,6 +486,22 @@ server <- function(input, output, session) {
   observeEvent(input$ouvrir_param_simi, {
     ouvrir_modal_parametres_similitudes()
   })
+
+  observeEvent(input$ouvrir_param_simi, {
+    peupler_termes_similitudes(input = input, session = session, dfm_obj = rv$dfm, preselect_top = TRUE)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$nav_principal, {
+    if (isTRUE(identical(input$nav_principal, "similitudes"))) {
+      peupler_termes_similitudes(input = input, session = session, dfm_obj = rv$dfm, preselect_top = TRUE)
+    }
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$simi_top_terms, {
+    if (is.null(input$simi_terms_selected) || !length(input$simi_terms_selected)) {
+      peupler_termes_similitudes(input = input, session = session, dfm_obj = rv$dfm, preselect_top = TRUE)
+    }
+  }, ignoreInit = TRUE)
   
   observeEvent(input$simi_zoom_in, {
     rv$simi_zoom <- min(3, rv$simi_zoom + 0.2)
@@ -513,6 +530,7 @@ server <- function(input, output, session) {
         seuil = input$simi_seuil,
         max_tree = isTRUE(input$simi_max_tree),
         top_terms = input$simi_top_terms,
+        selected_terms = input$simi_terms_selected,
         layout_type = input$simi_layout,
         communities = isTRUE(input$simi_communities),
         community_method = input$simi_community_method
@@ -569,6 +587,7 @@ server <- function(input, output, session) {
         tags$li(paste0("Halo: ", if (isTRUE(input$simi_halo)) "oui" else "non")),
         tags$li(paste0("Mots conservés: ", rv$simi_terms_used, " / ", rv$simi_terms_total,
                        " (top demandé = ", rv$simi_top_terms_requested, ")")),
+        tags$li(paste0("Termes sélectionnés: ", length(unique(input$simi_terms_selected %||% character(0))))),
         tags$li(paste0("Zoom affichage: x", format(round(rv$simi_zoom, 2), nsmall = 2))),
         tags$li(paste0("Graphe courant: ", n_vertices, " sommets / ", n_edges, " arêtes"))
       )

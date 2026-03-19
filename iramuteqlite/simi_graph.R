@@ -44,6 +44,7 @@ construire_graphe_similitudes <- function(dfm_obj,
                                          seuil = NA_real_,
                                          max_tree = TRUE,
                                          top_terms = 40L,
+                                         selected_terms = NULL,
                                          layout_type = "frutch",
                                          communities = FALSE,
                                          community_method = "edge_betweenness") {
@@ -59,10 +60,28 @@ construire_graphe_similitudes <- function(dfm_obj,
   if (!is.finite(n_top) || is.na(n_top) || n_top < 5) n_top <- 40L
   n_top <- min(n_top, ncol(mat_bin))
 
-  ord <- order(freq, decreasing = TRUE)
-  keep <- ord[seq_len(n_top)]
-  mat_bin <- mat_bin[, keep, drop = FALSE]
-  freq <- freq[keep]
+  selected_terms <- unique(as.character(selected_terms))
+  selected_terms <- selected_terms[!is.na(selected_terms)]
+  selected_terms <- selected_terms[nzchar(selected_terms)]
+  selected_terms <- intersect(selected_terms, colnames(mat_bin))
+
+  if (length(selected_terms) > 0) {
+    keep <- match(selected_terms, colnames(mat_bin))
+    keep <- keep[is.finite(keep) & !is.na(keep)]
+    mat_bin <- mat_bin[, keep, drop = FALSE]
+    freq <- freq[keep]
+
+    if (length(freq) > 1) {
+      ord_sel <- order(freq, decreasing = TRUE)
+      mat_bin <- mat_bin[, ord_sel, drop = FALSE]
+      freq <- freq[ord_sel]
+    }
+  } else {
+    ord <- order(freq, decreasing = TRUE)
+    keep <- ord[seq_len(n_top)]
+    mat_bin <- mat_bin[, keep, drop = FALSE]
+    freq <- freq[keep]
+  }
 
   method <- if (is.null(method) || !nzchar(method)) "cooc" else method
 
