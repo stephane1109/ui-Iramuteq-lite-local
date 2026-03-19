@@ -54,7 +54,9 @@ construire_graphe_similitudes <- function(dfm_obj,
 
   mat_dfm <- as.matrix(dfm_obj)
   mat_bin <- ifelse(mat_dfm > 0, 1, 0)
-  freq <- colSums(mat_bin)
+  # Fréquences d'occurrence (et non présence/absence par document)
+  # pour piloter la taille des sommets et des labels.
+  freq <- colSums(mat_dfm)
 
   n_top <- suppressWarnings(as.integer(top_terms))
   if (length(n_top) != 1L || !is.finite(n_top) || is.na(n_top) || n_top < 5) n_top <- 40L
