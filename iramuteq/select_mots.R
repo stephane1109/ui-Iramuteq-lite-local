@@ -27,7 +27,15 @@ peupler_termes_similitudes <- function(input,
   n_top <- suppressWarnings(as.integer(input$simi_top_terms))
   if (length(n_top) != 1L || !is.finite(n_top) || is.na(n_top) || n_top < 1) n_top <- 40L
 
-  selected <- if (isTRUE(preselect_top)) head(termes$ordered_terms, n_top) else current_selection
+  if (is.null(current_selection)) current_selection <- character(0)
+  current_selection <- as.character(current_selection)
+  selected <- if (length(current_selection) > 0) {
+    current_selection
+  } else if (isTRUE(preselect_top)) {
+    head(termes$ordered_terms, n_top)
+  } else {
+    character(0)
+  }
   selected <- intersect(as.character(selected), termes$ordered_terms)
 
   updateSelectizeInput(
