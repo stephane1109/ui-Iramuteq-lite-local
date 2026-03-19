@@ -483,7 +483,6 @@ server <- function(input, output, session) {
       ouvrir_modal_parametres()
     }
     if (isTRUE(identical(nav_actuel, "similitudes"))) {
-      ouvrir_modal_parametres_similitudes()
       peupler_termes_similitudes(
         input = input,
         session = session,
