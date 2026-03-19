@@ -488,12 +488,24 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$ouvrir_param_simi, {
-    peupler_termes_similitudes(input = input, session = session, dfm_obj = rv$dfm, preselect_top = TRUE)
+    peupler_termes_similitudes(
+      input = input,
+      session = session,
+      dfm_obj = rv$dfm,
+      preselect_top = TRUE,
+      current_selection = input$simi_terms_selected
+    )
   }, ignoreInit = TRUE)
 
   observeEvent(input$nav_principal, {
     if (isTRUE(identical(input$nav_principal, "similitudes"))) {
-      peupler_termes_similitudes(input = input, session = session, dfm_obj = rv$dfm, preselect_top = TRUE)
+      peupler_termes_similitudes(
+        input = input,
+        session = session,
+        dfm_obj = rv$dfm,
+        preselect_top = TRUE,
+        current_selection = input$simi_terms_selected
+      )
     }
   }, ignoreInit = TRUE)
 
