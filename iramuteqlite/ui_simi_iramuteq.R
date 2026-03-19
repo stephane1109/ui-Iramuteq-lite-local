@@ -21,7 +21,7 @@ ui_form_parametres_similitudes <- function() {
       "Seuil minimal des arêtes (laisser vide pour aucun seuil)",
       value = NA,
       min = 0,
-      step = 0.1
+      step = 1
     ),
     numericInput(
       "simi_top_terms",
