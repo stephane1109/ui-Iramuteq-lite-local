@@ -30,6 +30,14 @@ ui_form_parametres_similitudes <- function() {
       min = 5,
       step = 1
     ),
+    selectizeInput(
+      "simi_terms_selected",
+      "Termes à analyser (triés par fréquence)",
+      choices = NULL,
+      selected = NULL,
+      multiple = TRUE,
+      options = list(placeholder = "Sélectionnez un ou plusieurs termes")
+    ),
     checkboxInput(
       "simi_max_tree",
       "Limiter au graphe couvrant maximal (arbre de poids max)",
