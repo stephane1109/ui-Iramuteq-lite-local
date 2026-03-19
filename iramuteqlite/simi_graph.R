@@ -39,6 +39,17 @@ normaliser_vecteur_simi <- function(x, min_out = 0, max_out = 1) {
   min_out + ((x - xmin) / (xmax - xmin)) * (max_out - min_out)
 }
 
+supprimer_sommets_isoles_simi <- function(g) {
+  if (is.null(g) || !inherits(g, "igraph") || igraph::vcount(g) == 0) {
+    return(g)
+  }
+  deg <- igraph::degree(g)
+  if (!length(deg) || !any(deg == 0)) {
+    return(g)
+  }
+  igraph::delete_vertices(g, which(deg == 0))
+}
+
 construire_graphe_similitudes <- function(dfm_obj,
                                          method = "cooc",
                                          seuil = NA_real_,
@@ -129,6 +140,7 @@ construire_graphe_similitudes <- function(dfm_obj,
     g <- igraph::mst(g)
     igraph::E(g)$weight <- 1 / pmax(igraph::E(g)$weight, 1e-9)
   }
+  g <- supprimer_sommets_isoles_simi(g)
 
   if (igraph::vcount(g) > 0) {
     vnames <- igraph::V(g)$name
@@ -209,7 +221,16 @@ tracer_graphe_similitudes <- function(g,
   }
 
   edge_width <- igraph::E(g)$width
-  if (!isTRUE(edge_width_by_index) || is.null(edge_width)) edge_width <- 1
+  if (isTRUE(edge_width_by_index)) {
+    edge_weight <- suppressWarnings(as.numeric(igraph::E(g)$weight))
+    if (length(edge_weight) == igraph::ecount(g) && any(is.finite(edge_weight))) {
+      edge_width <- as.numeric(normaliser_vecteur_simi(edge_weight, 1, 6))
+    } else if (is.null(edge_width) || length(edge_width) != igraph::ecount(g)) {
+      edge_width <- 1
+    }
+  } else {
+    edge_width <- 1
+  }
 
   zoom <- suppressWarnings(as.numeric(zoom))
   if (!is.finite(zoom) || is.na(zoom) || zoom <= 0) zoom <- 1
