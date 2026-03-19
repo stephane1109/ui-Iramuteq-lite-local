@@ -36,7 +36,10 @@ ui_form_parametres_similitudes <- function() {
       choices = NULL,
       selected = NULL,
       multiple = TRUE,
-      options = list(placeholder = "Sélectionnez un ou plusieurs termes")
+      options = list(
+        placeholder = "Sélectionnez un ou plusieurs termes",
+        plugins = list("remove_button")
+      )
     ),
     checkboxInput(
       "simi_max_tree",

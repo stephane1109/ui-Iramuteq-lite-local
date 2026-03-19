@@ -57,7 +57,7 @@ construire_graphe_similitudes <- function(dfm_obj,
   freq <- colSums(mat_bin)
 
   n_top <- suppressWarnings(as.integer(top_terms))
-  if (!is.finite(n_top) || is.na(n_top) || n_top < 5) n_top <- 40L
+  if (length(n_top) != 1L || !is.finite(n_top) || is.na(n_top) || n_top < 5) n_top <- 40L
   n_top <- min(n_top, ncol(mat_bin))
 
   selected_terms <- unique(as.character(selected_terms))
