@@ -25,7 +25,7 @@ peupler_termes_similitudes <- function(input,
                                        current_selection = NULL) {
   termes <- get_simi_terms_choices(dfm_obj)
   n_top <- suppressWarnings(as.integer(input$simi_top_terms))
-  if (!is.finite(n_top) || is.na(n_top) || n_top < 1) n_top <- 40L
+  if (length(n_top) != 1L || !is.finite(n_top) || is.na(n_top) || n_top < 1) n_top <- 40L
 
   selected <- if (isTRUE(preselect_top)) head(termes$ordered_terms, n_top) else current_selection
   selected <- intersect(as.character(selected), termes$ordered_terms)

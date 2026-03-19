@@ -498,9 +498,12 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
 
   observeEvent(input$simi_top_terms, {
-    if (is.null(input$simi_terms_selected) || !length(input$simi_terms_selected)) {
-      peupler_termes_similitudes(input = input, session = session, dfm_obj = rv$dfm, preselect_top = TRUE)
-    }
+    peupler_termes_similitudes(
+      input = input,
+      session = session,
+      dfm_obj = rv$dfm,
+      preselect_top = TRUE
+    )
   }, ignoreInit = TRUE)
   
   observeEvent(input$simi_zoom_in, {
