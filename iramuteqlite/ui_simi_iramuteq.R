@@ -64,6 +64,11 @@ ui_form_parametres_similitudes <- function() {
       value = TRUE
     ),
     checkboxInput(
+      "simi_edge_width_by_index",
+      "Largeur des arêtes proportionnelle à l'indice",
+      value = TRUE
+    ),
+    checkboxInput(
       "simi_vertex_text_by_freq",
       "Taille du texte des sommets proportionnelle aux fréquences",
       value = FALSE
