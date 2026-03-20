@@ -1016,6 +1016,7 @@ server <- function(input, output, session) {
   
   output$plot_simi <- visNetwork::renderVisNetwork({
     edge_width_by_index_on <- if (is.null(input$simi_edge_width_by_index)) TRUE else isTRUE(input$simi_edge_width_by_index)
+    halo_on <- if (is.null(input$simi_halo)) FALSE else isTRUE(input$simi_halo)
     info_txt <- paste0(
       "Méthode: ", rv$simi_method,
       " | Mots conservés: ", rv$simi_terms_used, "/", rv$simi_terms_total,
@@ -1028,6 +1029,7 @@ server <- function(input, output, session) {
       edge_width_by_index = edge_width_by_index_on,
       vertex_freq = rv$simi_vertex_freq,
       communities = rv$simi_communities,
+      halo = halo_on,
       info_text = info_txt
     )
   })

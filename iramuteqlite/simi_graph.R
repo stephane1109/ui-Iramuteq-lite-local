@@ -441,6 +441,7 @@ tracer_graphe_similitudes_visnetwork <- function(g,
                                                 edge_width_by_index = TRUE,
                                                 vertex_freq = NULL,
                                                 communities = NULL,
+                                                halo = FALSE,
                                                 info_text = NULL) {
   if (!requireNamespace("visNetwork", quietly = TRUE)) {
     return(NULL)
@@ -507,7 +508,7 @@ tracer_graphe_similitudes_visnetwork <- function(g,
     edges$color <- character(0)
   }
 
-  visNetwork::visNetwork(nodes, edges, width = "100%", height = "980px", main = info_text) |>
+  p <- visNetwork::visNetwork(nodes, edges, width = "100%", height = "980px", main = info_text) |>
     visNetwork::visEdges(smooth = FALSE, color = list(color = "#4A4A4A", opacity = 0.8)) |>
     visNetwork::visNodes(shape = "dot", borderWidth = 1.2, font = list(size = 22)) |>
     visNetwork::visPhysics(
@@ -517,4 +518,20 @@ tracer_graphe_similitudes_visnetwork <- function(g,
     ) |>
     visNetwork::visInteraction(navigationButtons = TRUE, dragNodes = TRUE, dragView = TRUE, zoomView = TRUE, hover = TRUE) |>
     visNetwork::visOptions(highlightNearest = list(enabled = TRUE, degree = 1, hover = TRUE))
+
+  if (isTRUE(halo) && length(unique(groups)) > 1) {
+    ugr <- unique(groups)
+    for (grp in ugr) {
+      idx <- which(groups == grp)[1]
+      col_grp <- vcol[idx]
+      p <- visNetwork::visGroups(
+        p,
+        groupname = grp,
+        color = list(background = col_grp, border = "#1f4f7a"),
+        shadow = list(enabled = TRUE, color = grDevices::adjustcolor(col_grp, alpha.f = 0.45), size = 18, x = 0, y = 0)
+      )
+    }
+  }
+
+  p
 }
