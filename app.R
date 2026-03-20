@@ -9,6 +9,7 @@
 required_packages <- c("shiny", "bslib", "quanteda", "wordcloud", "RColorBrewer", "igraph", "dplyr", "htmltools", "remotes", "irlba", "markdown", "rgexf", "Matrix", "factoextra", "ape", "ggplot2", "plotly", "visNetwork")
 installed_packages <- rownames(installed.packages())
 missing_packages <- setdiff(required_packages, installed_packages)
+packages_manquants <- missing_packages
 
 if (length(missing_packages) > 0) {
   install.packages(missing_packages)
@@ -479,9 +480,6 @@ server <- function(input, output, session) {
     nav_principal_precedent(nav_actuel)
     if (isTRUE(identical(nav_actuel, nav_precedent))) return(invisible(NULL))
     
-    if (nav_actuel %in% c("chd", "resultats_chd")) {
-      ouvrir_modal_parametres()
-    }
     if (isTRUE(identical(nav_actuel, "similitudes"))) {
       peupler_termes_similitudes(
         input = input,
@@ -495,6 +493,10 @@ server <- function(input, output, session) {
   
   observeEvent(input$ouvrir_param_simi, {
     ouvrir_modal_parametres_similitudes()
+  })
+  
+  observeEvent(input$ouvrir_param_chd, {
+    ouvrir_modal_parametres()
   })
 
   observeEvent(input$ouvrir_param_simi, {
@@ -605,6 +607,37 @@ server <- function(input, output, session) {
         tags$li(paste0("Termes sélectionnés: ", length(unique(input$simi_terms_selected %||% character(0))))),
         tags$li(paste0("Zoom affichage: x", format(round(rv$simi_zoom, 2), nsmall = 2))),
         tags$li(paste0("Graphe courant: ", n_vertices, " sommets / ", n_edges, " arêtes"))
+      )
+    )
+  })
+  
+  output$ui_chd_statut <- renderUI({
+    format_bool <- function(x) if (isTRUE(x)) "oui" else "non"
+    format_val <- function(x, fallback) {
+      if (is.null(x) || (length(x) == 1 && is.na(x)) || !length(x)) return(fallback)
+      as.character(x)
+    }
+    
+    tags$div(
+      style = "border:1px solid #d9e2ef; background:#f8fbff; border-radius:6px; padding:12px; margin-bottom:12px;",
+      tags$strong("Configuration actuelle"),
+      tags$ul(
+        tags$li(paste0("Méthode: ", format_val(input$modele_chd, "iramuteq"))),
+        tags$li(paste0("Taille des segments: ", format_val(input$segment_size, "40"))),
+        tags$li(paste0("Segmentation ponctuation forte: ", format_bool(input$segmenter_sur_ponctuation_forte))),
+        tags$li(paste0("min_docfreq: ", format_val(input$min_docfreq, "3"))),
+        tags$li(paste0("max_p: ", format_val(input$max_p, "0.05"))),
+        tags$li(paste0("Filtrer affichage p-value: ", format_bool(input$filtrer_affichage_pvalue))),
+        tags$li(paste0("Source dictionnaire: ", format_val(input$source_dictionnaire, "lexique_fr"))),
+        tags$li(paste0("Lemmatisation lexique: ", format_bool(input$lexique_utiliser_lemmes))),
+        tags$li(paste0("Dictionnaire expressions: ", format_bool(input$expression_utiliser_dictionnaire))),
+        tags$li(paste0("Stopwords: ", format_bool(input$retirer_stopwords))),
+        tags$li(paste0("Nettoyage caractères: ", format_bool(input$nettoyage_caracteres))),
+        tags$li(paste0("Suppression ponctuation: ", format_bool(input$supprimer_ponctuation))),
+        tags$li(paste0("Suppression chiffres: ", format_bool(input$supprimer_chiffres))),
+        tags$li(paste0("Traitement apostrophes: ", format_bool(input$supprimer_apostrophes))),
+        tags$li(paste0("Filtrage morpho: ", format_bool(input$filtrage_morpho))),
+        tags$li(paste0("Top N nuages: ", format_val(input$top_n, "20")))
       )
     )
   })
@@ -961,26 +994,61 @@ server <- function(input, output, session) {
   })
   
   output$ui_chd_statut <- renderUI({
-    if (length(packages_manquants) > 0) {
+    packages_manquants_local <- if (exists("packages_manquants", inherits = TRUE)) {
+      get("packages_manquants", inherits = TRUE)
+    } else if (exists("missing_packages", inherits = TRUE)) {
+      get("missing_packages", inherits = TRUE)
+    } else {
+      character(0)
+    }
+    
+    if (length(packages_manquants_local) > 0) {
       return(tags$div(
         style = "border: 1px solid #f5c2c7; background: #f8d7da; color: #842029; border-radius: 4px; padding: 10px; margin-bottom: 10px;",
         tags$strong("Dépendances manquantes : "),
-        paste(packages_manquants, collapse = ", ")
+        paste(packages_manquants_local, collapse = ", ")
       ))
     }
     
-    if (is.null(rv$res)) {
-      return(tags$p("CHD non disponible. Lance une analyse."))
+    format_bool <- function(x, fallback = "non") {
+      if (is.null(x) || !length(x) || (length(x) == 1 && is.na(x))) return(fallback)
+      if (isTRUE(x)) "oui" else "non"
+    }
+    format_val <- function(x, fallback) {
+      if (is.null(x) || !length(x) || (length(x) == 1 && is.na(x))) return(fallback)
+      as.character(x)
     }
     
-    nb_classes <- NA_integer_
-    if (!is.null(rv$clusters)) nb_classes <- length(rv$clusters)
-    
-    if (identical(rv$res_type, "iramuteq")) {
-      return(tags$p(paste0("CHD disponible (moteur IRaMuTeQ-like) - classes détectées : ", nb_classes, ".")))
+    nb_classes <- if (!is.null(rv$clusters)) length(rv$clusters) else 0L
+    statut_chd <- if (is.null(rv$res)) {
+      "CHD non disponible. Lance une analyse."
+    } else {
+      paste0("CHD disponible (moteur IRaMuTeQ-like) - classes détectées : ", nb_classes, ".")
     }
     
-    tags$p(paste0("CHD disponible (moteur IRaMuTeQ-like) - classes détectées : ", nb_classes, "."))
+    tags$div(
+      style = "border:1px solid #d9e2ef; background:#f8fbff; border-radius:6px; padding:12px; margin-bottom:12px;",
+      tags$strong("Configuration actuelle"),
+      tags$ul(
+        tags$li(paste0("Méthode: ", format_val(input$modele_chd, "iramuteq"))),
+        tags$li(paste0("Taille des segments: ", format_val(input$segment_size, "40"))),
+        tags$li(paste0("Segmentation ponctuation forte: ", format_bool(input$segmenter_sur_ponctuation_forte, "non"))),
+        tags$li(paste0("min_docfreq: ", format_val(input$min_docfreq, "3"))),
+        tags$li(paste0("max_p: ", format_val(input$max_p, "0.05"))),
+        tags$li(paste0("Filtrer affichage p-value: ", format_bool(input$filtrer_affichage_pvalue, "oui"))),
+        tags$li(paste0("Source dictionnaire: ", format_val(input$source_dictionnaire, "lexique_fr"))),
+        tags$li(paste0("Lemmatisation lexique: ", format_bool(input$lexique_utiliser_lemmes, "oui"))),
+        tags$li(paste0("Dictionnaire expressions: ", format_bool(input$expression_utiliser_dictionnaire, "non"))),
+        tags$li(paste0("Stopwords: ", format_bool(input$retirer_stopwords, "non"))),
+        tags$li(paste0("Nettoyage caractères: ", format_bool(input$nettoyage_caracteres, "non"))),
+        tags$li(paste0("Suppression ponctuation: ", format_bool(input$supprimer_ponctuation, "non"))),
+        tags$li(paste0("Suppression chiffres: ", format_bool(input$supprimer_chiffres, "non"))),
+        tags$li(paste0("Traitement apostrophes: ", format_bool(input$supprimer_apostrophes, "non"))),
+        tags$li(paste0("Filtrage morpho: ", format_bool(input$filtrage_morpho, "non"))),
+        tags$li(paste0("Top N nuages: ", format_val(input$top_n, "20")))
+      ),
+      tags$p(style = "margin: 6px 0 0 0; color: #1f4e79;", statut_chd)
+    )
   })
   
   output$table_classes <- renderTable({
