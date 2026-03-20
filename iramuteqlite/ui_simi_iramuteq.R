@@ -26,7 +26,7 @@ ui_form_parametres_similitudes <- function() {
     numericInput(
       "simi_top_terms",
       "Nombre de termes à conserver (plus fréquents)",
-      value = 40,
+      value = 100,
       min = 5,
       step = 1
     ),
@@ -70,7 +70,7 @@ ui_form_parametres_similitudes <- function() {
     checkboxInput(
       "simi_edge_labels",
       "Afficher les labels des arêtes",
-      value = TRUE
+      value = FALSE
     ),
     checkboxInput(
       "simi_edge_width_by_index",
