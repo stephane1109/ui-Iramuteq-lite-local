@@ -229,7 +229,7 @@ server <- function(input, output, session) {
     simi_zoom = 1,
     simi_terms_used = 0L,
     simi_terms_total = 0L,
-    simi_top_terms_requested = 40L,
+    simi_top_terms_requested = 100L,
     
     parametres_analyse = list()
   )
@@ -593,7 +593,7 @@ server <- function(input, output, session) {
       tags$ul(
         tags$li(paste0("Méthode: ", if (is.null(input$simi_method)) "cooc" else input$simi_method)),
         tags$li(paste0("Seuil: ", seuil_label)),
-        tags$li(paste0("Top termes: ", if (is.null(input$simi_top_terms)) 40 else input$simi_top_terms)),
+        tags$li(paste0("Top termes: ", if (is.null(input$simi_top_terms)) 100 else input$simi_top_terms)),
         tags$li(paste0("Layout: ", if (is.null(input$simi_layout)) "frutch" else input$simi_layout)),
         tags$li(paste0("Arbre max: ", if (isTRUE(input$simi_max_tree)) "oui" else "non")),
         tags$li(paste0("Labels des arêtes: ", if (isTRUE(input$simi_edge_labels)) "oui" else "non")),
