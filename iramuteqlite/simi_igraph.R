@@ -60,7 +60,8 @@ tracer_graphe_similitudes <- function(g,
                                      communities = NULL,
                                      halo = FALSE,
                                      zoom = 1,
-                                     info_text = NULL) {
+                                     info_text = NULL,
+                                     ...) {
   if (is.null(g) || !inherits(g, "igraph") || igraph::vcount(g) == 0) {
     plot.new()
     text(0.5, 0.5, "Aucun graphe de similitude.\nCliquez sur 'Paramétrer' puis 'Lancer l'analyse de similitudes'.", cex = 1.0)

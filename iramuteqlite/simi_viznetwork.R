@@ -227,7 +227,8 @@ tracer_graphe_similitudes <- function(g,
                                      communities = NULL,
                                      halo = FALSE,
                                      zoom = 1,
-                                     info_text = NULL) {
+                                     info_text = NULL,
+                                     ...) {
   if (is.null(g) || !inherits(g, "igraph") || igraph::vcount(g) == 0) {
     plot.new()
     text(0.5, 0.5, "Aucun graphe de similitude.\nCliquez sur 'Paramétrer' puis 'Lancer l'analyse de similitudes'.", cex = 1.0)
@@ -341,7 +342,8 @@ tracer_graphe_similitudes_plotly <- function(g,
                                             edge_width_by_index = TRUE,
                                             vertex_freq = NULL,
                                             communities = NULL,
-                                            info_text = NULL) {
+                                            info_text = NULL,
+                                            ...) {
   if (!requireNamespace("plotly", quietly = TRUE)) {
     return(NULL)
   }
@@ -442,7 +444,8 @@ tracer_graphe_similitudes_visnetwork <- function(g,
                                                 edge_width_by_index = TRUE,
                                                 vertex_freq = NULL,
                                                 communities = NULL,
-                                                info_text = NULL) {
+                                                info_text = NULL,
+                                                ...) {
   if (!requireNamespace("visNetwork", quietly = TRUE)) {
     return(NULL)
   }
