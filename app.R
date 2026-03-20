@@ -6,7 +6,7 @@
 #                        DEV EN LOCAL + ANNOTATIONS                           #
 ###############################################################################
 
-required_packages <- c("shiny", "bslib", "quanteda", "wordcloud", "RColorBrewer", "igraph", "dplyr", "htmltools", "remotes", "irlba", "markdown", "rgexf", "Matrix", "factoextra", "ape", "ggplot2", "plotly")
+required_packages <- c("shiny", "bslib", "quanteda", "wordcloud", "RColorBrewer", "igraph", "dplyr", "htmltools", "remotes", "irlba", "markdown", "rgexf", "Matrix", "factoextra", "ape", "ggplot2", "plotly", "visNetwork")
 installed_packages <- rownames(installed.packages())
 missing_packages <- setdiff(required_packages, installed_packages)
 
@@ -1014,7 +1014,7 @@ server <- function(input, output, session) {
     )
   }, rownames = FALSE)
   
-  output$plot_simi <- plotly::renderPlotly({
+  output$plot_simi <- visNetwork::renderVisNetwork({
     edge_width_by_index_on <- if (is.null(input$simi_edge_width_by_index)) TRUE else isTRUE(input$simi_edge_width_by_index)
     info_txt <- paste0(
       "Méthode: ", rv$simi_method,
@@ -1022,7 +1022,7 @@ server <- function(input, output, session) {
       " (top demandé=", rv$simi_top_terms_requested, ")"
     )
     
-    tracer_graphe_similitudes_plotly(
+    tracer_graphe_similitudes_visnetwork(
       g = rv$simi_graph,
       layout = rv$simi_layout,
       edge_width_by_index = edge_width_by_index_on,

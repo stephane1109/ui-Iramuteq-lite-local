@@ -435,3 +435,86 @@ tracer_graphe_similitudes_plotly <- function(g,
   )
   plotly::config(p, displayModeBar = TRUE, scrollZoom = TRUE)
 }
+
+tracer_graphe_similitudes_visnetwork <- function(g,
+                                                layout = NULL,
+                                                edge_width_by_index = TRUE,
+                                                vertex_freq = NULL,
+                                                communities = NULL,
+                                                info_text = NULL) {
+  if (!requireNamespace("visNetwork", quietly = TRUE)) {
+    return(NULL)
+  }
+  if (is.null(g) || !inherits(g, "igraph") || igraph::vcount(g) == 0) {
+    return(visNetwork::visNetwork(data.frame(id = character(0)), data.frame(from = character(0), to = character(0))))
+  }
+
+  lo <- layout
+  if (is.null(lo) || !is.matrix(lo) || nrow(lo) != igraph::vcount(g)) {
+    lo <- igraph::layout_with_fr(g)
+  }
+  lo <- as.matrix(lo)
+  if (ncol(lo) < 2) lo <- cbind(lo, rep(0, nrow(lo)))
+
+  vnames <- igraph::V(g)$name
+  vsize <- suppressWarnings(as.numeric(igraph::V(g)$size))
+  if (!length(vsize) || length(vsize) != igraph::vcount(g)) {
+    vsize <- calculer_tailles_sommets_simi(vertex_freq, min_out = 8, max_out = 30)
+  }
+  # VisNetwork taille mieux avec un range plus serré.
+  vsize <- as.numeric(normaliser_vecteur_simi(vsize, 14, 42))
+
+  vcol <- rep("#2C7FB8", igraph::vcount(g))
+  groups <- rep("g1", igraph::vcount(g))
+  if (!is.null(communities) && inherits(communities, "communities")) {
+    memb <- as.integer(igraph::membership(communities))
+    if (length(memb) == igraph::vcount(g) && any(is.finite(memb))) {
+      pal <- grDevices::hcl.colors(max(memb, na.rm = TRUE), palette = "Dark 3")
+      idx <- pmax(1L, pmin(length(pal), memb))
+      vcol <- pal[idx]
+      groups <- paste0("g", idx)
+    }
+  }
+
+  nodes <- data.frame(
+    id = vnames,
+    label = vnames,
+    value = vsize,
+    x = lo[, 1],
+    y = lo[, 2],
+    color.background = vcol,
+    color.border = "#1f4f7a",
+    group = groups,
+    stringsAsFactors = FALSE
+  )
+
+  edges <- igraph::as_data_frame(g, what = "edges")
+  if (nrow(edges) > 0) {
+    w <- suppressWarnings(as.numeric(edges$weight))
+    if (isTRUE(edge_width_by_index)) {
+      w[!is.finite(w)] <- 0
+      # Réduction pour éviter des arêtes surdimensionnées.
+      w <- sqrt(pmax(w, 0))
+      edges$width <- as.numeric(normaliser_vecteur_simi(w, 1, 8))
+    } else {
+      edges$width <- 1.2
+    }
+    edges$title <- paste0(edges$from, " ↔ ", edges$to, "<br>Indice: ", round(edges$weight, 3))
+    edges$color <- "#4A4A4A"
+  } else {
+    edges$width <- numeric(0)
+    edges$title <- character(0)
+    edges$color <- character(0)
+  }
+
+  visNetwork::visNetwork(nodes, edges, width = "100%", height = "980px", main = info_text) |>
+    visNetwork::visEdges(smooth = FALSE, color = list(color = "#4A4A4A", opacity = 0.8)) |>
+    visNetwork::visNodes(shape = "dot", borderWidth = 1.2, font = list(size = 22)) |>
+    visNetwork::visPhysics(
+      solver = "forceAtlas2Based",
+      forceAtlas2Based = list(gravitationalConstant = -30, centralGravity = 0.005, springLength = 170, springConstant = 0.06),
+      stabilization = list(iterations = 250)
+    ) |>
+    visNetwork::visInteraction(navigationButtons = TRUE, dragNodes = TRUE, dragView = TRUE, zoomView = TRUE, hover = TRUE) |>
+    visNetwork::visOptions(highlightNearest = list(enabled = TRUE, degree = 1, hover = TRUE))
+}
