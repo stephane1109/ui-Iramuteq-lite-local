@@ -1016,6 +1016,10 @@ server <- function(input, output, session) {
   
   output$plot_simi <- renderPlot({
     req(zone_trace_disponible("plot_simi", min_width = 240, min_height = 220))
+    edge_labels_on <- if (is.null(input$simi_edge_labels)) TRUE else isTRUE(input$simi_edge_labels)
+    edge_width_by_index_on <- if (is.null(input$simi_edge_width_by_index)) TRUE else isTRUE(input$simi_edge_width_by_index)
+    vertex_text_by_freq_on <- if (is.null(input$simi_vertex_text_by_freq)) FALSE else isTRUE(input$simi_vertex_text_by_freq)
+    halo_on <- if (is.null(input$simi_halo)) FALSE else isTRUE(input$simi_halo)
     info_txt <- paste0(
       "Méthode: ", rv$simi_method,
       " | Mots conservés: ", rv$simi_terms_used, "/", rv$simi_terms_total,
@@ -1025,13 +1029,13 @@ server <- function(input, output, session) {
     tracer_graphe_similitudes(
       g = rv$simi_graph,
       layout = rv$simi_layout,
-      edge_labels = isTRUE(input$simi_edge_labels),
-      edge_width_by_index = isTRUE(input$simi_edge_width_by_index),
-      vertex_text_by_freq = isTRUE(input$simi_vertex_text_by_freq),
+      edge_labels = edge_labels_on,
+      edge_width_by_index = edge_width_by_index_on,
+      vertex_text_by_freq = vertex_text_by_freq_on,
       vertex_freq = rv$simi_vertex_freq,
       main = "Graphe de similitude",
       communities = rv$simi_communities,
-      halo = isTRUE(input$simi_halo),
+      halo = halo_on,
       zoom = rv$simi_zoom,
       info_text = info_txt
     )
