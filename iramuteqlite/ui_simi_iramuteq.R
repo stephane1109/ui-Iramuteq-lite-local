@@ -3,7 +3,7 @@
 ui_form_parametres_similitudes <- function() {
   tagList(
     tags$p(
-      "Paramétrez l'analyse de similitudes (Vergès). ",
+      "Paramétrez l'analyse de similitudes. ",
       "Ces options prépareront la matrice et l'affichage du graphe de similitude."
     ),
     selectInput(
@@ -114,7 +114,7 @@ ui_form_parametres_similitudes <- function() {
 ui_panel_similitudes_iramuteq <- function() {
   nav_panel(
     "Analyse similitudes", value = "similitudes",
-    tags$h3("Analyse de similitudes (Vergès)"),
+    tags$h3("Analyse de similitudes"),
     tags$p("Ouvrez la boîte de dialogue pour configurer les paramètres de l'analyse."),
     tags$p(
       style = "background:#f8fbff; border:1px solid #d9e2ef; border-radius:6px; padding:10px;",
@@ -124,12 +124,15 @@ ui_panel_similitudes_iramuteq <- function() {
     ),
     tags$div(
       style = "display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:center;",
-      actionButton("ouvrir_param_simi", "Paramétrer l'analyse de similitudes", class = "btn-primary"),
+      actionButton("ouvrir_param_simi", "Paramétrer l'analyse de similitudes", class = "btn-primary")
+    ),
+    uiOutput("ui_simi_statut"),
+    tags$div(
+      style = "display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:center;",
       actionButton("simi_zoom_in", "Zoom +"),
       actionButton("simi_zoom_out", "Zoom -"),
       actionButton("simi_zoom_reset", "Réinitialiser zoom")
     ),
-    uiOutput("ui_simi_statut"),
     tags$div(style = "max-width: 1400px;", uiOutput("plot_simi_container"))
   )
 }
