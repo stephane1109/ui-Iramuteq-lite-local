@@ -39,17 +39,14 @@ normaliser_vecteur_simi <- function(x, min_out = 0, max_out = 1) {
   min_out + ((x - xmin) / (xmax - xmin)) * (max_out - min_out)
 }
 
-calculer_tailles_sommets_simi <- function(freq, min_out = 8, max_out = 34) {
+calculer_tailles_sommets_simi <- function(freq, min_out = 6, max_out = 42) {
   f <- suppressWarnings(as.numeric(freq))
   if (!length(f) || all(!is.finite(f))) return(rep((min_out + max_out) / 2, length(f)))
   f[!is.finite(f)] <- 0
   f <- pmax(f, 0)
-  # Réduit l'effet "un mot énorme / tous les autres identiques".
-  f <- log1p(f)
-  fmax <- max(f, na.rm = TRUE)
-  if (!is.finite(fmax) || fmax <= 0) return(rep((min_out + max_out) / 2, length(f)))
-  sizes <- (f / fmax) * max_out
-  pmax(sizes, min_out)
+  # Échelle perceptible: racine + normalisation (plus contrasté que log pur).
+  f <- sqrt(f)
+  as.numeric(normaliser_vecteur_simi(f, min_out, max_out))
 }
 
 calculer_largeurs_aretes_simi <- function(w, max_out = 6.5, min_out = 0.8, cap_out = 9) {
@@ -179,7 +176,7 @@ construire_graphe_similitudes <- function(dfm_obj,
     if (!any(is.finite(vfreq))) vfreq <- rep(1, length(vnames))
     vfreq[!is.finite(vfreq)] <- median(vfreq[is.finite(vfreq)], na.rm = TRUE)
 
-    igraph::V(g)$size <- as.numeric(calculer_tailles_sommets_simi(vfreq, min_out = 8, max_out = 34))
+    igraph::V(g)$size <- as.numeric(calculer_tailles_sommets_simi(vfreq, min_out = 6, max_out = 42))
     if (igraph::ecount(g) > 0) {
       igraph::E(g)$width <- as.numeric(calculer_largeurs_aretes_simi(igraph::E(g)$weight, max_out = 6.5, min_out = 0.8, cap_out = 9))
     }
@@ -241,15 +238,13 @@ tracer_graphe_similitudes <- function(g,
   vertex_labels <- igraph::V(g)$name
   vertex_size <- igraph::V(g)$size
   if (is.null(vertex_size)) vertex_size <- 8
+  vf <- suppressWarnings(as.numeric(vertex_freq))
+  if (!length(vf) || length(vf) != igraph::vcount(g)) {
+    vf <- suppressWarnings(as.numeric(vertex_size))
+  }
   vertex_label_cex <- 0.95
-  if (isTRUE(vertex_text_by_freq)) {
-    vf <- suppressWarnings(as.numeric(vertex_freq))
-    if (!length(vf) || length(vf) != igraph::vcount(g)) {
-      vf <- suppressWarnings(as.numeric(vertex_size))
-    }
-    if (length(vf) == igraph::vcount(g)) {
-      vertex_label_cex <- as.numeric(normaliser_vecteur_simi(vf, 0.75, 1.5))
-    }
+  if (isTRUE(vertex_text_by_freq) && length(vf) == igraph::vcount(g)) {
+    vertex_label_cex <- as.numeric(normaliser_vecteur_simi(sqrt(pmax(vf, 0)), 0.7, 2.2))
   }
 
   edge_width <- igraph::E(g)$width
