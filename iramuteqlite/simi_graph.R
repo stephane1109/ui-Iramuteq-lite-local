@@ -39,6 +39,17 @@ normaliser_vecteur_simi <- function(x, min_out = 0, max_out = 1) {
   min_out + ((x - xmin) / (xmax - xmin)) * (max_out - min_out)
 }
 
+calculer_largeurs_aretes_simi <- function(w, max_out = 8, min_out = 0.8) {
+  w <- suppressWarnings(as.numeric(w))
+  if (!length(w) || all(!is.finite(w))) return(rep(1, length(w)))
+  w[!is.finite(w)] <- 0
+  w <- pmax(w, 0)
+  wmax <- max(w, na.rm = TRUE)
+  if (!is.finite(wmax) || wmax <= 0) return(rep(1, length(w)))
+  widths <- (w / wmax) * max_out
+  pmax(widths, min_out)
+}
+
 supprimer_sommets_isoles_simi <- function(g) {
   if (is.null(g) || !inherits(g, "igraph") || igraph::vcount(g) == 0) {
     return(g)
@@ -150,7 +161,7 @@ construire_graphe_similitudes <- function(dfm_obj,
 
     igraph::V(g)$size <- as.numeric(normaliser_vecteur_simi(vfreq, 8, 24))
     if (igraph::ecount(g) > 0) {
-      igraph::E(g)$width <- as.numeric(normaliser_vecteur_simi(igraph::E(g)$weight, 1, 6))
+      igraph::E(g)$width <- as.numeric(calculer_largeurs_aretes_simi(igraph::E(g)$weight, max_out = 8, min_out = 0.8))
     }
   } else {
     vfreq <- numeric(0)
@@ -224,7 +235,7 @@ tracer_graphe_similitudes <- function(g,
   if (isTRUE(edge_width_by_index)) {
     edge_weight <- suppressWarnings(as.numeric(igraph::E(g)$weight))
     if (length(edge_weight) == igraph::ecount(g) && any(is.finite(edge_weight))) {
-      edge_width <- as.numeric(normaliser_vecteur_simi(edge_weight, 1, 6))
+      edge_width <- as.numeric(calculer_largeurs_aretes_simi(edge_weight, max_out = 8, min_out = 0.8))
     } else if (is.null(edge_width) || length(edge_width) != igraph::ecount(g)) {
       edge_width <- 1
     }
