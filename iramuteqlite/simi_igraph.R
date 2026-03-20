@@ -56,6 +56,7 @@ tracer_graphe_similitudes <- function(g,
                                      edge_width_by_index = TRUE,
                                      vertex_text_by_freq = FALSE,
                                      vertex_freq = NULL,
+                                     vertex_bubbles = TRUE,
                                      main = "Graphe de similitude",
                                      communities = NULL,
                                      halo = FALSE,
@@ -76,7 +77,7 @@ tracer_graphe_similitudes <- function(g,
   vertex_size <- simi_tailles_sommets_igraph(freq, min_out = 5, max_out = 58, power = 0.9)
 
   vertex_label_cex <- 0.95
-  if (isTRUE(vertex_text_by_freq)) {
+  if (isTRUE(vertex_text_by_freq) || !isTRUE(vertex_bubbles)) {
     vertex_label_cex <- simi_tailles_labels_igraph(freq, min_out = 0.6, max_out = 3.3, power = 0.85)
   }
 
@@ -103,33 +104,43 @@ tracer_graphe_similitudes <- function(g,
       vcol <- pal[idx]
 
       if (isTRUE(halo)) {
-        comm <- igraph::communities(communities)
-        mark_groups <- lapply(seq_along(comm), function(i) {
-          vids <- comm[[i]]
-          if (is.null(names(vids))) {
-            igraph::V(g)[vids]
-          } else {
-            igraph::V(g)[names(vids)]
-          }
-        })
-        mark_col <- grDevices::adjustcolor(pal[seq_along(mark_groups)], alpha.f = 0.18)
-        mark_border <- pal[seq_along(mark_groups)]
+        mark_groups <- igraph::groups(communities)
+        mark_col <- grDevices::adjustcolor(pal[seq_along(mark_groups)], alpha.f = 0.22)
+        mark_border <- grDevices::adjustcolor(pal[seq_along(mark_groups)], alpha.f = 0.85)
       }
     }
   }
 
+  old_par <- graphics::par(no.readonly = TRUE)
+  on.exit(graphics::par(old_par), add = TRUE)
+  graphics::par(mar = c(1.2, 1.2, 3.2, 1.2), bg = "#E6E6E6")
+
+  lo_mat <- as.matrix(lo)
+  if (ncol(lo_mat) < 2) {
+    lo_mat <- cbind(lo_mat, rep(0, nrow(lo_mat)))
+  }
+  lo_plot <- lo_mat[, 1:2, drop = FALSE]
+  lo_plot <- igraph::norm_coords(lo_plot, xmin = -1, xmax = 1, ymin = -1, ymax = 1)
+  xlim_use <- c(-1 / zoom, 1 / zoom)
+  ylim_use <- c(-1 / zoom, 1 / zoom)
+
+  # Rendu statique attendu: pas de bulles de sommets (mots + arêtes + halos uniquement).
+  # On conserve l'argument vertex_bubbles pour compatibilité d'appel.
+  afficher_bulles <- FALSE
+
   plot(
     g,
-    layout = lo * zoom,
+    layout = lo_plot,
     main = main,
     vertex.label = igraph::V(g)$name,
-    vertex.size = vertex_size,
-    vertex.color = vcol,
-    vertex.frame.color = "white",
+    vertex.size = if (isTRUE(afficher_bulles)) vertex_size else 0.001,
+    vertex.shape = if (isTRUE(afficher_bulles)) "circle" else "circle",
+    vertex.color = if (isTRUE(afficher_bulles)) vcol else NA,
+    vertex.frame.color = if (isTRUE(afficher_bulles)) "white" else NA,
     vertex.label.family = "sans",
     vertex.label.font = 1,
     vertex.label.cex = vertex_label_cex,
-    vertex.label.color = "navy",
+    vertex.label.color = "#111111",
     edge.width = edge_width,
     edge.color = grDevices::adjustcolor("#303030", alpha.f = 0.82),
     edge.label = edge_lab,
@@ -137,7 +148,9 @@ tracer_graphe_similitudes <- function(g,
     edge.label.color = "navy",
     mark.groups = mark_groups,
     mark.col = mark_col,
-    mark.border = mark_border
+    mark.border = mark_border,
+    xlim = xlim_use,
+    ylim = ylim_use
   )
   if (!is.null(info_text) && nzchar(info_text)) {
     mtext(info_text, side = 3, line = 0.3, cex = 0.82, col = "#455A64")
