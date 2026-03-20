@@ -115,6 +115,7 @@ source("iramuteqlite/affichage_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/wordcloud_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_graph.R", encoding = "UTF-8", local = TRUE)
+source("iramuteqlite/simi_igraph.R", encoding = "UTF-8", local = TRUE)
 source("iramuteq/select_mots.R", encoding = "UTF-8", local = TRUE)
 source("ui.R", encoding = "UTF-8", local = TRUE)
 

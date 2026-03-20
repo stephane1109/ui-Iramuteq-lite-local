@@ -176,7 +176,11 @@ construire_graphe_similitudes <- function(dfm_obj,
     if (!any(is.finite(vfreq))) vfreq <- rep(1, length(vnames))
     vfreq[!is.finite(vfreq)] <- median(vfreq[is.finite(vfreq)], na.rm = TRUE)
 
-    igraph::V(g)$size <- as.numeric(calculer_tailles_sommets_simi(vfreq, min_out = 6, max_out = 42))
+    if (exists("simi_tailles_sommets_igraph", mode = "function", inherits = TRUE)) {
+      igraph::V(g)$size <- as.numeric(simi_tailles_sommets_igraph(vfreq, min_out = 5, max_out = 58, power = 0.9))
+    } else {
+      igraph::V(g)$size <- as.numeric(calculer_tailles_sommets_simi(vfreq, min_out = 6, max_out = 42))
+    }
     if (igraph::ecount(g) > 0) {
       igraph::E(g)$width <- as.numeric(calculer_largeurs_aretes_simi(igraph::E(g)$weight, max_out = 6.5, min_out = 0.8, cap_out = 9))
     }
