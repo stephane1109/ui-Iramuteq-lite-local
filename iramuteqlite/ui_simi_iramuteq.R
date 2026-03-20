@@ -70,7 +70,7 @@ ui_form_parametres_similitudes <- function() {
     checkboxInput(
       "simi_edge_labels",
       "Afficher les labels des arêtes",
-      value = FALSE
+      value = TRUE
     ),
     checkboxInput(
       "simi_edge_width_by_index",
@@ -80,12 +80,12 @@ ui_form_parametres_similitudes <- function() {
     checkboxInput(
       "simi_vertex_text_by_freq",
       "Taille du texte des sommets proportionnelle aux fréquences",
-      value = FALSE
+      value = TRUE
     ),
     checkboxInput(
       "simi_communities",
       "Communautés",
-      value = FALSE
+      value = TRUE
     ),
     conditionalPanel(
       condition = "input.simi_communities == true",
@@ -105,7 +105,7 @@ ui_form_parametres_similitudes <- function() {
       checkboxInput(
         "simi_halo",
         "Halo",
-        value = FALSE
+        value = TRUE
       )
     )
   )
