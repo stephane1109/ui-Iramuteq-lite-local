@@ -39,7 +39,7 @@ normaliser_vecteur_simi <- function(x, min_out = 0, max_out = 1) {
   min_out + ((x - xmin) / (xmax - xmin)) * (max_out - min_out)
 }
 
-calculer_largeurs_aretes_simi <- function(w, max_out = 12, min_out = 1, cap_out = 30) {
+calculer_largeurs_aretes_simi <- function(w, max_out = 16, min_out = 2, cap_out = 40) {
   w <- suppressWarnings(as.numeric(w))
   if (!length(w) || all(!is.finite(w))) return(rep(1, length(w)))
   w[!is.finite(w)] <- 0
@@ -167,7 +167,7 @@ construire_graphe_similitudes <- function(dfm_obj,
 
     igraph::V(g)$size <- as.numeric(normaliser_vecteur_simi(vfreq, 8, 24))
     if (igraph::ecount(g) > 0) {
-      igraph::E(g)$width <- as.numeric(calculer_largeurs_aretes_simi(igraph::E(g)$weight, max_out = 12, min_out = 1, cap_out = 30))
+      igraph::E(g)$width <- as.numeric(calculer_largeurs_aretes_simi(igraph::E(g)$weight, max_out = 16, min_out = 2, cap_out = 40))
     }
   } else {
     vfreq <- numeric(0)
@@ -241,7 +241,7 @@ tracer_graphe_similitudes <- function(g,
   if (isTRUE(edge_width_by_index)) {
     edge_weight <- suppressWarnings(as.numeric(igraph::E(g)$weight))
     if (length(edge_weight) == igraph::ecount(g) && any(is.finite(edge_weight))) {
-      edge_width <- as.numeric(calculer_largeurs_aretes_simi(edge_weight, max_out = 12, min_out = 1, cap_out = 30))
+      edge_width <- as.numeric(calculer_largeurs_aretes_simi(edge_weight, max_out = 16, min_out = 2, cap_out = 40))
     } else if (is.null(edge_width) || length(edge_width) != igraph::ecount(g)) {
       edge_width <- 1
     }
@@ -269,7 +269,7 @@ tracer_graphe_similitudes <- function(g,
 
       if (isTRUE(halo)) {
         mark_groups <- igraph::groups(communities)
-        mark_col <- grDevices::adjustcolor(pal, alpha.f = 0.15)
+        mark_col <- grDevices::adjustcolor(pal, alpha.f = 0.04)
         mark_border <- grDevices::adjustcolor(pal, alpha.f = 0.85)
       }
     }
