@@ -58,6 +58,15 @@ ui_form_parametres_similitudes <- function() {
       ),
       selected = "frutch"
     ),
+    selectInput(
+      "simi_view_mode",
+      "Type d'affichage du graphe",
+      choices = c(
+        "Interactif (visNetwork)" = "interactive",
+        "Statique (igraph avec halo)" = "igraph"
+      ),
+      selected = "interactive"
+    ),
     checkboxInput(
       "simi_edge_labels",
       "Afficher les labels des arêtes",
@@ -121,6 +130,6 @@ ui_panel_similitudes_iramuteq <- function() {
       actionButton("simi_zoom_reset", "Réinitialiser zoom")
     ),
     uiOutput("ui_simi_statut"),
-    tags$div(style = "max-width: 1400px;", plotOutput("plot_simi", height = "980px"))
+    tags$div(style = "max-width: 1400px;", uiOutput("plot_simi_container"))
   )
 }

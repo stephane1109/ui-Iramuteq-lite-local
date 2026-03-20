@@ -6,7 +6,7 @@
 #                        DEV EN LOCAL + ANNOTATIONS                           #
 ###############################################################################
 
-required_packages <- c("shiny", "bslib", "quanteda", "wordcloud", "RColorBrewer", "igraph", "dplyr", "htmltools", "remotes", "irlba", "markdown", "rgexf", "Matrix", "factoextra", "ape", "ggplot2")
+required_packages <- c("shiny", "bslib", "quanteda", "wordcloud", "RColorBrewer", "igraph", "dplyr", "htmltools", "remotes", "irlba", "markdown", "rgexf", "Matrix", "factoextra", "ape", "ggplot2", "plotly", "visNetwork")
 installed_packages <- rownames(installed.packages())
 missing_packages <- setdiff(required_packages, installed_packages)
 
@@ -1014,24 +1014,61 @@ server <- function(input, output, session) {
     )
   }, rownames = FALSE)
   
-  output$plot_simi <- renderPlot({
-    req(zone_trace_disponible("plot_simi", min_width = 240, min_height = 220))
+  output$plot_simi_container <- renderUI({
+    view_mode <- if (is.null(input$simi_view_mode) || !nzchar(input$simi_view_mode)) "interactive" else input$simi_view_mode
+    if (identical(view_mode, "igraph")) {
+      plotOutput("plot_simi_static", height = "980px")
+    } else {
+      visNetwork::visNetworkOutput("plot_simi", height = "980px")
+    }
+  })
+
+  output$plot_simi <- visNetwork::renderVisNetwork({
+    edge_width_by_index_on <- if (is.null(input$simi_edge_width_by_index)) TRUE else isTRUE(input$simi_edge_width_by_index)
+    halo_on <- if (is.null(input$simi_halo)) FALSE else isTRUE(input$simi_halo)
+    view_mode <- if (is.null(input$simi_view_mode) || !nzchar(input$simi_view_mode)) "interactive" else input$simi_view_mode
+    req(identical(view_mode, "interactive"))
     info_txt <- paste0(
       "Méthode: ", rv$simi_method,
       " | Mots conservés: ", rv$simi_terms_used, "/", rv$simi_terms_total,
       " (top demandé=", rv$simi_top_terms_requested, ")"
     )
     
+    tracer_graphe_similitudes_visnetwork(
+      g = rv$simi_graph,
+      layout = rv$simi_layout,
+      edge_width_by_index = edge_width_by_index_on,
+      vertex_freq = rv$simi_vertex_freq,
+      communities = rv$simi_communities,
+      halo = halo_on,
+      info_text = info_txt
+    )
+  })
+
+  output$plot_simi_static <- renderPlot({
+    view_mode <- if (is.null(input$simi_view_mode) || !nzchar(input$simi_view_mode)) "interactive" else input$simi_view_mode
+    req(identical(view_mode, "igraph"))
+    req(zone_trace_disponible("plot_simi_static", min_width = 240, min_height = 220))
+    edge_labels_on <- if (is.null(input$simi_edge_labels)) TRUE else isTRUE(input$simi_edge_labels)
+    edge_width_by_index_on <- if (is.null(input$simi_edge_width_by_index)) TRUE else isTRUE(input$simi_edge_width_by_index)
+    vertex_text_by_freq_on <- if (is.null(input$simi_vertex_text_by_freq)) FALSE else isTRUE(input$simi_vertex_text_by_freq)
+    info_txt <- paste0(
+      "Méthode: ", rv$simi_method,
+      " | Mots conservés: ", rv$simi_terms_used, "/", rv$simi_terms_total,
+      " (top demandé=", rv$simi_top_terms_requested, ")"
+    )
+
     tracer_graphe_similitudes(
       g = rv$simi_graph,
       layout = rv$simi_layout,
-      edge_labels = isTRUE(input$simi_edge_labels),
-      edge_width_by_index = isTRUE(input$simi_edge_width_by_index),
-      vertex_text_by_freq = isTRUE(input$simi_vertex_text_by_freq),
+      edge_labels = edge_labels_on,
+      edge_width_by_index = edge_width_by_index_on,
+      vertex_text_by_freq = vertex_text_by_freq_on,
       vertex_freq = rv$simi_vertex_freq,
+      vertex_bubbles = FALSE,
       main = "Graphe de similitude",
       communities = rv$simi_communities,
-      halo = isTRUE(input$simi_halo),
+      halo = TRUE,
       zoom = rv$simi_zoom,
       info_text = info_txt
     )
