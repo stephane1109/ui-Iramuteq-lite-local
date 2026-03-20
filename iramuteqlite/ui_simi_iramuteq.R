@@ -121,6 +121,6 @@ ui_panel_similitudes_iramuteq <- function() {
       actionButton("simi_zoom_reset", "Réinitialiser zoom")
     ),
     uiOutput("ui_simi_statut"),
-    tags$div(style = "max-width: 1400px;", plotOutput("plot_simi", height = "980px"))
+    tags$div(style = "max-width: 1400px;", visNetwork::visNetworkOutput("plot_simi", height = "980px"))
   )
 }
