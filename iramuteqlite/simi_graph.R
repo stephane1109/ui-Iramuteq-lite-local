@@ -84,7 +84,7 @@ construire_graphe_similitudes <- function(dfm_obj,
                                          method = "cooc",
                                          seuil = NA_real_,
                                          max_tree = TRUE,
-                                         top_terms = 40L,
+                                         top_terms = 100L,
                                          selected_terms = NULL,
                                          layout_type = "frutch",
                                          communities = FALSE,
@@ -100,7 +100,7 @@ construire_graphe_similitudes <- function(dfm_obj,
   freq <- colSums(mat_dfm)
 
   n_top <- suppressWarnings(as.integer(top_terms))
-  if (length(n_top) != 1L || !is.finite(n_top) || is.na(n_top) || n_top < 5) n_top <- 40L
+  if (length(n_top) != 1L || !is.finite(n_top) || is.na(n_top) || n_top < 5) n_top <- 100L
   n_top <- min(n_top, ncol(mat_bin))
 
   selected_terms <- unique(as.character(selected_terms))
