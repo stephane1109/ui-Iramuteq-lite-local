@@ -39,6 +39,19 @@ normaliser_vecteur_simi <- function(x, min_out = 0, max_out = 1) {
   min_out + ((x - xmin) / (xmax - xmin)) * (max_out - min_out)
 }
 
+calculer_tailles_sommets_simi <- function(freq, min_out = 8, max_out = 34) {
+  f <- suppressWarnings(as.numeric(freq))
+  if (!length(f) || all(!is.finite(f))) return(rep((min_out + max_out) / 2, length(f)))
+  f[!is.finite(f)] <- 0
+  f <- pmax(f, 0)
+  # Réduit l'effet "un mot énorme / tous les autres identiques".
+  f <- log1p(f)
+  fmax <- max(f, na.rm = TRUE)
+  if (!is.finite(fmax) || fmax <= 0) return(rep((min_out + max_out) / 2, length(f)))
+  sizes <- (f / fmax) * max_out
+  pmax(sizes, min_out)
+}
+
 calculer_largeurs_aretes_simi <- function(w, max_out = 16, min_out = 2, cap_out = 40) {
   w <- suppressWarnings(as.numeric(w))
   if (!length(w) || all(!is.finite(w))) return(rep(1, length(w)))
@@ -165,7 +178,7 @@ construire_graphe_similitudes <- function(dfm_obj,
     if (!any(is.finite(vfreq))) vfreq <- rep(1, length(vnames))
     vfreq[!is.finite(vfreq)] <- median(vfreq[is.finite(vfreq)], na.rm = TRUE)
 
-    igraph::V(g)$size <- as.numeric(normaliser_vecteur_simi(vfreq, 8, 24))
+    igraph::V(g)$size <- as.numeric(calculer_tailles_sommets_simi(vfreq, min_out = 8, max_out = 34))
     if (igraph::ecount(g) > 0) {
       igraph::E(g)$width <- as.numeric(calculer_largeurs_aretes_simi(igraph::E(g)$weight, max_out = 16, min_out = 2, cap_out = 40))
     }
@@ -284,10 +297,18 @@ tracer_graphe_similitudes <- function(g,
     lo_mat <- cbind(lo_mat, rep(0, nrow(lo_mat)))
   }
   lo_plot <- lo_mat[, 1:2, drop = FALSE]
-  lo_plot <- igraph::norm_coords(lo_plot, xmin = -1, xmax = 1, ymin = -1, ymax = 1)
-
-  xlim_use <- c(-1 / zoom, 1 / zoom)
-  ylim_use <- c(-1 / zoom, 1 / zoom)
+  xr <- range(lo_plot[, 1], na.rm = TRUE)
+  yr <- range(lo_plot[, 2], na.rm = TRUE)
+  if (!all(is.finite(xr)) || diff(xr) == 0) xr <- c(-1, 1)
+  if (!all(is.finite(yr)) || diff(yr) == 0) yr <- c(-1, 1)
+  xpad <- 0.12 * diff(xr)
+  ypad <- 0.12 * diff(yr)
+  xmid <- mean(xr)
+  ymid <- mean(yr)
+  xhalf <- (diff(xr) / 2 + xpad) / zoom
+  yhalf <- (diff(yr) / 2 + ypad) / zoom
+  xlim_use <- c(xmid - xhalf, xmid + xhalf)
+  ylim_use <- c(ymid - yhalf, ymid + yhalf)
 
   plot(
     g,
@@ -312,4 +333,105 @@ tracer_graphe_similitudes <- function(g,
   if (!is.null(info_text) && nzchar(as.character(info_text))) {
     graphics::mtext(as.character(info_text), side = 3, line = 0.2, cex = 0.85, col = "#37474F")
   }
+}
+
+tracer_graphe_similitudes_plotly <- function(g,
+                                            layout = NULL,
+                                            edge_width_by_index = TRUE,
+                                            vertex_freq = NULL,
+                                            communities = NULL,
+                                            info_text = NULL) {
+  if (!requireNamespace("plotly", quietly = TRUE)) {
+    return(NULL)
+  }
+  if (is.null(g) || !inherits(g, "igraph") || igraph::vcount(g) == 0) {
+    return(plotly::plot_ly())
+  }
+
+  lo <- layout
+  if (is.null(lo) || !is.matrix(lo) || nrow(lo) != igraph::vcount(g)) {
+    lo <- igraph::layout_with_fr(g)
+  }
+  lo <- as.matrix(lo)
+  if (ncol(lo) < 2) lo <- cbind(lo, rep(0, nrow(lo)))
+
+  vnames <- igraph::V(g)$name
+  vsize <- suppressWarnings(as.numeric(igraph::V(g)$size))
+  if (!length(vsize) || length(vsize) != igraph::vcount(g)) {
+    vsize <- calculer_tailles_sommets_simi(vertex_freq, min_out = 8, max_out = 34)
+  }
+  if (!length(vsize) || length(vsize) != igraph::vcount(g)) {
+    vsize <- rep(12, igraph::vcount(g))
+  }
+
+  vcol <- rep("#2C7FB8", igraph::vcount(g))
+  if (!is.null(communities) && inherits(communities, "communities")) {
+    memb <- as.integer(igraph::membership(communities))
+    if (length(memb) == igraph::vcount(g) && any(is.finite(memb))) {
+      pal <- grDevices::hcl.colors(max(memb, na.rm = TRUE), palette = "Dark 3")
+      vcol <- pal[pmax(1L, pmin(length(pal), memb))]
+    }
+  }
+
+  nodes_df <- data.frame(
+    name = vnames,
+    x = lo[, 1],
+    y = lo[, 2],
+    size = vsize,
+    color = vcol,
+    stringsAsFactors = FALSE
+  )
+
+  edges_df <- igraph::as_data_frame(g, what = "edges")
+  edge_width <- if (igraph::ecount(g) > 0 && isTRUE(edge_width_by_index)) {
+    calculer_largeurs_aretes_simi(edges_df$weight, max_out = 16, min_out = 2, cap_out = 40)
+  } else {
+    rep(1, nrow(edges_df))
+  }
+
+  p <- plotly::plot_ly(source = "simi_plotly")
+
+  if (nrow(edges_df) > 0) {
+    idx_from <- match(edges_df$from, nodes_df$name)
+    idx_to <- match(edges_df$to, nodes_df$name)
+    for (i in seq_len(nrow(edges_df))) {
+      if (!is.finite(idx_from[i]) || !is.finite(idx_to[i])) next
+      p <- plotly::add_segments(
+        p,
+        x = nodes_df$x[idx_from[i]],
+        y = nodes_df$y[idx_from[i]],
+        xend = nodes_df$x[idx_to[i]],
+        yend = nodes_df$y[idx_to[i]],
+        inherit = FALSE,
+        line = list(color = "rgba(48,48,48,0.80)", width = edge_width[i]),
+        hoverinfo = "text",
+        text = paste0(edges_df$from[i], " ↔ ", edges_df$to[i], "<br>Indice: ", round(edges_df$weight[i], 3)),
+        showlegend = FALSE
+      )
+    }
+  }
+
+  p <- plotly::add_markers(
+    p,
+    data = nodes_df,
+    x = ~x,
+    y = ~y,
+    text = ~name,
+    hoverinfo = "text",
+    marker = list(
+      size = ~size,
+      color = ~color,
+      line = list(color = "#1f4f7a", width = 1)
+    ),
+    showlegend = FALSE
+  )
+
+  p <- plotly::layout(
+    p,
+    title = list(text = if (!is.null(info_text) && nzchar(as.character(info_text))) as.character(info_text) else "Graphe de similitude"),
+    xaxis = list(title = "", showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE, fixedrange = FALSE),
+    yaxis = list(title = "", showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE, fixedrange = FALSE, scaleanchor = "x"),
+    dragmode = "pan"
+  )
+  plotly::config(p, displayModeBar = TRUE, scrollZoom = TRUE)
 }
