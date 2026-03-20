@@ -76,9 +76,9 @@ tracer_graphe_similitudes <- function(g,
   freq <- simi_extraire_freq_vertices(g, vertex_freq = vertex_freq)
   vertex_size <- simi_tailles_sommets_igraph(freq, min_out = 5, max_out = 58, power = 0.9)
 
-  vertex_label_cex <- 0.95
+  vertex_label_cex <- 1.15
   if (isTRUE(vertex_text_by_freq) || !isTRUE(vertex_bubbles)) {
-    vertex_label_cex <- simi_tailles_labels_igraph(freq, min_out = 0.6, max_out = 3.3, power = 0.85)
+    vertex_label_cex <- simi_tailles_labels_igraph(freq, min_out = 0.9, max_out = 4.8, power = 0.85)
   }
 
   if (isTRUE(edge_width_by_index)) {
@@ -127,13 +127,16 @@ tracer_graphe_similitudes <- function(g,
   # Rendu statique attendu: pas de bulles de sommets (mots + arêtes + halos uniquement).
   # On conserve l'argument vertex_bubbles pour compatibilité d'appel.
   afficher_bulles <- FALSE
+  # Sommets "tampon" invisibles pour éviter que les arêtes ne traversent les mots.
+  # Les arêtes s'arrêtent au bord du sommet: on calibre donc la taille sur la taille du label.
+  vertex_hitbox <- pmax(4, as.numeric(vertex_label_cex) * 6.5)
 
   plot(
     g,
     layout = lo_plot,
     main = main,
     vertex.label = igraph::V(g)$name,
-    vertex.size = if (isTRUE(afficher_bulles)) vertex_size else 0.001,
+    vertex.size = if (isTRUE(afficher_bulles)) vertex_size else vertex_hitbox,
     vertex.shape = if (isTRUE(afficher_bulles)) "circle" else "circle",
     vertex.color = if (isTRUE(afficher_bulles)) vcol else NA,
     vertex.frame.color = if (isTRUE(afficher_bulles)) "white" else NA,
@@ -146,6 +149,7 @@ tracer_graphe_similitudes <- function(g,
     edge.label = edge_lab,
     edge.label.cex = 0.72,
     edge.label.color = "navy",
+    edge.label.dist = 0.15,
     mark.groups = mark_groups,
     mark.col = mark_col,
     mark.border = mark_border,
