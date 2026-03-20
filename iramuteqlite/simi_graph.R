@@ -52,19 +52,20 @@ calculer_tailles_sommets_simi <- function(freq, min_out = 8, max_out = 34) {
   pmax(sizes, min_out)
 }
 
-calculer_largeurs_aretes_simi <- function(w, max_out = 16, min_out = 2, cap_out = 40) {
+calculer_largeurs_aretes_simi <- function(w, max_out = 6.5, min_out = 0.8, cap_out = 9) {
   w <- suppressWarnings(as.numeric(w))
   if (!length(w) || all(!is.finite(w))) return(rep(1, length(w)))
   w[!is.finite(w)] <- 0
   w <- pmax(w, 0)
   wmax <- max(w, na.rm = TRUE)
   if (!is.finite(wmax) || wmax <= 0) return(rep(1, length(w)))
+
   widths <- if (wmax <= 1) {
-    # Métriques bornées (jaccard/binom): on amplifie pour rendre visible.
-    w * max_out
+    # Métriques bornées (jaccard/binom): échelle douce.
+    normaliser_vecteur_simi(w, min_out, max_out)
   } else {
-    # Cooccurrence (fréquences): largeur directement proportionnelle à la fréquence.
-    w
+    # Cooccurrence: compression log + normalisation pour éviter les "barres".
+    normaliser_vecteur_simi(log1p(w), min_out, max_out)
   }
   pmin(pmax(widths, min_out), cap_out)
 }
@@ -180,7 +181,7 @@ construire_graphe_similitudes <- function(dfm_obj,
 
     igraph::V(g)$size <- as.numeric(calculer_tailles_sommets_simi(vfreq, min_out = 8, max_out = 34))
     if (igraph::ecount(g) > 0) {
-      igraph::E(g)$width <- as.numeric(calculer_largeurs_aretes_simi(igraph::E(g)$weight, max_out = 16, min_out = 2, cap_out = 40))
+      igraph::E(g)$width <- as.numeric(calculer_largeurs_aretes_simi(igraph::E(g)$weight, max_out = 6.5, min_out = 0.8, cap_out = 9))
     }
   } else {
     vfreq <- numeric(0)
@@ -254,7 +255,7 @@ tracer_graphe_similitudes <- function(g,
   if (isTRUE(edge_width_by_index)) {
     edge_weight <- suppressWarnings(as.numeric(igraph::E(g)$weight))
     if (length(edge_weight) == igraph::ecount(g) && any(is.finite(edge_weight))) {
-      edge_width <- as.numeric(calculer_largeurs_aretes_simi(edge_weight, max_out = 16, min_out = 2, cap_out = 40))
+      edge_width <- as.numeric(calculer_largeurs_aretes_simi(edge_weight, max_out = 6.5, min_out = 0.8, cap_out = 9))
     } else if (is.null(edge_width) || length(edge_width) != igraph::ecount(g)) {
       edge_width <- 1
     }
@@ -384,7 +385,7 @@ tracer_graphe_similitudes_plotly <- function(g,
 
   edges_df <- igraph::as_data_frame(g, what = "edges")
   edge_width <- if (igraph::ecount(g) > 0 && isTRUE(edge_width_by_index)) {
-    calculer_largeurs_aretes_simi(edges_df$weight, max_out = 16, min_out = 2, cap_out = 40)
+    calculer_largeurs_aretes_simi(edges_df$weight, max_out = 6.5, min_out = 0.8, cap_out = 9)
   } else {
     rep(1, nrow(edges_df))
   }
