@@ -82,7 +82,7 @@ construire_graphe_similitudes <- function(dfm_obj,
                                          method = "cooc",
                                          seuil = NA_real_,
                                          max_tree = TRUE,
-                                         top_terms = 40L,
+                                         top_terms = 100L,
                                          selected_terms = NULL,
                                          layout_type = "frutch",
                                          communities = FALSE,
@@ -98,7 +98,7 @@ construire_graphe_similitudes <- function(dfm_obj,
   freq <- colSums(mat_dfm)
 
   n_top <- suppressWarnings(as.integer(top_terms))
-  if (length(n_top) != 1L || !is.finite(n_top) || is.na(n_top) || n_top < 5) n_top <- 40L
+  if (length(n_top) != 1L || !is.finite(n_top) || is.na(n_top) || n_top < 5) n_top <- 100L
   n_top <- min(n_top, ncol(mat_bin))
 
   selected_terms <- unique(as.character(selected_terms))
@@ -222,6 +222,7 @@ tracer_graphe_similitudes <- function(g,
                                      edge_width_by_index = TRUE,
                                      vertex_text_by_freq = FALSE,
                                      vertex_freq = NULL,
+                                     vertex_bubbles = TRUE,
                                      main = "Graphe de similitude",
                                      communities = NULL,
                                      halo = FALSE,
@@ -282,7 +283,7 @@ tracer_graphe_similitudes <- function(g,
 
       if (isTRUE(halo)) {
         mark_groups <- igraph::groups(communities)
-        mark_col <- grDevices::adjustcolor(pal, alpha.f = 0.04)
+        mark_col <- grDevices::adjustcolor(pal, alpha.f = 0.22)
         mark_border <- grDevices::adjustcolor(pal, alpha.f = 0.85)
       }
     }
@@ -297,18 +298,9 @@ tracer_graphe_similitudes <- function(g,
     lo_mat <- cbind(lo_mat, rep(0, nrow(lo_mat)))
   }
   lo_plot <- lo_mat[, 1:2, drop = FALSE]
-  xr <- range(lo_plot[, 1], na.rm = TRUE)
-  yr <- range(lo_plot[, 2], na.rm = TRUE)
-  if (!all(is.finite(xr)) || diff(xr) == 0) xr <- c(-1, 1)
-  if (!all(is.finite(yr)) || diff(yr) == 0) yr <- c(-1, 1)
-  xpad <- 0.12 * diff(xr)
-  ypad <- 0.12 * diff(yr)
-  xmid <- mean(xr)
-  ymid <- mean(yr)
-  xhalf <- (diff(xr) / 2 + xpad) / zoom
-  yhalf <- (diff(yr) / 2 + ypad) / zoom
-  xlim_use <- c(xmid - xhalf, xmid + xhalf)
-  ylim_use <- c(ymid - yhalf, ymid + yhalf)
+  lo_plot <- igraph::norm_coords(lo_plot, xmin = -1, xmax = 1, ymin = -1, ymax = 1)
+  xlim_use <- c(-1 / zoom, 1 / zoom)
+  ylim_use <- c(-1 / zoom, 1 / zoom)
 
   plot(
     g,
@@ -316,6 +308,7 @@ tracer_graphe_similitudes <- function(g,
     vertex.label = vertex_labels,
     vertex.label.cex = vertex_label_cex,
     vertex.size = vertex_size,
+    vertex.shape = if (isTRUE(vertex_bubbles)) "circle" else "none",
     vertex.color = vcol,
     vertex.frame.color = "#1f4f7a",
     edge.width = edge_width,
@@ -441,6 +434,7 @@ tracer_graphe_similitudes_visnetwork <- function(g,
                                                 edge_width_by_index = TRUE,
                                                 vertex_freq = NULL,
                                                 communities = NULL,
+                                                halo = FALSE,
                                                 info_text = NULL) {
   if (!requireNamespace("visNetwork", quietly = TRUE)) {
     return(NULL)
@@ -482,11 +476,12 @@ tracer_graphe_similitudes_visnetwork <- function(g,
     value = vsize,
     x = lo[, 1],
     y = lo[, 2],
-    color.background = vcol,
-    color.border = "#1f4f7a",
     group = groups,
     stringsAsFactors = FALSE
   )
+  nodes$physics <- TRUE
+  nodes$fixed <- FALSE
+  nodes$title <- nodes$label
 
   edges <- igraph::as_data_frame(g, what = "edges")
   if (nrow(edges) > 0) {
@@ -507,7 +502,7 @@ tracer_graphe_similitudes_visnetwork <- function(g,
     edges$color <- character(0)
   }
 
-  visNetwork::visNetwork(nodes, edges, width = "100%", height = "980px", main = info_text) |>
+  p <- visNetwork::visNetwork(nodes, edges, width = "100%", height = "980px", main = info_text) |>
     visNetwork::visEdges(smooth = FALSE, color = list(color = "#4A4A4A", opacity = 0.8)) |>
     visNetwork::visNodes(shape = "dot", borderWidth = 1.2, font = list(size = 22)) |>
     visNetwork::visPhysics(
@@ -517,4 +512,23 @@ tracer_graphe_similitudes_visnetwork <- function(g,
     ) |>
     visNetwork::visInteraction(navigationButtons = TRUE, dragNodes = TRUE, dragView = TRUE, zoomView = TRUE, hover = TRUE) |>
     visNetwork::visOptions(highlightNearest = list(enabled = TRUE, degree = 1, hover = TRUE))
+
+  ugr <- unique(groups)
+  for (grp in ugr) {
+    idx <- which(groups == grp)[1]
+    col_grp <- vcol[idx]
+    shadow_cfg <- if (isTRUE(halo) && length(ugr) > 1) {
+      list(enabled = TRUE, color = grDevices::adjustcolor(col_grp, alpha.f = 0.45), size = 16, x = 0, y = 0)
+    } else {
+      FALSE
+    }
+    p <- visNetwork::visGroups(
+      p,
+      groupname = grp,
+      color = list(background = col_grp, border = "#1f4f7a"),
+      shadow = shadow_cfg
+    )
+  }
+
+  p
 }

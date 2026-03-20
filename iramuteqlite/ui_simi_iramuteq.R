@@ -3,7 +3,7 @@
 ui_form_parametres_similitudes <- function() {
   tagList(
     tags$p(
-      "Paramétrez l'analyse de similitudes (Vergès). ",
+      "Paramétrez l'analyse de similitudes. ",
       "Ces options prépareront la matrice et l'affichage du graphe de similitude."
     ),
     selectInput(
@@ -26,7 +26,7 @@ ui_form_parametres_similitudes <- function() {
     numericInput(
       "simi_top_terms",
       "Nombre de termes à conserver (plus fréquents)",
-      value = 40,
+      value = 100,
       min = 5,
       step = 1
     ),
@@ -58,6 +58,15 @@ ui_form_parametres_similitudes <- function() {
       ),
       selected = "frutch"
     ),
+    selectInput(
+      "simi_view_mode",
+      "Type d'affichage du graphe",
+      choices = c(
+        "Interactif (visNetwork)" = "interactive",
+        "Statique (igraph avec halo)" = "igraph"
+      ),
+      selected = "interactive"
+    ),
     checkboxInput(
       "simi_edge_labels",
       "Afficher les labels des arêtes",
@@ -76,7 +85,7 @@ ui_form_parametres_similitudes <- function() {
     checkboxInput(
       "simi_communities",
       "Communautés",
-      value = FALSE
+      value = TRUE
     ),
     conditionalPanel(
       condition = "input.simi_communities == true",
@@ -96,7 +105,7 @@ ui_form_parametres_similitudes <- function() {
       checkboxInput(
         "simi_halo",
         "Halo",
-        value = FALSE
+        value = TRUE
       )
     )
   )
@@ -105,7 +114,7 @@ ui_form_parametres_similitudes <- function() {
 ui_panel_similitudes_iramuteq <- function() {
   nav_panel(
     "Analyse similitudes", value = "similitudes",
-    tags$h3("Analyse de similitudes (Vergès)"),
+    tags$h3("Analyse de similitudes"),
     tags$p("Ouvrez la boîte de dialogue pour configurer les paramètres de l'analyse."),
     tags$p(
       style = "background:#f8fbff; border:1px solid #d9e2ef; border-radius:6px; padding:10px;",
@@ -115,12 +124,15 @@ ui_panel_similitudes_iramuteq <- function() {
     ),
     tags$div(
       style = "display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:center;",
-      actionButton("ouvrir_param_simi", "Paramétrer l'analyse de similitudes", class = "btn-primary"),
+      actionButton("ouvrir_param_simi", "Paramétrer l'analyse de similitudes", class = "btn-primary")
+    ),
+    uiOutput("ui_simi_statut"),
+    tags$div(
+      style = "display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:center;",
       actionButton("simi_zoom_in", "Zoom +"),
       actionButton("simi_zoom_out", "Zoom -"),
       actionButton("simi_zoom_reset", "Réinitialiser zoom")
     ),
-    uiOutput("ui_simi_statut"),
-    tags$div(style = "max-width: 1400px;", visNetwork::visNetworkOutput("plot_simi", height = "980px"))
+    tags$div(style = "max-width: 1400px;", uiOutput("plot_simi_container"))
   )
 }

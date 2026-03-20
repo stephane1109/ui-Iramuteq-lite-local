@@ -230,7 +230,7 @@ server <- function(input, output, session) {
     simi_zoom = 1,
     simi_terms_used = 0L,
     simi_terms_total = 0L,
-    simi_top_terms_requested = 40L,
+    simi_top_terms_requested = 100L,
     
     parametres_analyse = list()
   )
@@ -594,7 +594,7 @@ server <- function(input, output, session) {
       tags$ul(
         tags$li(paste0("Méthode: ", if (is.null(input$simi_method)) "cooc" else input$simi_method)),
         tags$li(paste0("Seuil: ", seuil_label)),
-        tags$li(paste0("Top termes: ", if (is.null(input$simi_top_terms)) 40 else input$simi_top_terms)),
+        tags$li(paste0("Top termes: ", if (is.null(input$simi_top_terms)) 100 else input$simi_top_terms)),
         tags$li(paste0("Layout: ", if (is.null(input$simi_layout)) "frutch" else input$simi_layout)),
         tags$li(paste0("Arbre max: ", if (isTRUE(input$simi_max_tree)) "oui" else "non")),
         tags$li(paste0("Labels des arêtes: ", if (isTRUE(input$simi_edge_labels)) "oui" else "non")),
@@ -608,6 +608,37 @@ server <- function(input, output, session) {
         tags$li(paste0("Termes sélectionnés: ", length(unique(input$simi_terms_selected %||% character(0))))),
         tags$li(paste0("Zoom affichage: x", format(round(rv$simi_zoom, 2), nsmall = 2))),
         tags$li(paste0("Graphe courant: ", n_vertices, " sommets / ", n_edges, " arêtes"))
+      )
+    )
+  })
+  
+  output$ui_chd_statut <- renderUI({
+    format_bool <- function(x) if (isTRUE(x)) "oui" else "non"
+    format_val <- function(x, fallback) {
+      if (is.null(x) || (length(x) == 1 && is.na(x)) || !length(x)) return(fallback)
+      as.character(x)
+    }
+    
+    tags$div(
+      style = "border:1px solid #d9e2ef; background:#f8fbff; border-radius:6px; padding:12px; margin-bottom:12px;",
+      tags$strong("Configuration actuelle"),
+      tags$ul(
+        tags$li(paste0("Méthode: ", format_val(input$modele_chd, "iramuteq"))),
+        tags$li(paste0("Taille des segments: ", format_val(input$segment_size, "40"))),
+        tags$li(paste0("Segmentation ponctuation forte: ", format_bool(input$segmenter_sur_ponctuation_forte))),
+        tags$li(paste0("min_docfreq: ", format_val(input$min_docfreq, "3"))),
+        tags$li(paste0("max_p: ", format_val(input$max_p, "0.05"))),
+        tags$li(paste0("Filtrer affichage p-value: ", format_bool(input$filtrer_affichage_pvalue))),
+        tags$li(paste0("Source dictionnaire: ", format_val(input$source_dictionnaire, "lexique_fr"))),
+        tags$li(paste0("Lemmatisation lexique: ", format_bool(input$lexique_utiliser_lemmes))),
+        tags$li(paste0("Dictionnaire expressions: ", format_bool(input$expression_utiliser_dictionnaire))),
+        tags$li(paste0("Stopwords: ", format_bool(input$retirer_stopwords))),
+        tags$li(paste0("Nettoyage caractères: ", format_bool(input$nettoyage_caracteres))),
+        tags$li(paste0("Suppression ponctuation: ", format_bool(input$supprimer_ponctuation))),
+        tags$li(paste0("Suppression chiffres: ", format_bool(input$supprimer_chiffres))),
+        tags$li(paste0("Traitement apostrophes: ", format_bool(input$supprimer_apostrophes))),
+        tags$li(paste0("Filtrage morpho: ", format_bool(input$filtrage_morpho))),
+        tags$li(paste0("Top N nuages: ", format_val(input$top_n, "20")))
       )
     )
   })
@@ -1052,8 +1083,20 @@ server <- function(input, output, session) {
     )
   }, rownames = FALSE)
   
+  output$plot_simi_container <- renderUI({
+    view_mode <- if (is.null(input$simi_view_mode) || !nzchar(input$simi_view_mode)) "interactive" else input$simi_view_mode
+    if (identical(view_mode, "igraph")) {
+      plotOutput("plot_simi_static", height = "980px")
+    } else {
+      visNetwork::visNetworkOutput("plot_simi", height = "980px")
+    }
+  })
+
   output$plot_simi <- visNetwork::renderVisNetwork({
     edge_width_by_index_on <- if (is.null(input$simi_edge_width_by_index)) TRUE else isTRUE(input$simi_edge_width_by_index)
+    halo_on <- if (is.null(input$simi_halo)) FALSE else isTRUE(input$simi_halo)
+    view_mode <- if (is.null(input$simi_view_mode) || !nzchar(input$simi_view_mode)) "interactive" else input$simi_view_mode
+    req(identical(view_mode, "interactive"))
     info_txt <- paste0(
       "Méthode: ", rv$simi_method,
       " | Mots conservés: ", rv$simi_terms_used, "/", rv$simi_terms_total,
@@ -1066,6 +1109,36 @@ server <- function(input, output, session) {
       edge_width_by_index = edge_width_by_index_on,
       vertex_freq = rv$simi_vertex_freq,
       communities = rv$simi_communities,
+      halo = halo_on,
+      info_text = info_txt
+    )
+  })
+
+  output$plot_simi_static <- renderPlot({
+    view_mode <- if (is.null(input$simi_view_mode) || !nzchar(input$simi_view_mode)) "interactive" else input$simi_view_mode
+    req(identical(view_mode, "igraph"))
+    req(zone_trace_disponible("plot_simi_static", min_width = 240, min_height = 220))
+    edge_labels_on <- if (is.null(input$simi_edge_labels)) TRUE else isTRUE(input$simi_edge_labels)
+    edge_width_by_index_on <- if (is.null(input$simi_edge_width_by_index)) TRUE else isTRUE(input$simi_edge_width_by_index)
+    vertex_text_by_freq_on <- if (is.null(input$simi_vertex_text_by_freq)) FALSE else isTRUE(input$simi_vertex_text_by_freq)
+    info_txt <- paste0(
+      "Méthode: ", rv$simi_method,
+      " | Mots conservés: ", rv$simi_terms_used, "/", rv$simi_terms_total,
+      " (top demandé=", rv$simi_top_terms_requested, ")"
+    )
+
+    tracer_graphe_similitudes(
+      g = rv$simi_graph,
+      layout = rv$simi_layout,
+      edge_labels = edge_labels_on,
+      edge_width_by_index = edge_width_by_index_on,
+      vertex_text_by_freq = vertex_text_by_freq_on,
+      vertex_freq = rv$simi_vertex_freq,
+      vertex_bubbles = FALSE,
+      main = "Graphe de similitude",
+      communities = rv$simi_communities,
+      halo = TRUE,
+      zoom = rv$simi_zoom,
       info_text = info_txt
     )
   })
