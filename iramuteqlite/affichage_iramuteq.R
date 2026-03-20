@@ -6,6 +6,12 @@ ui_resultats_chd_iramuteq <- function() {
     tabPanel(
       "Dendrogramme",
       tags$h3("Dendrogramme CHD"),
+      tags$p("Ouvrez la boîte de dialogue pour configurer les paramètres de l'analyse CHD."),
+      tags$div(
+        style = "display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:center;",
+        actionButton("ouvrir_param_chd", "Paramètres de l'analyse CHD", class = "btn-primary")
+      ),
+      uiOutput("ui_chd_statut"),
       tags$div(
         style = "width: 800px; max-width: 100%; margin: 0 auto 12px auto;",
         selectInput(
