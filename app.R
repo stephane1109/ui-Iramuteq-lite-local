@@ -1133,6 +1133,8 @@ server <- function(input, output, session) {
       edge_width_by_index = edge_width_by_index_on,
       vertex_text_by_freq = vertex_text_by_freq_on,
       vertex_freq = rv$simi_vertex_freq,
+      vertex_bubbles = FALSE,
+      main = "Graphe de similitude",
       communities = rv$simi_communities,
       halo = TRUE,
       zoom = rv$simi_zoom,

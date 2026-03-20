@@ -220,6 +220,7 @@ tracer_graphe_similitudes <- function(g,
                                      edge_width_by_index = TRUE,
                                      vertex_text_by_freq = FALSE,
                                      vertex_freq = NULL,
+                                     vertex_bubbles = TRUE,
                                      main = "Graphe de similitude",
                                      communities = NULL,
                                      halo = FALSE,
@@ -282,7 +283,7 @@ tracer_graphe_similitudes <- function(g,
 
       if (isTRUE(halo)) {
         mark_groups <- igraph::groups(communities)
-        mark_col <- grDevices::adjustcolor(pal, alpha.f = 0.04)
+        mark_col <- grDevices::adjustcolor(pal, alpha.f = 0.22)
         mark_border <- grDevices::adjustcolor(pal, alpha.f = 0.85)
       }
     }
@@ -307,6 +308,7 @@ tracer_graphe_similitudes <- function(g,
     vertex.label = vertex_labels,
     vertex.label.cex = vertex_label_cex,
     vertex.size = vertex_size,
+    vertex.shape = if (isTRUE(vertex_bubbles)) "circle" else "none",
     vertex.color = vcol,
     vertex.frame.color = "#1f4f7a",
     edge.width = edge_width,
