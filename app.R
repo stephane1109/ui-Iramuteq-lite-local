@@ -1083,8 +1083,8 @@ server <- function(input, output, session) {
   }, rownames = FALSE)
   
   output$plot_simi_container <- renderUI({
-    halo_on <- if (is.null(input$simi_halo)) FALSE else isTRUE(input$simi_halo)
-    if (isTRUE(halo_on)) {
+    view_mode <- if (is.null(input$simi_view_mode) || !nzchar(input$simi_view_mode)) "interactive" else input$simi_view_mode
+    if (identical(view_mode, "igraph")) {
       plotOutput("plot_simi_static", height = "980px")
     } else {
       visNetwork::visNetworkOutput("plot_simi", height = "980px")
@@ -1094,7 +1094,8 @@ server <- function(input, output, session) {
   output$plot_simi <- visNetwork::renderVisNetwork({
     edge_width_by_index_on <- if (is.null(input$simi_edge_width_by_index)) TRUE else isTRUE(input$simi_edge_width_by_index)
     halo_on <- if (is.null(input$simi_halo)) FALSE else isTRUE(input$simi_halo)
-    req(!isTRUE(halo_on))
+    view_mode <- if (is.null(input$simi_view_mode) || !nzchar(input$simi_view_mode)) "interactive" else input$simi_view_mode
+    req(identical(view_mode, "interactive"))
     info_txt <- paste0(
       "Méthode: ", rv$simi_method,
       " | Mots conservés: ", rv$simi_terms_used, "/", rv$simi_terms_total,
@@ -1113,6 +1114,8 @@ server <- function(input, output, session) {
   })
 
   output$plot_simi_static <- renderPlot({
+    view_mode <- if (is.null(input$simi_view_mode) || !nzchar(input$simi_view_mode)) "interactive" else input$simi_view_mode
+    req(identical(view_mode, "igraph"))
     req(zone_trace_disponible("plot_simi_static", min_width = 240, min_height = 220))
     edge_labels_on <- if (is.null(input$simi_edge_labels)) TRUE else isTRUE(input$simi_edge_labels)
     edge_width_by_index_on <- if (is.null(input$simi_edge_width_by_index)) TRUE else isTRUE(input$simi_edge_width_by_index)

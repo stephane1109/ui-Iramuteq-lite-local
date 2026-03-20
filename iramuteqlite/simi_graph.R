@@ -297,18 +297,9 @@ tracer_graphe_similitudes <- function(g,
     lo_mat <- cbind(lo_mat, rep(0, nrow(lo_mat)))
   }
   lo_plot <- lo_mat[, 1:2, drop = FALSE]
-  xr <- range(lo_plot[, 1], na.rm = TRUE)
-  yr <- range(lo_plot[, 2], na.rm = TRUE)
-  if (!all(is.finite(xr)) || diff(xr) == 0) xr <- c(-1, 1)
-  if (!all(is.finite(yr)) || diff(yr) == 0) yr <- c(-1, 1)
-  xpad <- 0.12 * diff(xr)
-  ypad <- 0.12 * diff(yr)
-  xmid <- mean(xr)
-  ymid <- mean(yr)
-  xhalf <- (diff(xr) / 2 + xpad) / zoom
-  yhalf <- (diff(yr) / 2 + ypad) / zoom
-  xlim_use <- c(xmid - xhalf, xmid + xhalf)
-  ylim_use <- c(ymid - yhalf, ymid + yhalf)
+  lo_plot <- igraph::norm_coords(lo_plot, xmin = -1, xmax = 1, ymin = -1, ymax = 1)
+  xlim_use <- c(-1 / zoom, 1 / zoom)
+  ylim_use <- c(-1 / zoom, 1 / zoom)
 
   plot(
     g,
