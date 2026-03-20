@@ -479,9 +479,6 @@ server <- function(input, output, session) {
     nav_principal_precedent(nav_actuel)
     if (isTRUE(identical(nav_actuel, nav_precedent))) return(invisible(NULL))
     
-    if (nav_actuel %in% c("chd", "resultats_chd")) {
-      ouvrir_modal_parametres()
-    }
     if (isTRUE(identical(nav_actuel, "similitudes"))) {
       peupler_termes_similitudes(
         input = input,
@@ -495,6 +492,10 @@ server <- function(input, output, session) {
   
   observeEvent(input$ouvrir_param_simi, {
     ouvrir_modal_parametres_similitudes()
+  })
+  
+  observeEvent(input$ouvrir_param_chd, {
+    ouvrir_modal_parametres()
   })
 
   observeEvent(input$ouvrir_param_simi, {
@@ -605,6 +606,37 @@ server <- function(input, output, session) {
         tags$li(paste0("Termes sélectionnés: ", length(unique(input$simi_terms_selected %||% character(0))))),
         tags$li(paste0("Zoom affichage: x", format(round(rv$simi_zoom, 2), nsmall = 2))),
         tags$li(paste0("Graphe courant: ", n_vertices, " sommets / ", n_edges, " arêtes"))
+      )
+    )
+  })
+  
+  output$ui_chd_statut <- renderUI({
+    format_bool <- function(x) if (isTRUE(x)) "oui" else "non"
+    format_val <- function(x, fallback) {
+      if (is.null(x) || (length(x) == 1 && is.na(x)) || !length(x)) return(fallback)
+      as.character(x)
+    }
+    
+    tags$div(
+      style = "border:1px solid #d9e2ef; background:#f8fbff; border-radius:6px; padding:12px; margin-bottom:12px;",
+      tags$strong("Configuration actuelle"),
+      tags$ul(
+        tags$li(paste0("Méthode: ", format_val(input$modele_chd, "iramuteq"))),
+        tags$li(paste0("Taille des segments: ", format_val(input$segment_size, "40"))),
+        tags$li(paste0("Segmentation ponctuation forte: ", format_bool(input$segmenter_sur_ponctuation_forte))),
+        tags$li(paste0("min_docfreq: ", format_val(input$min_docfreq, "3"))),
+        tags$li(paste0("max_p: ", format_val(input$max_p, "0.05"))),
+        tags$li(paste0("Filtrer affichage p-value: ", format_bool(input$filtrer_affichage_pvalue))),
+        tags$li(paste0("Source dictionnaire: ", format_val(input$source_dictionnaire, "lexique_fr"))),
+        tags$li(paste0("Lemmatisation lexique: ", format_bool(input$lexique_utiliser_lemmes))),
+        tags$li(paste0("Dictionnaire expressions: ", format_bool(input$expression_utiliser_dictionnaire))),
+        tags$li(paste0("Stopwords: ", format_bool(input$retirer_stopwords))),
+        tags$li(paste0("Nettoyage caractères: ", format_bool(input$nettoyage_caracteres))),
+        tags$li(paste0("Suppression ponctuation: ", format_bool(input$supprimer_ponctuation))),
+        tags$li(paste0("Suppression chiffres: ", format_bool(input$supprimer_chiffres))),
+        tags$li(paste0("Traitement apostrophes: ", format_bool(input$supprimer_apostrophes))),
+        tags$li(paste0("Filtrage morpho: ", format_bool(input$filtrage_morpho))),
+        tags$li(paste0("Top N nuages: ", format_val(input$top_n, "20")))
       )
     )
   })
