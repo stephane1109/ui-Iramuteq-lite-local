@@ -617,9 +617,9 @@ server <- function(input, output, session) {
       return(invisible(NULL))
     }
 
-    if (!exists("construire_graphe_similitudes", mode = "function", inherits = TRUE)) {
-      showNotification("Erreur analyse similitudes: moteur de construction du graphe introuvable (construire_graphe_similitudes).", type = "error")
-      journaliser_evenement("Erreur analyse similitudes: fonction construire_graphe_similitudes introuvable.")
+    if (!exists("fn_construire_simi", mode = "function", inherits = TRUE)) {
+      showNotification("Erreur analyse similitudes: moteur de construction du graphe introuvable (fn_construire_simi).", type = "error")
+      journaliser_evenement("Erreur analyse similitudes: fonction fn_construire_simi introuvable.")
       return(invisible(NULL))
     }
     

@@ -216,6 +216,11 @@ construire_graphe_similitudes <- function(dfm_obj,
   )
 }
 
+# Alias de compatibilité utilisé explicitement par app.R.
+fn_construire_simi <- function(...) {
+  construire_graphe_similitudes(...)
+}
+
 tracer_graphe_similitudes <- function(g,
                                      layout = NULL,
                                      edge_labels = TRUE,
