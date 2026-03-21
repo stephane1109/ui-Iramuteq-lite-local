@@ -144,6 +144,65 @@ source("iramuteqlite/chd_engine_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/server_outputs_status_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/server_events_lancer_iramuteq.R", encoding = "UTF-8", local = TRUE)
 
+charger_moteur_similitudes <- function(target_env = parent.frame()) {
+  fn_existante <- get0("construire_graphe_similitudes", mode = "function", inherits = TRUE)
+  if (is.function(fn_existante)) {
+    return(list(ok = TRUE, details = character(0), fn = fn_existante))
+  }
+
+  candidats <- c(
+    "iramuteqlite/simi_graph.R",
+    file.path(APP_BASE_DIR, "iramuteqlite", "simi_graph.R")
+  )
+  candidats <- unique(candidats[file.exists(candidats)])
+  if (!length(candidats)) {
+    return(list(
+      ok = FALSE,
+      details = "Fichier simi_graph.R introuvable (ni chemin relatif, ni chemin APP_BASE_DIR).",
+      fn = NULL
+    ))
+  }
+
+  details <- character(0)
+  for (f in candidats) {
+    env_tmp <- new.env(parent = baseenv())
+    source_res <- tryCatch(
+      {
+        source(f, encoding = "UTF-8", local = env_tmp)
+        TRUE
+      },
+      error = function(e) {
+        details <<- c(details, paste0("Échec source(", f, "): ", conditionMessage(e)))
+        FALSE
+      }
+    )
+    if (isTRUE(source_res)) {
+      fn_chargee <- get0("construire_graphe_similitudes", envir = env_tmp, mode = "function", inherits = FALSE)
+      if (is.function(fn_chargee)) {
+        assign("construire_graphe_similitudes", fn_chargee, envir = target_env)
+        return(list(ok = TRUE, details = details, fn = fn_chargee))
+      }
+      details <- c(details, paste0("source(", f, ") OK mais construire_graphe_similitudes absente de l'environnement chargé."))
+    }
+  }
+
+  if (!length(details)) {
+    details <- "Le fichier simi_graph.R a été trouvé mais la fonction construire_graphe_similitudes reste absente après chargement."
+  }
+  list(ok = FALSE, details = details, fn = NULL)
+}
+
+# Validation précoce pour éviter une erreur tardive au clic sur "Lancer l'analyse de similitudes".
+etat_moteur_similitudes <- charger_moteur_similitudes(target_env = environment())
+if (!isTRUE(etat_moteur_similitudes$ok)) {
+  warning(
+    paste(
+      c("Moteur de similitudes indisponible au démarrage.", etat_moteur_similitudes$details),
+      collapse = " | "
+    )
+  )
+}
+
 # Compatibilité défensive: certains chemins historiques utilisent encore des appels
 # non qualifiés (docvars/docnames). On expose des wrappers explicites pour éviter
 # les erreurs de résolution si ces symboles ne sont pas attachés dans la session.
@@ -404,7 +463,7 @@ server <- function(input, output, session) {
     defaults <- list(
       modele_chd = "iramuteq",
       segment_size = 40,
-      segmenter_sur_ponctuation_forte = FALSE,
+      segmenter_sur_ponctuation_forte = TRUE,
       iramuteq_max_formes = 20000,
       iramuteq_mincl_mode = "auto",
       iramuteq_mincl = 5,
@@ -417,6 +476,9 @@ server <- function(input, output, session) {
       utiliser_stopwords = FALSE,
       min_docfreq = 3,
       max_p = 0.05,
+      nettoyage_caracteres = TRUE,
+      supprimer_apostrophes = TRUE,
+      afc_reduire_chevauchement = TRUE,
       afc_taille_mots = "frequency",
       top_n = 20
     )
@@ -562,7 +624,7 @@ server <- function(input, output, session) {
     }
     
     res_simi <- tryCatch(
-      construire_graphe_similitudes(
+      fn_construire_simi(
         dfm_obj = rv$dfm,
         method = input$simi_method,
         seuil = input$simi_seuil,
