@@ -155,12 +155,12 @@ ui_form_parametres_analyse <- function(defaults = NULL) {
       "source_dictionnaire",
       "Source de lemmatisation",
       choices = c(
-        "Lexique (fr)" = "lexique_fr",
-        "spaCy (POS contextuel)" = "spacy"
+        "Lexique (fr)" = "lexique_fr"
       ),
       selected = valeur_defaut("source_dictionnaire", "lexique_fr"),
       inline = FALSE
     ),
+    tags$p("spaCy est réservé à la détection NER (pas au filtrage POS CHD).", style = "font-size: 0.9em; color: #555; margin-top: -6px;"),
     conditionalPanel(
       condition = "input.source_dictionnaire == 'lexique_fr'",
       checkboxInput("lexique_utiliser_lemmes", "Lemmatisation via les lemmes de lexique_fr (forme → c_lemme)", value = valeur_defaut("lexique_utiliser_lemmes", TRUE))
@@ -209,21 +209,6 @@ ui_form_parametres_analyse <- function(defaults = NULL) {
         value = valeur_defaut("morpho_conserver_hors_lexique", TRUE)
       )
     ),
-    conditionalPanel(
-      condition = "input.filtrage_morpho == true && input.source_dictionnaire == 'spacy'",
-      selectizeInput(
-        "pos_spacy_a_conserver",
-        "Catégories POS à conserver (spaCy / UPOS)",
-        choices = c(
-          "NOUN", "PROPN", "VERB", "AUX", "ADJ", "ADV", "PRON", "DET",
-          "ADP", "NUM", "CCONJ", "SCONJ", "PART", "INTJ", "X"
-        ),
-        selected = valeur_defaut("pos_spacy_a_conserver", c("NOUN", "VERB", "ADJ")),
-        multiple = TRUE,
-        options = list(plugins = list("remove_button"))
-      )
-    ),
-
     tags$div(class = "sidebar-section-title", "Paramètres AFC"),
     checkboxInput("afc_reduire_chevauchement", "Réduire les chevauchements des mots (AFC)", value = valeur_defaut("afc_reduire_chevauchement", TRUE)),
     radioButtons(

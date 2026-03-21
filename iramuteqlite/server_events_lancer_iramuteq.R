@@ -780,7 +780,12 @@ register_events_lancer <- function(input, output, session, rv) {
 
       log_presence_expressions(dfm_obj, "avant filtres morpho/min_docfreq")
 
-      if (isTRUE(input$filtrage_morpho) && identical(input$source_dictionnaire, "lexique_fr")) {
+      source_dict_chd <- if (identical(input$source_dictionnaire, "spacy")) "lexique_fr" else input$source_dictionnaire
+      if (isTRUE(input$filtrage_morpho) && identical(input$source_dictionnaire, "spacy")) {
+        ajouter_log(rv, "Option spaCy ignorée pour CHD: spaCy est réservé à la détection NER. Bascule automatique sur lexique_fr.")
+      }
+
+      if (isTRUE(input$filtrage_morpho) && identical(source_dict_chd, "lexique_fr")) {
         if (is.null(rv$lexique_fr_df) || !is.data.frame(rv$lexique_fr_df) || nrow(rv$lexique_fr_df) == 0) {
           rv$lexique_fr_df <- charger_lexique_fr(app_dir)
           ajouter_log(rv, paste0("Lexique (fr) chargé pour filtrage morphosyntaxique: ", nrow(rv$lexique_fr_df), " entrées."))
@@ -893,69 +898,6 @@ register_events_lancer <- function(input, output, session, rv) {
         }
       }
 
-      if (isTRUE(input$filtrage_morpho) && identical(input$source_dictionnaire, "spacy")) {
-        pos_selection <- toupper(trimws(as.character(input$pos_spacy_a_conserver)))
-        pos_selection <- unique(pos_selection[nzchar(pos_selection)])
-
-        if (length(pos_selection) > 0) {
-          parsed_pos <- parser_pos_spacy(textes_tok, ids_docs, rv)
-          rv$spacy_tokens_df <- parsed_pos
-
-          parsed_pos$token_core <- gsub("^[[:punct:]]+|[[:punct:]]+$", "", parsed_pos$token, perl = TRUE)
-          parsed_pos$token_core[!nzchar(parsed_pos$token_core)] <- parsed_pos$token[!nzchar(parsed_pos$token_core)]
-
-          token_pos <- unique(parsed_pos[parsed_pos$pos %in% pos_selection, c("token", "token_core"), drop = FALSE])
-          termes_autorises <- unique(c(token_pos$token, token_pos$token_core))
-          termes_autorises <- termes_autorises[nzchar(termes_autorises)]
-
-          featnames_dfm <- quanteda::featnames(dfm_obj)
-          featnames_norm <- tolower(trimws(as.character(featnames_dfm)))
-          featnames_core <- gsub("^[[:punct:]]+|[[:punct:]]+$", "", featnames_norm, perl = TRUE)
-          featnames_core[!nzchar(featnames_core)] <- featnames_norm[!nzchar(featnames_core)]
-
-          keep_mask <- (featnames_norm %in% termes_autorises) | (featnames_core %in% termes_autorises)
-          pattern_keep <- featnames_dfm[keep_mask]
-
-          n_feat_avant_morpho <- quanteda::nfeat(dfm_obj)
-          dfm_obj <- quanteda::dfm_select(
-            dfm_obj,
-            pattern = pattern_keep,
-            selection = "keep",
-            valuetype = "fixed",
-            case_insensitive = FALSE
-          )
-          n_feat_apres_morpho <- quanteda::nfeat(dfm_obj)
-
-          repartition_pos <- vapply(
-            pos_selection,
-            function(cat) as.character(sum(parsed_pos$pos == cat, na.rm = TRUE)),
-            character(1)
-          )
-          ajouter_log(
-            rv,
-            paste0(
-              "Filtrage POS spaCy appliqué (UPOS=",
-              paste(pos_selection, collapse = ","),
-              ") : ",
-              n_feat_avant_morpho,
-              " -> ",
-              n_feat_apres_morpho,
-              " termes uniques."
-            )
-          )
-          ajouter_log(
-            rv,
-            paste0(
-              "Répartition des tokens spaCy par POS sélectionnée: ",
-              paste0(names(repartition_pos), "=", repartition_pos, collapse = "; "),
-              "."
-            )
-          )
-        } else {
-          ajouter_log(rv, "Filtrage POS spaCy activé sans catégorie UPOS sélectionnée : étape ignorée.")
-        }
-      }
-
       log_presence_expressions(dfm_obj, "après filtrage morphosyntaxique")
 
       min_docfreq_val <- lire_min_docfreq_manuel(input$min_docfreq, valeur_defaut = 3L)
@@ -972,7 +914,7 @@ register_events_lancer <- function(input, output, session, rv) {
         tok = tok,
         dfm_obj = dfm_obj,
         langue_reference = "fr",
-        source_dictionnaire = as.character(input$source_dictionnaire)
+        source_dictionnaire = as.character(source_dict_chd)
       )
     }
 
@@ -1201,14 +1143,12 @@ register_events_lancer <- function(input, output, session, rv) {
       modele_chd <- "iramuteq"
       mode_iramuteq <- TRUE
       source_dictionnaire <- if (is.null(input$source_dictionnaire) || !nzchar(input$source_dictionnaire)) "lexique_fr" else as.character(input$source_dictionnaire)
+      if (identical(source_dictionnaire, "spacy")) source_dictionnaire <- "lexique_fr"
       updateRadioButtons(
         session,
         "source_dictionnaire",
-        choices = c(
-          "Lexique (fr)" = "lexique_fr",
-          "spaCy (POS contextuel)" = "spacy"
-        ),
-        selected = source_dictionnaire
+        choices = c("Lexique (fr)" = "lexique_fr"),
+        selected = "lexique_fr"
       )
       updateRadioButtons(
         session,
