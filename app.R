@@ -617,17 +617,9 @@ server <- function(input, output, session) {
       return(invisible(NULL))
     }
 
-    etat_simi <- charger_moteur_similitudes(target_env = environment())
-    fn_construire_simi <- etat_simi$fn
-    if (!is.function(fn_construire_simi)) {
+    if (!exists("construire_graphe_similitudes", mode = "function", inherits = TRUE)) {
       showNotification("Erreur analyse similitudes: moteur de construction du graphe introuvable (construire_graphe_similitudes).", type = "error")
-      journaliser_evenement(paste(
-        c(
-          "Erreur analyse similitudes: fonction construire_graphe_similitudes introuvable après rechargement.",
-          etat_simi$details
-        ),
-        collapse = " | "
-      ))
+      journaliser_evenement("Erreur analyse similitudes: fonction construire_graphe_similitudes introuvable.")
       return(invisible(NULL))
     }
     
