@@ -195,8 +195,10 @@ server <- function(input, output, session) {
     lexique_fr_df = NULL,
     expression_fr_df = NULL,
     expression_annotations_df = data.frame(dic_mot = character(0), dic_norm = character(0), dic_morpho = character(0), stringsAsFactors = FALSE),
+    ner_annotations_df = data.frame(text = character(0), label = character(0), stringsAsFactors = FALSE),
     expressions_actives_df = NULL,
     utiliser_add_expression = FALSE,
+    utiliser_add_ner = FALSE,
     textes_indexation = NULL,
     
     afc_obj = NULL,
@@ -291,6 +293,77 @@ server <- function(input, output, session) {
   }
   
   reinitialiser_add_expression_travail()
+
+  normaliser_add_ner_df <- function(df) {
+    if (is.null(df) || !is.data.frame(df)) return(NULL)
+    if (!all(c("text", "label") %in% names(df))) return(NULL)
+    out <- df[, c("text", "label"), drop = FALSE]
+    out$text <- trimws(as.character(out$text))
+    out$label <- toupper(trimws(as.character(out$label)))
+    out <- out[nzchar(out$text) & nzchar(out$label), , drop = FALSE]
+    out <- out[!duplicated(tolower(out$text)), , drop = FALSE]
+    out
+  }
+
+  lire_add_ner_depuis_json <- function(path_in) {
+    if (!requireNamespace("jsonlite", quietly = TRUE)) return(NULL)
+    payload <- tryCatch(jsonlite::fromJSON(path_in, simplifyVector = TRUE), error = function(e) NULL)
+    if (is.null(payload)) return(NULL)
+
+    include_df <- NULL
+    if (is.data.frame(payload) && all(c("text", "label") %in% names(payload))) {
+      include_df <- payload
+    } else if (is.list(payload) && !is.null(payload$include)) {
+      include_raw <- payload$include
+      if (is.data.frame(include_raw)) {
+        include_df <- include_raw
+      } else if (is.list(include_raw) && length(include_raw) > 0) {
+        include_df <- do.call(rbind, lapply(include_raw, function(x) {
+          data.frame(
+            text = if (!is.null(x$text)) as.character(x$text) else "",
+            label = if (!is.null(x$label)) as.character(x$label) else "",
+            stringsAsFactors = FALSE
+          )
+        }))
+      }
+    }
+
+    normaliser_add_ner_df(include_df)
+  }
+
+  sauvegarder_add_ner <- function(df) {
+    if (!requireNamespace("jsonlite", quietly = TRUE)) return(invisible(NULL))
+    df <- normaliser_add_ner_df(df)
+    if (is.null(df)) df <- data.frame(text = character(0), label = character(0), stringsAsFactors = FALSE)
+    payload <- list(
+      exclude_texts = character(0),
+      exclude_labels = character(0),
+      include = lapply(seq_len(nrow(df)), function(i) list(text = df$text[[i]], label = df$label[[i]]))
+    )
+    path_out <- file.path(app_dir, "dictionnaires", "add_ner.json")
+    tryCatch({
+      jsonlite::write_json(payload, path = path_out, auto_unbox = TRUE, pretty = TRUE)
+      invisible(path_out)
+    }, error = function(e) invisible(NULL))
+  }
+
+  initialiser_add_ner_travail <- function() {
+    path_in <- file.path(app_dir, "dictionnaires", "add_ner.json")
+    if (!file.exists(path_in)) {
+      rv$ner_annotations_df <- data.frame(text = character(0), label = character(0), stringsAsFactors = FALSE)
+      return(invisible(NULL))
+    }
+    df <- lire_add_ner_depuis_json(path_in)
+    if (is.null(df)) {
+      rv$ner_annotations_df <- data.frame(text = character(0), label = character(0), stringsAsFactors = FALSE)
+      return(invisible(NULL))
+    }
+    rv$ner_annotations_df <- df
+    rv$utiliser_add_ner <- nrow(df) > 0
+    invisible(NULL)
+  }
+
+  initialiser_add_ner_travail()
   
   
   if (exists("register_outputs_status", mode = "function", inherits = TRUE)) {
@@ -357,7 +430,7 @@ server <- function(input, output, session) {
     "iramuteq_rst1", "iramuteq_rst2", "iramuteq_svd_method", "iramuteq_stats_mode",
     "source_dictionnaire", "lexique_utiliser_lemmes", "expression_utiliser_dictionnaire",
     "nettoyage_caracteres", "supprimer_ponctuation", "supprimer_chiffres", "supprimer_apostrophes",
-    "remplacer_tirets_espaces", "retirer_stopwords", "filtrage_morpho", "pos_lexique_a_conserver",
+    "remplacer_tirets_espaces", "retirer_stopwords", "filtrage_morpho", "pos_lexique_a_conserver", "pos_spacy_a_conserver",
     "morpho_conserver_hors_lexique", "afc_reduire_chevauchement", "afc_taille_mots", "top_n"
   )
   
@@ -836,6 +909,135 @@ server <- function(input, output, session) {
       if (!"dic_morpho" %in% names(df)) df$dic_morpho <- ""
       df$dic_morpho[is.na(df$dic_morpho)] <- ""
       utils::write.csv2(df, file, row.names = FALSE, fileEncoding = "UTF-8", na = "")
+    }
+  )
+
+  output$ner_corpus_colore <- renderUI({
+    texte <- if (is.null(input$ner_corpus_text)) "" else as.character(input$ner_corpus_text)
+    if (!nzchar(trimws(texte))) {
+      return(tags$div(
+        style = "white-space: pre-wrap; max-height: 280px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #fafafa;",
+        "Aucun texte NER à annoter pour le moment."
+      ))
+    }
+
+    ner_df <- rv$ner_annotations_df
+    if (is.null(ner_df) || !is.data.frame(ner_df) || nrow(ner_df) == 0) {
+      return(tags$div(
+        style = "white-space: pre-wrap; max-height: 280px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #fafafa;",
+        htmltools::HTML(htmltools::htmlEscape(texte))
+      ))
+    }
+
+    motifs <- unique(trimws(as.character(ner_df$text)))
+    motifs <- motifs[nzchar(motifs)]
+    motifs <- motifs[order(nchar(motifs), decreasing = TRUE)]
+    texte_hl <- texte
+    for (motif in motifs) {
+      motif_regex <- .annotation_regex_escape(motif)
+      regex <- paste0("(?i)(?<![[:alnum:]_])(", motif_regex, ")(?![[:alnum:]_])")
+      texte_hl <- gsub(regex, "<span class='highlight'>\\1</span>", texte_hl, perl = TRUE)
+    }
+
+    texte_safe <- echapper_segments_en_preservant_surlignage(
+      texte_hl,
+      "<span class='highlight'>",
+      "</span>"
+    )
+
+    tags$div(
+      style = "white-space: pre-wrap; max-height: 280px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #fafafa;",
+      htmltools::HTML(texte_safe)
+    )
+  })
+
+  observeEvent(input$ner_selection, {
+    txt <- trimws(as.character(input$ner_selection))
+    if (!nzchar(txt)) return(invisible(NULL))
+    etiquette <- toupper(trimws(as.character(input$ner_label)))
+    if (!nzchar(etiquette)) etiquette <- "ORG"
+    updateTextInput(session, "ner_label", value = etiquette)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ner_add_entry, {
+    txt <- trimws(as.character(input$ner_selection))
+    lbl <- toupper(trimws(as.character(input$ner_label)))
+    if (!nzchar(txt) || !nzchar(lbl)) {
+      showNotification("text et label sont obligatoires.", type = "error")
+      return(invisible(NULL))
+    }
+    df <- rv$ner_annotations_df
+    if (is.null(df) || !is.data.frame(df)) {
+      df <- data.frame(text = character(0), label = character(0), stringsAsFactors = FALSE)
+    }
+    key <- tolower(txt)
+    idx <- match(key, tolower(df$text))
+    if (!is.na(idx)) {
+      df$label[idx] <- lbl
+      df$text[idx] <- txt
+    } else {
+      df <- rbind(df, data.frame(text = txt, label = lbl, stringsAsFactors = FALSE))
+    }
+    rv$ner_annotations_df <- df[order(tolower(df$text)), , drop = FALSE]
+    rv$utiliser_add_ner <- TRUE
+    sauvegarder_add_ner(rv$ner_annotations_df)
+    showNotification("Entrée NER enregistrée (session).", type = "message")
+  })
+
+  observeEvent(input$ner_remove_entry, {
+    key <- tolower(trimws(as.character(input$ner_remove_key)))
+    if (!nzchar(key)) return(invisible(NULL))
+    df <- rv$ner_annotations_df
+    if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) return(invisible(NULL))
+    rv$ner_annotations_df <- df[tolower(df$text) != key, c("text", "label"), drop = FALSE]
+    sauvegarder_add_ner(rv$ner_annotations_df)
+    showNotification("Entrée NER supprimée (si existante).", type = "message")
+  })
+
+  observeEvent(input$ner_import_json, {
+    f <- input$ner_import_json
+    if (is.null(f) || is.null(f$datapath) || !file.exists(f$datapath)) return(invisible(NULL))
+    df <- lire_add_ner_depuis_json(f$datapath)
+    if (is.null(df)) {
+      showNotification("JSON invalide : format attendu include=[{text,label}, ...].", type = "warning")
+      return(invisible(NULL))
+    }
+    rv$ner_annotations_df <- df
+    rv$utiliser_add_ner <- TRUE
+    sauvegarder_add_ner(rv$ner_annotations_df)
+    showNotification(paste0("Règles NER importées depuis ", f$name, " (", nrow(df), " entrée(s))."), type = "message")
+  })
+
+  observeEvent(input$ner_import_txt, {
+    f <- input$ner_import_txt
+    if (is.null(f) || is.null(f$datapath) || !file.exists(f$datapath)) return(invisible(NULL))
+    txt <- tryCatch(paste(readLines(f$datapath, warn = FALSE, encoding = "UTF-8"), collapse = "\n"), error = function(e) "")
+    updateTextAreaInput(session, "ner_corpus_text", value = txt)
+    showNotification(paste0("Texte importé pour annotation NER : ", f$name), type = "message")
+  })
+
+  output$table_ner_dict <- renderTable({
+    df <- rv$ner_annotations_df
+    if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) {
+      return(data.frame(info = "Aucune règle NER annotée.", stringsAsFactors = FALSE))
+    }
+    df
+  }, striped = TRUE, bordered = TRUE, hover = TRUE, spacing = "xs", width = "100%")
+
+  output$dl_ner_json <- downloadHandler(
+    filename = function() "add_ner.json",
+    content = function(file) {
+      if (!requireNamespace("jsonlite", quietly = TRUE)) {
+        stop("Le package R 'jsonlite' est requis pour exporter add_ner.json.")
+      }
+      df <- normaliser_add_ner_df(rv$ner_annotations_df)
+      if (is.null(df)) df <- data.frame(text = character(0), label = character(0), stringsAsFactors = FALSE)
+      payload <- list(
+        exclude_texts = character(0),
+        exclude_labels = character(0),
+        include = lapply(seq_len(nrow(df)), function(i) list(text = df$text[[i]], label = df$label[[i]]))
+      )
+      jsonlite::write_json(payload, path = file, auto_unbox = TRUE, pretty = TRUE)
     }
   )
   
