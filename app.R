@@ -538,6 +538,15 @@ server <- function(input, output, session) {
       showNotification("Analyse CHD/AFC non disponible: lancez d'abord l'analyse principale pour construire le graphe de similitude.", type = "warning")
       return(invisible(NULL))
     }
+
+    if (!exists("construire_graphe_similitudes", mode = "function", inherits = TRUE)) {
+      try(source("iramuteqlite/simi_graph.R", encoding = "UTF-8", local = TRUE), silent = TRUE)
+    }
+    if (!exists("construire_graphe_similitudes", mode = "function", inherits = TRUE)) {
+      showNotification("Erreur analyse similitudes: moteur de construction du graphe introuvable (construire_graphe_similitudes).", type = "error")
+      journaliser_evenement("Erreur analyse similitudes: fonction construire_graphe_similitudes introuvable après rechargement.")
+      return(invisible(NULL))
+    }
     
     res_simi <- tryCatch(
       construire_graphe_similitudes(
