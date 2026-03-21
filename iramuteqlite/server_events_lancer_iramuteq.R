@@ -797,6 +797,8 @@ register_events_lancer <- function(input, output, session, rv) {
         if (length(morpho_selection_lexique) > 0 || isTRUE(inclure_autre_forme)) {
           lex <- rv$lexique_fr_df
           lex_morpho <- toupper(trimws(as.character(lex$c_morpho)))
+          exclure_etre_verbe <- isTRUE(input$morpho_exclure_etre_verbe)
+          categorie_verbe_selectionnee <- any(morpho_selection_lexique %in% c("VER", "VERB", "AUX", "VER_SUP"))
 
           idx <- nzchar(lex_morpho) & lex_morpho %in% morpho_selection_lexique
           termes_autorises <- unique(c(
@@ -804,6 +806,9 @@ register_events_lancer <- function(input, output, session, rv) {
             tolower(trimws(as.character(lex$c_lemme[idx])))
           ))
           termes_autorises <- termes_autorises[nzchar(termes_autorises)]
+          if (isTRUE(exclure_etre_verbe) && isTRUE(categorie_verbe_selectionnee)) {
+            termes_autorises <- setdiff(termes_autorises, c("être", "etre"))
+          }
 
           toutes_formes_lexique <- unique(c(
             tolower(trimws(as.character(lex$c_mot))),
@@ -872,6 +877,8 @@ register_events_lancer <- function(input, output, session, rv) {
               paste(morpho_selection, collapse = ","),
               " | inclure_autre_forme=",
               ifelse(isTRUE(inclure_autre_forme), "1", "0"),
+              " | exclure_etre_verbe=",
+              ifelse(isTRUE(exclure_etre_verbe) && isTRUE(categorie_verbe_selectionnee), "1", "0"),
               " | ponct_exclue_autre_forme=1",
               " | normalisation_bords_ponct=1",
               ") : ",
