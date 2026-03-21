@@ -620,7 +620,7 @@ server <- function(input, output, session) {
     }
     
     res_simi <- tryCatch(
-      construire_graphe_similitudes(
+      construire_graphe_fn(
         dfm_obj = rv$dfm,
         method = input$simi_method,
         seuil = input$simi_seuil,
@@ -1183,7 +1183,7 @@ server <- function(input, output, session) {
       " (top demandé=", rv$simi_top_terms_requested, ")"
     )
     
-    tracer_graphe_similitudes_visnetwork(
+    p_simi <- tracer_graphe_similitudes_visnetwork(
       g = rv$simi_graph,
       layout = rv$simi_layout,
       edge_width_by_index = edge_width_by_index_on,
@@ -1192,6 +1192,9 @@ server <- function(input, output, session) {
       halo = halo_on,
       info_text = info_txt
     )
+
+    p_simi |>
+      visNetwork::visConfigure(enabled = TRUE)
   })
 
   output$plot_simi_static <- renderPlot({
