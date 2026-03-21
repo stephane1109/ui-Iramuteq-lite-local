@@ -8,6 +8,37 @@ spacy_ner_disponible <- function(script_path = file.path("spacy", "ner_spacy.py"
   nzchar(python_bin) && file.exists(script_path)
 }
 
+spacy_modele_disponible <- function(model = "fr_core_news_lg") {
+  python_bin <- Sys.which("python3")
+  if (!nzchar(python_bin)) python_bin <- Sys.which("python")
+  if (!nzchar(python_bin)) return(FALSE)
+
+  probe <- paste0(
+    "import spacy; ",
+    "spacy.load('", gsub("'", "\\\\'", model, fixed = TRUE), "'); ",
+    "print('OK')"
+  )
+  out <- suppressWarnings(system2(python_bin, args = c("-c", probe), stdout = TRUE, stderr = TRUE))
+  status <- attr(out, "status")
+  if (is.null(status)) status <- 0L
+  identical(as.integer(status), 0L)
+}
+
+installer_spacy_si_necessaire <- function(model = "fr_core_news_lg", installer_path = file.path("spacy", "install_spacy_fr.py")) {
+  if (spacy_modele_disponible(model = model)) return(TRUE)
+  if (isTRUE(getOption("iramuteq_spacy_install_attempted", FALSE))) return(FALSE)
+  options(iramuteq_spacy_install_attempted = TRUE)
+
+  python_bin <- Sys.which("python3")
+  if (!nzchar(python_bin)) python_bin <- Sys.which("python")
+  if (!nzchar(python_bin) || !file.exists(installer_path)) return(FALSE)
+
+  out <- suppressWarnings(system2(python_bin, args = installer_path, stdout = TRUE, stderr = TRUE))
+  status <- attr(out, "status")
+  if (is.null(status)) status <- 0L
+  identical(as.integer(status), 0L) && spacy_modele_disponible(model = model)
+}
+
 detecter_ner_spacy <- function(texte, model = "fr_core_news_lg", script_path = file.path("spacy", "ner_spacy.py")) {
   texte <- if (is.null(texte)) "" else as.character(texte)
   if (!nzchar(trimws(texte))) {
@@ -18,6 +49,10 @@ detecter_ner_spacy <- function(texte, model = "fr_core_news_lg", script_path = f
   if (!nzchar(python_bin)) python_bin <- Sys.which("python")
   if (!spacy_ner_disponible(script_path = script_path)) {
     return(NULL)
+  }
+  if (!spacy_modele_disponible(model = model)) {
+    ok_install <- installer_spacy_si_necessaire(model = model)
+    if (!isTRUE(ok_install)) return(NULL)
   }
 
   in_txt <- tempfile(pattern = "ner_spacy_in_", fileext = ".txt")
