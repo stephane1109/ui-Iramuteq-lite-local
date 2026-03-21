@@ -640,7 +640,7 @@ register_events_lancer <- function(input, output, session, rv) {
         script_path,
         "--input-csv", in_csv,
         "--output-csv", out_csv,
-        "--model", "fr_core_news_sm"
+        "--model", "fr_core_news_lg"
       )
 
       cmd_out <- suppressWarnings(
