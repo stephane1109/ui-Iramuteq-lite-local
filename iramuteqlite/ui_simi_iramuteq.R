@@ -133,6 +133,10 @@ ui_panel_similitudes_iramuteq <- function() {
       actionButton("simi_zoom_out", "Zoom -"),
       actionButton("simi_zoom_reset", "Réinitialiser zoom")
     ),
+    tags$p(
+      style = "margin: 0 0 10px 0; color: #365c8d;",
+      "En mode interactif, ouvrez le panneau de configuration visNetwork (bouton 'config') pour adapter dynamiquement le rendu du graphe (nœuds, arêtes, physique, layout, interactions, etc.)."
+    ),
     tags$div(style = "max-width: 1400px;", uiOutput("plot_simi_container"))
   )
 }
