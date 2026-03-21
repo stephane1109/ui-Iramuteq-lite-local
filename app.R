@@ -19,7 +19,21 @@ if (!"FactoMineR" %in% installed_packages) {
   remotes::install_github("husson/FactoMineR", dependencies = NA, upgrade = "never")
 }
 
-APP_BASE_DIR <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+detecter_base_app <- function() {
+  candidats <- c(
+    getwd(),
+    dirname(normalizePath("app.R", winslash = "/", mustWork = FALSE))
+  )
+  candidats <- unique(candidats[nzchar(candidats)])
+  for (d in candidats) {
+    if (file.exists(file.path(d, "iramuteqlite", "simi_graph.R"))) {
+      return(normalizePath(d, winslash = "/", mustWork = FALSE))
+    }
+  }
+  normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+}
+
+APP_BASE_DIR <- detecter_base_app()
 
 # Augmente la limite d'upload Shiny (défaut ~5 Mo), utile pour les corpus .txt volumineux.
 options(shiny.maxRequestSize = 30 * 1024^2)
@@ -1152,7 +1166,7 @@ server <- function(input, output, session) {
       " (top demandé=", rv$simi_top_terms_requested, ")"
     )
 
-    tracer_graphe_similitudes(
+    tracer_graphe_similitudes_igraph(
       g = rv$simi_graph,
       layout = rv$simi_layout,
       edge_labels = edge_labels_on,

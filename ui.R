@@ -319,6 +319,22 @@ ui <- page_navbar(
           });
         }
 
+        document.addEventListener('click', function (event) {
+          var item = event.target && event.target.closest('#simi_terms_selected + .selectize-control .selectize-input > div');
+          if (!item) return;
+          if (event.target.classList && event.target.classList.contains('remove')) return;
+
+          var champ = document.getElementById('simi_terms_selected');
+          if (!champ || !champ.selectize) return;
+
+          var val = item.getAttribute('data-value');
+          if (!val) return;
+
+          event.preventDefault();
+          event.stopPropagation();
+          champ.selectize.removeItem(val, true);
+        }, true);
+
       });
     "))
   ),
