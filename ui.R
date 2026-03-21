@@ -274,6 +274,26 @@ ui <- page_navbar(
         align-items: center;
         justify-content: center;
       }
+      #simi_terms_selected + .selectize-control .selectize-input > div {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding-right: 2px;
+      }
+      #simi_terms_selected + .selectize-control .selectize-input > div .remove {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
+        min-height: 20px;
+        margin-left: 6px;
+        border-radius: 50%;
+        font-size: 16px;
+        line-height: 1;
+      }
+      #simi_terms_selected + .selectize-control .selectize-input > div .remove:hover {
+        background: rgba(0, 0, 0, 0.08);
+      }
     ")),
     tags$script(HTML("
       document.addEventListener('DOMContentLoaded', function () {
