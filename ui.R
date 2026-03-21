@@ -414,7 +414,11 @@ ui <- page_navbar(
     ),
     downloadButton("dl_ner_json", "Télécharger add_ner.json"),
     tags$h4("Règles NER (session)"),
-    tableOutput("table_ner_dict")
+    tableOutput("table_ner_dict"),
+    tags$h4("Entités NER détectées dans le corpus importé"),
+    tableOutput("table_ner_detectes"),
+    tags$h4("Wordcloud NER"),
+    plotOutput("plot_wordcloud_ner", height = "500px")
   ),
   nav_panel("CHD", value = "resultats_chd", ui_resultats_chd_iramuteq()),
   nav_panel(
