@@ -19,6 +19,8 @@ if (!"FactoMineR" %in% installed_packages) {
   remotes::install_github("husson/FactoMineR", dependencies = NA, upgrade = "never")
 }
 
+APP_BASE_DIR <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+
 # Augmente la limite d'upload Shiny (défaut ~5 Mo), utile pour les corpus .txt volumineux.
 options(shiny.maxRequestSize = 30 * 1024^2)
 
@@ -540,7 +542,15 @@ server <- function(input, output, session) {
     }
 
     if (!exists("construire_graphe_similitudes", mode = "function", inherits = TRUE)) {
-      try(source("iramuteqlite/simi_graph.R", encoding = "UTF-8", local = TRUE), silent = TRUE)
+      candidats <- c(
+        "iramuteqlite/simi_graph.R",
+        file.path(APP_BASE_DIR, "iramuteqlite", "simi_graph.R")
+      )
+      candidats <- unique(candidats[file.exists(candidats)])
+      for (f in candidats) {
+        try(source(f, encoding = "UTF-8", local = environment()), silent = TRUE)
+        if (exists("construire_graphe_similitudes", mode = "function", inherits = TRUE)) break
+      }
     }
     if (!exists("construire_graphe_similitudes", mode = "function", inherits = TRUE)) {
       showNotification("Erreur analyse similitudes: moteur de construction du graphe introuvable (construire_graphe_similitudes).", type = "error")
