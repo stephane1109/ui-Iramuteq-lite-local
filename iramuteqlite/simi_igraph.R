@@ -54,6 +54,7 @@ tracer_graphe_similitudes_igraph <- function(g,
                                             layout = NULL,
                                             edge_labels = TRUE,
                                             edge_width_by_index = TRUE,
+                                            edge_curved = TRUE,
                                             vertex_text_by_freq = FALSE,
                                             vertex_freq = NULL,
                                             vertex_bubbles = TRUE,
@@ -84,15 +85,10 @@ tracer_graphe_similitudes_igraph <- function(g,
     vertex_label_cex <- rep(vertex_label_cex, igraph::vcount(g))
   }
   vertex_labels <- as.character(igraph::V(g)$name)
-  if (length(vertex_labels) == igraph::vcount(g) && igraph::vcount(g) > 60) {
-    ord <- order(freq, decreasing = TRUE, na.last = TRUE)
-    n_keep <- min(max(40L, round(igraph::vcount(g) * 0.55)), 90L)
-    keep_idx <- ord[seq_len(min(length(ord), n_keep))]
-    shown <- rep(FALSE, igraph::vcount(g))
-    shown[keep_idx] <- TRUE
-    vertex_labels[!shown] <- ""
-    vertex_label_cex[!shown] <- 0
+  if (length(vertex_labels) != igraph::vcount(g)) {
+    vertex_labels <- rep("", igraph::vcount(g))
   }
+  vertex_labels[is.na(vertex_labels)] <- ""
 
   if (isTRUE(edge_width_by_index)) {
     edge_width <- simi_largeurs_aretes_igraph(igraph::E(g)$weight, min_out = 0.35, max_out = 4.2, cap_out = 5.2)
@@ -103,6 +99,7 @@ tracer_graphe_similitudes_igraph <- function(g,
   zoom <- suppressWarnings(as.numeric(zoom))
   if (!is.finite(zoom) || is.na(zoom) || zoom <= 0) zoom <- 1
   edge_lab <- if (isTRUE(edge_labels)) round(igraph::E(g)$weight, 3) else NA
+  edge_curved_use <- if (isTRUE(edge_curved)) 0.16 else 0
 
   vcol <- "#2C7FB8"
   mark_groups <- NULL
@@ -163,6 +160,7 @@ tracer_graphe_similitudes_igraph <- function(g,
     edge.label.cex = 0.72,
     edge.label.color = "navy",
     edge.label.dist = 0.15,
+    edge.curved = edge_curved_use,
     mark.groups = mark_groups,
     mark.col = mark_col,
     mark.border = mark_border,
