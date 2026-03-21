@@ -140,6 +140,7 @@ source("iramuteqlite/ui_options_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/ui_explorateur_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/affichage_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/wordcloud_iramuteq.R", encoding = "UTF-8", local = TRUE)
+source("iramuteqlite/wordcloud_ner.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_graph.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_igraph.R", encoding = "UTF-8", local = TRUE)
@@ -285,6 +286,7 @@ server <- function(input, output, session) {
     expression_fr_df = NULL,
     expression_annotations_df = data.frame(dic_mot = character(0), dic_norm = character(0), dic_morpho = character(0), stringsAsFactors = FALSE),
     ner_annotations_df = data.frame(text = character(0), label = character(0), stringsAsFactors = FALSE),
+    ner_detectes_auto_df = data.frame(text = character(0), label = character(0), freq = integer(0), stringsAsFactors = FALSE),
     expressions_actives_df = NULL,
     utiliser_add_expression = FALSE,
     utiliser_add_ner = FALSE,
@@ -827,8 +829,21 @@ server <- function(input, output, session) {
   observeEvent(input$fichier_corpus, {
     req(input$fichier_corpus$datapath)
     lignes_auto <- tryCatch(readLines(input$fichier_corpus$datapath, encoding = "UTF-8", warn = FALSE), error = function(e) character(0))
+    texte_corpus <- paste(lignes_auto, collapse = "\n")
     if (length(lignes_auto) > 0) {
-      updateTextAreaInput(session, "annotation_corpus_text", value = paste(lignes_auto, collapse = "\n"))
+      updateTextAreaInput(session, "annotation_corpus_text", value = texte_corpus)
+      updateTextAreaInput(session, "ner_corpus_text", value = texte_corpus)
+    }
+
+    auto_df <- detecter_ner_automatique(texte_corpus)
+    rv$ner_detectes_auto_df <- auto_df
+    if (is.data.frame(auto_df) && nrow(auto_df) > 0) {
+      rv$ner_annotations_df <- fusionner_annotations_ner(rv$ner_annotations_df, auto_df)
+      rv$utiliser_add_ner <- TRUE
+      sauvegarder_add_ner(rv$ner_annotations_df)
+      showNotification(paste0("Détection NER automatique : ", nrow(auto_df), " entité(s) candidate(s)."), type = "message")
+    } else {
+      showNotification("Détection NER automatique : aucune entité candidate trouvée.", type = "warning")
     }
     removeModal()
   }, ignoreInit = TRUE)
@@ -1179,6 +1194,15 @@ server <- function(input, output, session) {
     if (is.null(f) || is.null(f$datapath) || !file.exists(f$datapath)) return(invisible(NULL))
     txt <- tryCatch(paste(readLines(f$datapath, warn = FALSE, encoding = "UTF-8"), collapse = "\n"), error = function(e) "")
     updateTextAreaInput(session, "ner_corpus_text", value = txt)
+
+    auto_df <- detecter_ner_automatique(txt)
+    rv$ner_detectes_auto_df <- auto_df
+    if (is.data.frame(auto_df) && nrow(auto_df) > 0) {
+      rv$ner_annotations_df <- fusionner_annotations_ner(rv$ner_annotations_df, auto_df)
+      rv$utiliser_add_ner <- TRUE
+      sauvegarder_add_ner(rv$ner_annotations_df)
+    }
+
     showNotification(paste0("Texte importé pour annotation NER : ", f$name), type = "message")
   })
 
@@ -1189,6 +1213,38 @@ server <- function(input, output, session) {
     }
     df
   }, striped = TRUE, bordered = TRUE, hover = TRUE, spacing = "xs", width = "100%")
+
+  ner_trouves_df <- reactive({
+    df_auto <- rv$ner_detectes_auto_df
+    if (is.data.frame(df_auto) && nrow(df_auto) > 0) {
+      return(df_auto)
+    }
+
+    fichier <- input$fichier_corpus
+    if (is.null(fichier) || is.null(fichier$datapath) || !file.exists(fichier$datapath)) {
+      return(data.frame(text = character(0), label = character(0), freq = integer(0), stringsAsFactors = FALSE))
+    }
+
+    corpus_txt <- tryCatch(
+      paste(readLines(fichier$datapath, warn = FALSE, encoding = "UTF-8"), collapse = "\n"),
+      error = function(e) ""
+    )
+
+    detecter_ner_automatique(corpus_txt)
+  })
+
+  output$table_ner_detectes <- renderTable({
+    df <- ner_trouves_df()
+    if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) {
+      return(data.frame(info = "Aucune entité NER détectée dans le corpus importé.", stringsAsFactors = FALSE))
+    }
+    df
+  }, striped = TRUE, bordered = TRUE, hover = TRUE, spacing = "xs", width = "100%")
+
+  output$plot_wordcloud_ner <- renderPlot({
+    df <- ner_trouves_df()
+    tracer_wordcloud_ner(df)
+  }, res = 96)
 
   output$dl_ner_json <- downloadHandler(
     filename = function() "add_ner.json",
