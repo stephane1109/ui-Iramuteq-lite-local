@@ -58,15 +58,6 @@ ui_form_parametres_similitudes <- function() {
       ),
       selected = "frutch"
     ),
-    selectInput(
-      "simi_view_mode",
-      "Type d'affichage du graphe",
-      choices = c(
-        "Interactif (visNetwork)" = "interactive",
-        "Statique (igraph avec halo)" = "igraph"
-      ),
-      selected = "interactive"
-    ),
     checkboxInput(
       "simi_edge_labels",
       "Afficher les labels des arêtes",
