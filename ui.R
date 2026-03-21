@@ -196,6 +196,11 @@ ui_form_parametres_analyse <- function(defaults = NULL) {
         options = list(plugins = list("remove_button"))
       ),
       checkboxInput(
+        "morpho_exclure_etre_verbe",
+        "Filtrer le terme \"être\" dans la catégorie VERB (également reconnu comme NOM dans lexique_fr)",
+        value = valeur_defaut("morpho_exclure_etre_verbe", FALSE)
+      ),
+      checkboxInput(
         "morpho_conserver_hors_lexique",
         "Conserver les formes non reconnues par le lexique (AUTRE_FORME)",
         value = valeur_defaut("morpho_conserver_hors_lexique", TRUE)

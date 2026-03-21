@@ -436,7 +436,7 @@ server <- function(input, output, session) {
     "source_dictionnaire", "lexique_utiliser_lemmes", "expression_utiliser_dictionnaire",
     "nettoyage_caracteres", "supprimer_ponctuation", "supprimer_chiffres", "supprimer_apostrophes",
     "remplacer_tirets_espaces", "retirer_stopwords", "filtrage_morpho", "pos_lexique_a_conserver",
-    "morpho_conserver_hors_lexique", "afc_reduire_chevauchement", "afc_taille_mots", "top_n"
+    "morpho_exclure_etre_verbe", "morpho_conserver_hors_lexique", "afc_reduire_chevauchement", "afc_taille_mots", "top_n"
   )
   
   capturer_parametres_analyse <- function() {
@@ -478,6 +478,7 @@ server <- function(input, output, session) {
       max_p = 0.05,
       nettoyage_caracteres = TRUE,
       supprimer_apostrophes = TRUE,
+      morpho_exclure_etre_verbe = FALSE,
       afc_reduire_chevauchement = TRUE,
       afc_taille_mots = "frequency",
       top_n = 20
@@ -723,6 +724,7 @@ server <- function(input, output, session) {
         tags$li(paste0("Suppression chiffres: ", format_bool(input$supprimer_chiffres))),
         tags$li(paste0("Traitement apostrophes: ", format_bool(input$supprimer_apostrophes))),
         tags$li(paste0("Filtrage morpho: ", format_bool(input$filtrage_morpho))),
+        tags$li(paste0("Exclure « être » (VERB): ", format_bool(input$morpho_exclure_etre_verbe))),
         tags$li(paste0("Top N nuages: ", format_val(input$top_n, "20")))
       )
     )
@@ -1131,6 +1133,7 @@ server <- function(input, output, session) {
         tags$li(paste0("Suppression chiffres: ", format_bool(input$supprimer_chiffres, "non"))),
         tags$li(paste0("Traitement apostrophes: ", format_bool(input$supprimer_apostrophes, "non"))),
         tags$li(paste0("Filtrage morpho: ", format_bool(input$filtrage_morpho, "non"))),
+        tags$li(paste0("Exclure « être » (VERB): ", format_bool(input$morpho_exclure_etre_verbe, "non"))),
         tags$li(paste0("Top N nuages: ", format_val(input$top_n, "20")))
       ),
       tags$p(style = "margin: 6px 0 0 0; color: #1f4e79;", statut_chd)
