@@ -555,26 +555,14 @@ server <- function(input, output, session) {
       return(invisible(NULL))
     }
 
-    if (!exists("construire_graphe_similitudes", mode = "function", inherits = TRUE)) {
-      candidats <- c(
-        "iramuteqlite/simi_graph.R",
-        file.path(APP_BASE_DIR, "iramuteqlite", "simi_graph.R")
-      )
-      candidats <- unique(candidats[file.exists(candidats)])
-      env_server <- parent.env(environment())
-      for (f in candidats) {
-        try(source(f, encoding = "UTF-8", local = env_server), silent = TRUE)
-        if (exists("construire_graphe_similitudes", mode = "function", inherits = TRUE)) break
-      }
-    }
-    if (!exists("construire_graphe_similitudes", mode = "function", inherits = TRUE)) {
-      showNotification("Erreur analyse similitudes: moteur de construction du graphe introuvable (construire_graphe_similitudes).", type = "error")
-      journaliser_evenement("Erreur analyse similitudes: fonction construire_graphe_similitudes introuvable après rechargement.")
+    if (!exists("fn_construire_simi", mode = "function", inherits = TRUE)) {
+      showNotification("Erreur analyse similitudes: moteur de construction du graphe introuvable (fn_construire_simi).", type = "error")
+      journaliser_evenement("Erreur analyse similitudes: fonction fn_construire_simi introuvable.")
       return(invisible(NULL))
     }
     
     res_simi <- tryCatch(
-      construire_graphe_similitudes(
+      fn_construire_simi(
         dfm_obj = rv$dfm,
         method = input$simi_method,
         seuil = input$simi_seuil,
@@ -1118,39 +1106,10 @@ server <- function(input, output, session) {
   }, rownames = FALSE)
   
   output$plot_simi_container <- renderUI({
-    view_mode <- if (is.null(input$simi_view_mode) || !nzchar(input$simi_view_mode)) "interactive" else input$simi_view_mode
-    if (identical(view_mode, "igraph")) {
-      plotOutput("plot_simi_static", height = "980px")
-    } else {
-      visNetwork::visNetworkOutput("plot_simi", height = "980px")
-    }
-  })
-
-  output$plot_simi <- visNetwork::renderVisNetwork({
-    edge_width_by_index_on <- if (is.null(input$simi_edge_width_by_index)) TRUE else isTRUE(input$simi_edge_width_by_index)
-    halo_on <- if (is.null(input$simi_halo)) FALSE else isTRUE(input$simi_halo)
-    view_mode <- if (is.null(input$simi_view_mode) || !nzchar(input$simi_view_mode)) "interactive" else input$simi_view_mode
-    req(identical(view_mode, "interactive"))
-    info_txt <- paste0(
-      "Méthode: ", rv$simi_method,
-      " | Mots conservés: ", rv$simi_terms_used, "/", rv$simi_terms_total,
-      " (top demandé=", rv$simi_top_terms_requested, ")"
-    )
-    
-    tracer_graphe_similitudes_visnetwork(
-      g = rv$simi_graph,
-      layout = rv$simi_layout,
-      edge_width_by_index = edge_width_by_index_on,
-      vertex_freq = rv$simi_vertex_freq,
-      communities = rv$simi_communities,
-      halo = halo_on,
-      info_text = info_txt
-    )
+    plotOutput("plot_simi_static", height = "980px")
   })
 
   output$plot_simi_static <- renderPlot({
-    view_mode <- if (is.null(input$simi_view_mode) || !nzchar(input$simi_view_mode)) "interactive" else input$simi_view_mode
-    req(identical(view_mode, "igraph"))
     req(zone_trace_disponible("plot_simi_static", min_width = 240, min_height = 220))
     edge_labels_on <- if (is.null(input$simi_edge_labels)) TRUE else isTRUE(input$simi_edge_labels)
     edge_width_by_index_on <- if (is.null(input$simi_edge_width_by_index)) TRUE else isTRUE(input$simi_edge_width_by_index)
