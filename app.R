@@ -541,25 +541,28 @@ server <- function(input, output, session) {
       return(invisible(NULL))
     }
 
-    if (!exists("construire_graphe_similitudes", mode = "function", inherits = TRUE)) {
+    construire_graphe_fn <- get0("construire_graphe_similitudes", mode = "function", inherits = TRUE)
+    if (!is.function(construire_graphe_fn)) {
       candidats <- c(
         "iramuteqlite/simi_graph.R",
         file.path(APP_BASE_DIR, "iramuteqlite", "simi_graph.R")
       )
       candidats <- unique(candidats[file.exists(candidats)])
+      env_sourcing <- parent.env(environment())
       for (f in candidats) {
-        try(source(f, encoding = "UTF-8", local = environment()), silent = TRUE)
-        if (exists("construire_graphe_similitudes", mode = "function", inherits = TRUE)) break
+        try(source(f, encoding = "UTF-8", local = env_sourcing), silent = TRUE)
+        construire_graphe_fn <- get0("construire_graphe_similitudes", mode = "function", envir = env_sourcing, inherits = TRUE)
+        if (is.function(construire_graphe_fn)) break
       }
     }
-    if (!exists("construire_graphe_similitudes", mode = "function", inherits = TRUE)) {
+    if (!is.function(construire_graphe_fn)) {
       showNotification("Erreur analyse similitudes: moteur de construction du graphe introuvable (construire_graphe_similitudes).", type = "error")
       journaliser_evenement("Erreur analyse similitudes: fonction construire_graphe_similitudes introuvable après rechargement.")
       return(invisible(NULL))
     }
     
     res_simi <- tryCatch(
-      construire_graphe_similitudes(
+      construire_graphe_fn(
         dfm_obj = rv$dfm,
         method = input$simi_method,
         seuil = input$simi_seuil,
@@ -1122,7 +1125,7 @@ server <- function(input, output, session) {
       " (top demandé=", rv$simi_top_terms_requested, ")"
     )
     
-    tracer_graphe_similitudes_visnetwork(
+    p_simi <- tracer_graphe_similitudes_visnetwork(
       g = rv$simi_graph,
       layout = rv$simi_layout,
       edge_width_by_index = edge_width_by_index_on,
@@ -1131,6 +1134,9 @@ server <- function(input, output, session) {
       halo = halo_on,
       info_text = info_txt
     )
+
+    p_simi |>
+      visNetwork::visConfigure(enabled = TRUE)
   })
 
   output$plot_simi_static <- renderPlot({
