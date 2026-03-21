@@ -50,18 +50,18 @@ simi_largeurs_aretes_igraph <- function(weight, min_out = 0.35, max_out = 4.2, c
   pmin(pmax(scaled, min_out), cap_out)
 }
 
-tracer_graphe_similitudes <- function(g,
-                                     layout = NULL,
-                                     edge_labels = TRUE,
-                                     edge_width_by_index = TRUE,
-                                     vertex_text_by_freq = FALSE,
-                                     vertex_freq = NULL,
-                                     vertex_bubbles = TRUE,
-                                     main = "Graphe de similitude",
-                                     communities = NULL,
-                                     halo = FALSE,
-                                     zoom = 1,
-                                     info_text = NULL) {
+tracer_graphe_similitudes_igraph <- function(g,
+                                            layout = NULL,
+                                            edge_labels = TRUE,
+                                            edge_width_by_index = TRUE,
+                                            vertex_text_by_freq = FALSE,
+                                            vertex_freq = NULL,
+                                            vertex_bubbles = TRUE,
+                                            main = "Graphe de similitude",
+                                            communities = NULL,
+                                            halo = FALSE,
+                                            zoom = 1,
+                                            info_text = NULL) {
   if (is.null(g) || !inherits(g, "igraph") || igraph::vcount(g) == 0) {
     plot.new()
     text(0.5, 0.5, "Aucun graphe de similitude.\nCliquez sur 'Paramétrer' puis 'Lancer l'analyse de similitudes'.", cex = 1.0)
