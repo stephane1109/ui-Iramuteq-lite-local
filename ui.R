@@ -200,7 +200,7 @@ ui_form_parametres_analyse <- function(defaults = NULL) {
       ),
       checkboxInput(
         "morpho_exclure_etre_verbe",
-        "Filtre dans la catégorie VERB le terme « être » (aussi reconnu comme NOM dans lexique_fr)",
+        "Filtrer le terme \"être\" dans la catégorie VERB (également reconnu comme NOM dans lexique_fr)",
         value = valeur_defaut("morpho_exclure_etre_verbe", FALSE)
       ),
       checkboxInput(
