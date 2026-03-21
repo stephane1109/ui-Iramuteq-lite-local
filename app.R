@@ -1161,7 +1161,7 @@ server <- function(input, output, session) {
       " (top demandé=", rv$simi_top_terms_requested, ")"
     )
 
-    tracer_graphe_similitudes(
+    tracer_graphe_similitudes_igraph(
       g = rv$simi_graph,
       layout = rv$simi_layout,
       edge_labels = edge_labels_on,
