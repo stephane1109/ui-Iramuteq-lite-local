@@ -19,6 +19,22 @@ if (!"FactoMineR" %in% installed_packages) {
   remotes::install_github("husson/FactoMineR", dependencies = NA, upgrade = "never")
 }
 
+detecter_base_app <- function() {
+  candidats <- c(
+    getwd(),
+    dirname(normalizePath("app.R", winslash = "/", mustWork = FALSE))
+  )
+  candidats <- unique(candidats[nzchar(candidats)])
+  for (d in candidats) {
+    if (file.exists(file.path(d, "iramuteqlite", "simi_graph.R"))) {
+      return(normalizePath(d, winslash = "/", mustWork = FALSE))
+    }
+  }
+  normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+}
+
+APP_BASE_DIR <- detecter_base_app()
+
 # Augmente la limite d'upload Shiny (défaut ~5 Mo), utile pour les corpus .txt volumineux.
 options(shiny.maxRequestSize = 30 * 1024^2)
 
@@ -536,6 +552,24 @@ server <- function(input, output, session) {
     
     if (is.null(rv$dfm) || quanteda::ndoc(rv$dfm) < 2 || quanteda::nfeat(rv$dfm) < 2) {
       showNotification("Analyse CHD/AFC non disponible: lancez d'abord l'analyse principale pour construire le graphe de similitude.", type = "warning")
+      return(invisible(NULL))
+    }
+
+    if (!exists("construire_graphe_similitudes", mode = "function", inherits = TRUE)) {
+      candidats <- c(
+        "iramuteqlite/simi_graph.R",
+        file.path(APP_BASE_DIR, "iramuteqlite", "simi_graph.R")
+      )
+      candidats <- unique(candidats[file.exists(candidats)])
+      env_server <- parent.env(environment())
+      for (f in candidats) {
+        try(source(f, encoding = "UTF-8", local = env_server), silent = TRUE)
+        if (exists("construire_graphe_similitudes", mode = "function", inherits = TRUE)) break
+      }
+    }
+    if (!exists("construire_graphe_similitudes", mode = "function", inherits = TRUE)) {
+      showNotification("Erreur analyse similitudes: moteur de construction du graphe introuvable (construire_graphe_similitudes).", type = "error")
+      journaliser_evenement("Erreur analyse similitudes: fonction construire_graphe_similitudes introuvable après rechargement.")
       return(invisible(NULL))
     }
     
