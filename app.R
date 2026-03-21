@@ -290,6 +290,7 @@ server <- function(input, output, session) {
     expressions_actives_df = NULL,
     utiliser_add_expression = FALSE,
     utiliser_add_ner = FALSE,
+    ner_spacy_notice_shown = FALSE,
     textes_indexation = NULL,
     
     afc_obj = NULL,
@@ -836,6 +837,14 @@ server <- function(input, output, session) {
     }
 
     auto_df <- detecter_ner_automatique(texte_corpus)
+    if (!isTRUE(rv$ner_spacy_notice_shown) && !isTRUE(spacy_ner_disponible())) {
+      rv$ner_spacy_notice_shown <- TRUE
+      showNotification(
+        "NER désactivé: spaCy non disponible (python/modèle manquant).",
+        type = "warning",
+        duration = 8
+      )
+    }
     rv$ner_detectes_auto_df <- auto_df
     if (is.data.frame(auto_df) && nrow(auto_df) > 0) {
       rv$ner_annotations_df <- fusionner_annotations_ner(rv$ner_annotations_df, auto_df)
@@ -1196,6 +1205,14 @@ server <- function(input, output, session) {
     updateTextAreaInput(session, "ner_corpus_text", value = txt)
 
     auto_df <- detecter_ner_automatique(txt)
+    if (!isTRUE(rv$ner_spacy_notice_shown) && !isTRUE(spacy_ner_disponible())) {
+      rv$ner_spacy_notice_shown <- TRUE
+      showNotification(
+        "NER désactivé: spaCy non disponible (python/modèle manquant).",
+        type = "warning",
+        duration = 8
+      )
+    }
     rv$ner_detectes_auto_df <- auto_df
     if (is.data.frame(auto_df) && nrow(auto_df) > 0) {
       rv$ner_annotations_df <- fusionner_annotations_ner(rv$ner_annotations_df, auto_df)
