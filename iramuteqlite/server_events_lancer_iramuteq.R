@@ -609,6 +609,77 @@ register_events_lancer <- function(input, output, session, rv) {
       as.integer(max(as.integer(min_value), top_n))
     }
 
+    parser_pos_spacy <- function(textes, ids_docs, rv) {
+      if (length(textes) == 0) {
+        return(data.frame(doc_id = character(0), token = character(0), pos = character(0), stringsAsFactors = FALSE))
+      }
+
+      python_bin <- Sys.which("python3")
+      if (!nzchar(python_bin)) python_bin <- Sys.which("python")
+      if (!nzchar(python_bin)) {
+        stop("Filtrage POS spaCy indisponible: aucun interpréteur Python (python3/python) trouvé.")
+      }
+
+      script_path <- file.path(app_dir, "spacy", "pos_spacy.py")
+      if (!file.exists(script_path)) {
+        stop(paste0("Filtrage POS spaCy indisponible: script Python introuvable (", script_path, ")."))
+      }
+
+      in_csv <- tempfile(pattern = "spacy_pos_in_", fileext = ".csv")
+      out_csv <- tempfile(pattern = "spacy_pos_out_", fileext = ".csv")
+      on.exit(unlink(c(in_csv, out_csv), force = TRUE), add = TRUE)
+
+      in_df <- data.frame(
+        doc_id = as.character(ids_docs),
+        text = as.character(textes),
+        stringsAsFactors = FALSE
+      )
+      utils::write.csv(in_df, in_csv, row.names = FALSE, fileEncoding = "UTF-8", na = "")
+
+      cmd_args <- c(
+        script_path,
+        "--input-csv", in_csv,
+        "--output-csv", out_csv,
+        "--model", "fr_core_news_sm"
+      )
+
+      cmd_out <- suppressWarnings(
+        system2(python_bin, args = cmd_args, stdout = TRUE, stderr = TRUE)
+      )
+      status <- attr(cmd_out, "status")
+      if (is.null(status)) status <- 0L
+
+      if (!identical(as.integer(status), 0L)) {
+        stop(
+          paste0(
+            "Analyse POS spaCy impossible via script Python (code=", status, "). ",
+            paste(cmd_out, collapse = " ")
+          )
+        )
+      }
+
+      if (!file.exists(out_csv)) {
+        stop("Analyse POS spaCy incomplète: fichier de sortie Python introuvable.")
+      }
+
+      parsed <- tryCatch(
+        utils::read.csv(out_csv, stringsAsFactors = FALSE, fileEncoding = "UTF-8"),
+        error = function(e) {
+          stop(paste0("Lecture sortie spaCy impossible: ", e$message))
+        }
+      )
+
+      if (!is.data.frame(parsed) || !"token" %in% names(parsed) || !"pos" %in% names(parsed)) {
+        stop("Analyse POS spaCy incomplète: colonnes 'token'/'pos' absentes.")
+      }
+
+      parsed$doc_id <- as.character(parsed$doc_id)
+      parsed$token <- tolower(trimws(as.character(parsed$token)))
+      parsed$pos <- toupper(trimws(as.character(parsed$pos)))
+      parsed <- parsed[nzchar(parsed$token) & nzchar(parsed$pos), c("doc_id", "token", "pos"), drop = FALSE]
+      parsed
+    }
+
     executer_pipeline_iramuteq <- function(input, rv, textes_chd) {
       if (is.null(textes_chd)) {
         stop("IRaMuTeQ-lite: textes_chd manquant pour la préparation du pipeline.")
@@ -815,6 +886,69 @@ register_events_lancer <- function(input, output, session, rv) {
         }
       }
 
+      if (isTRUE(input$filtrage_morpho) && identical(input$source_dictionnaire, "spacy")) {
+        pos_selection <- toupper(trimws(as.character(input$pos_spacy_a_conserver)))
+        pos_selection <- unique(pos_selection[nzchar(pos_selection)])
+
+        if (length(pos_selection) > 0) {
+          parsed_pos <- parser_pos_spacy(textes_tok, ids_docs, rv)
+          rv$spacy_tokens_df <- parsed_pos
+
+          parsed_pos$token_core <- gsub("^[[:punct:]]+|[[:punct:]]+$", "", parsed_pos$token, perl = TRUE)
+          parsed_pos$token_core[!nzchar(parsed_pos$token_core)] <- parsed_pos$token[!nzchar(parsed_pos$token_core)]
+
+          token_pos <- unique(parsed_pos[parsed_pos$pos %in% pos_selection, c("token", "token_core"), drop = FALSE])
+          termes_autorises <- unique(c(token_pos$token, token_pos$token_core))
+          termes_autorises <- termes_autorises[nzchar(termes_autorises)]
+
+          featnames_dfm <- quanteda::featnames(dfm_obj)
+          featnames_norm <- tolower(trimws(as.character(featnames_dfm)))
+          featnames_core <- gsub("^[[:punct:]]+|[[:punct:]]+$", "", featnames_norm, perl = TRUE)
+          featnames_core[!nzchar(featnames_core)] <- featnames_norm[!nzchar(featnames_core)]
+
+          keep_mask <- (featnames_norm %in% termes_autorises) | (featnames_core %in% termes_autorises)
+          pattern_keep <- featnames_dfm[keep_mask]
+
+          n_feat_avant_morpho <- quanteda::nfeat(dfm_obj)
+          dfm_obj <- quanteda::dfm_select(
+            dfm_obj,
+            pattern = pattern_keep,
+            selection = "keep",
+            valuetype = "fixed",
+            case_insensitive = FALSE
+          )
+          n_feat_apres_morpho <- quanteda::nfeat(dfm_obj)
+
+          repartition_pos <- vapply(
+            pos_selection,
+            function(cat) as.character(sum(parsed_pos$pos == cat, na.rm = TRUE)),
+            character(1)
+          )
+          ajouter_log(
+            rv,
+            paste0(
+              "Filtrage POS spaCy appliqué (UPOS=",
+              paste(pos_selection, collapse = ","),
+              ") : ",
+              n_feat_avant_morpho,
+              " -> ",
+              n_feat_apres_morpho,
+              " termes uniques."
+            )
+          )
+          ajouter_log(
+            rv,
+            paste0(
+              "Répartition des tokens spaCy par POS sélectionnée: ",
+              paste0(names(repartition_pos), "=", repartition_pos, collapse = "; "),
+              "."
+            )
+          )
+        } else {
+          ajouter_log(rv, "Filtrage POS spaCy activé sans catégorie UPOS sélectionnée : étape ignorée.")
+        }
+      }
+
       log_presence_expressions(dfm_obj, "après filtrage morphosyntaxique")
 
       min_docfreq_val <- lire_min_docfreq_manuel(input$min_docfreq, valeur_defaut = 3L)
@@ -831,7 +965,7 @@ register_events_lancer <- function(input, output, session, rv) {
         tok = tok,
         dfm_obj = dfm_obj,
         langue_reference = "fr",
-        source_dictionnaire = "lexique_fr"
+        source_dictionnaire = as.character(input$source_dictionnaire)
       )
     }
 
@@ -1059,12 +1193,15 @@ register_events_lancer <- function(input, output, session, rv) {
 
       modele_chd <- "iramuteq"
       mode_iramuteq <- TRUE
-      source_dictionnaire <- "lexique_fr"
+      source_dictionnaire <- if (is.null(input$source_dictionnaire) || !nzchar(input$source_dictionnaire)) "lexique_fr" else as.character(input$source_dictionnaire)
       updateRadioButtons(
         session,
         "source_dictionnaire",
-        choices = c("Lexique (fr)" = "lexique_fr"),
-        selected = "lexique_fr"
+        choices = c(
+          "Lexique (fr)" = "lexique_fr",
+          "spaCy (POS contextuel)" = "spacy"
+        ),
+        selected = source_dictionnaire
       )
       updateRadioButtons(
         session,
@@ -1241,8 +1378,9 @@ register_events_lancer <- function(input, output, session, rv) {
                 " entrée(s) du dictionnaire (dic_mot -> dic_norm)."
               )
             )
-            inclure_autre_forme_log <- isTRUE(input$morpho_conserver_hors_lexique) || ("AUTRE_FORME" %in% toupper(trimws(as.character(input$pos_lexique_a_conserver))))
-            if (isTRUE(input$filtrage_morpho) && !isTRUE(inclure_autre_forme_log)) {
+            inclure_autre_forme_log <- identical(source_dictionnaire, "lexique_fr") &&
+              (isTRUE(input$morpho_conserver_hors_lexique) || ("AUTRE_FORME" %in% toupper(trimws(as.character(input$pos_lexique_a_conserver)))))
+            if (isTRUE(input$filtrage_morpho) && identical(source_dictionnaire, "lexique_fr") && !isTRUE(inclure_autre_forme_log)) {
               ajouter_log(rv, "Note: formes normalisées hors lexique (ex. gerald_darmanin) seront exclues si AUTRE_FORME n'est pas activé dans le filtrage morphosyntaxique.")
             }
           } else {
@@ -1290,7 +1428,7 @@ register_events_lancer <- function(input, output, session, rv) {
           ajouter_log(rv, "IRaMuTeQ-lite: préparation texte exécutée via iramuteqlite/nettoyage_iramuteq.R")
           ajouter_log(rv, "IRaMuTeQ-lite: paramètres CHD/DFM (min_docfreq, stopwords, ponctuation, dictionnaire) appliqués dans iramuteqlite/server_events_lancer_iramuteq.R")
 
-          source_dictionnaire <- "lexique_fr"
+          source_dictionnaire <- if (is.null(input$source_dictionnaire) || !nzchar(input$source_dictionnaire)) "lexique_fr" else as.character(input$source_dictionnaire)
 
           avancer(0.22, "Prétraitement + DFM")
           rv$statut <- "Prétraitement et DFM..."
@@ -1301,7 +1439,12 @@ register_events_lancer <- function(input, output, session, rv) {
               "Diagnostic pipeline: dictionnaire=", source_dictionnaire,
               " | langue UI=fr",
               " | filtrage_morpho=", ifelse(isTRUE(input$filtrage_morpho), "1", "0"),
-              " | inclure_autre_forme=", ifelse(isTRUE(input$morpho_conserver_hors_lexique) || ("AUTRE_FORME" %in% toupper(trimws(as.character(input$pos_lexique_a_conserver)))), "1", "0"),
+              " | inclure_autre_forme=", ifelse(
+                identical(source_dictionnaire, "lexique_fr") &&
+                  (isTRUE(input$morpho_conserver_hors_lexique) || ("AUTRE_FORME" %in% toupper(trimws(as.character(input$pos_lexique_a_conserver))))) ,
+                "1",
+                "0"
+              ),
               " | retirer_stopwords=", ifelse(isTRUE(input$retirer_stopwords), "1", "0"),
               " | supprimer_ponctuation=", ifelse(isTRUE(input$supprimer_ponctuation), "1", "0"),
               " | segmenter_sur_ponctuation_forte=", ifelse(isTRUE(input$segmenter_sur_ponctuation_forte), "1", "0"),
