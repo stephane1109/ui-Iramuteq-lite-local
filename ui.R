@@ -274,6 +274,26 @@ ui <- page_navbar(
         align-items: center;
         justify-content: center;
       }
+      #simi_terms_selected + .selectize-control .selectize-input > div {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding-right: 2px;
+      }
+      #simi_terms_selected + .selectize-control .selectize-input > div .remove {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
+        min-height: 20px;
+        margin-left: 6px;
+        border-radius: 50%;
+        font-size: 16px;
+        line-height: 1;
+      }
+      #simi_terms_selected + .selectize-control .selectize-input > div .remove:hover {
+        background: rgba(0, 0, 0, 0.08);
+      }
     ")),
     tags$script(HTML("
       document.addEventListener('DOMContentLoaded', function () {
@@ -298,6 +318,22 @@ ui <- page_navbar(
             });
           });
         }
+
+        document.addEventListener('click', function (event) {
+          var item = event.target && event.target.closest('#simi_terms_selected + .selectize-control .selectize-input > div');
+          if (!item) return;
+          if (event.target.classList && event.target.classList.contains('remove')) return;
+
+          var champ = document.getElementById('simi_terms_selected');
+          if (!champ || !champ.selectize) return;
+
+          var val = item.getAttribute('data-value');
+          if (!val) return;
+
+          event.preventDefault();
+          event.stopPropagation();
+          champ.selectize.removeItem(val, true);
+        }, true);
 
       });
     "))
