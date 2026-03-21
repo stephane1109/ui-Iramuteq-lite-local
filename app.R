@@ -555,26 +555,14 @@ server <- function(input, output, session) {
       return(invisible(NULL))
     }
 
-    if (!exists("construire_graphe_similitudes", mode = "function", inherits = TRUE)) {
-      candidats <- c(
-        "iramuteqlite/simi_graph.R",
-        file.path(APP_BASE_DIR, "iramuteqlite", "simi_graph.R")
-      )
-      candidats <- unique(candidats[file.exists(candidats)])
-      env_server <- parent.env(environment())
-      for (f in candidats) {
-        try(source(f, encoding = "UTF-8", local = env_server), silent = TRUE)
-        if (exists("construire_graphe_similitudes", mode = "function", inherits = TRUE)) break
-      }
-    }
-    if (!exists("construire_graphe_similitudes", mode = "function", inherits = TRUE)) {
-      showNotification("Erreur analyse similitudes: moteur de construction du graphe introuvable (construire_graphe_similitudes).", type = "error")
-      journaliser_evenement("Erreur analyse similitudes: fonction construire_graphe_similitudes introuvable après rechargement.")
+    if (!exists("fn_construire_simi", mode = "function", inherits = TRUE)) {
+      showNotification("Erreur analyse similitudes: moteur de construction du graphe introuvable (fn_construire_simi).", type = "error")
+      journaliser_evenement("Erreur analyse similitudes: fonction fn_construire_simi introuvable.")
       return(invisible(NULL))
     }
     
     res_simi <- tryCatch(
-      construire_graphe_similitudes(
+      fn_construire_simi(
         dfm_obj = rv$dfm,
         method = input$simi_method,
         seuil = input$simi_seuil,
