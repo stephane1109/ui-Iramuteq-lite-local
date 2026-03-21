@@ -140,6 +140,7 @@ source("iramuteqlite/ui_options_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/ui_explorateur_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/affichage_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/wordcloud_iramuteq.R", encoding = "UTF-8", local = TRUE)
+source("iramuteqlite/wordcloud_ner.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_graph.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_igraph.R", encoding = "UTF-8", local = TRUE)
@@ -1189,6 +1190,33 @@ server <- function(input, output, session) {
     }
     df
   }, striped = TRUE, bordered = TRUE, hover = TRUE, spacing = "xs", width = "100%")
+
+  ner_trouves_df <- reactive({
+    fichier <- input$fichier_corpus
+    if (is.null(fichier) || is.null(fichier$datapath) || !file.exists(fichier$datapath)) {
+      return(data.frame(text = character(0), label = character(0), freq = integer(0), stringsAsFactors = FALSE))
+    }
+
+    corpus_txt <- tryCatch(
+      paste(readLines(fichier$datapath, warn = FALSE, encoding = "UTF-8"), collapse = "\n"),
+      error = function(e) ""
+    )
+
+    extraire_ner_corpus(corpus_txt, rv$ner_annotations_df)
+  })
+
+  output$table_ner_detectes <- renderTable({
+    df <- ner_trouves_df()
+    if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) {
+      return(data.frame(info = "Aucune entité NER détectée dans le corpus importé.", stringsAsFactors = FALSE))
+    }
+    df
+  }, striped = TRUE, bordered = TRUE, hover = TRUE, spacing = "xs", width = "100%")
+
+  output$plot_wordcloud_ner <- renderPlot({
+    df <- ner_trouves_df()
+    tracer_wordcloud_ner(df)
+  }, res = 96)
 
   output$dl_ner_json <- downloadHandler(
     filename = function() "add_ner.json",
