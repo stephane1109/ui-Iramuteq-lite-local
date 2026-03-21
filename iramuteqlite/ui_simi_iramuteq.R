@@ -58,6 +58,15 @@ ui_form_parametres_similitudes <- function() {
       ),
       selected = "frutch"
     ),
+    selectInput(
+      "simi_graph_engine",
+      "Moteur de rendu du graphe",
+      choices = c(
+        "igraph (statique)" = "igraph",
+        "visNetwork (interactif)" = "visnetwork"
+      ),
+      selected = "igraph"
+    ),
     checkboxInput(
       "simi_edge_labels",
       "Afficher les labels des arêtes",
@@ -126,7 +135,9 @@ ui_panel_similitudes_iramuteq <- function() {
     ),
     tags$p(
       style = "margin: 0 0 10px 0; color: #365c8d;",
-      "En mode interactif, ouvrez le panneau de configuration visNetwork (bouton 'config') pour adapter dynamiquement le rendu du graphe (nœuds, arêtes, physique, layout, interactions, etc.)."
+      "Choisissez le moteur dans les paramètres: igraph (statique) ou visNetwork (interactif). ",
+      "En mode visNetwork, ouvrez le panneau 'config' pour adapter dynamiquement le rendu du graphe ",
+      "(nœuds, arêtes, physique, layout, interactions, etc.)."
     ),
     tags$div(style = "max-width: 1400px;", uiOutput("plot_simi_container"))
   )
