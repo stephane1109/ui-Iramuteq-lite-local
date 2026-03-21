@@ -135,7 +135,7 @@ ui_form_parametres_analyse <- function(defaults = NULL) {
     checkboxInput(
       "segmenter_sur_ponctuation_forte",
       "Tenir compte de la ponctuation forte (. ! ?) dans le découpage",
-      value = valeur_defaut("segmenter_sur_ponctuation_forte", FALSE)
+      value = valeur_defaut("segmenter_sur_ponctuation_forte", TRUE)
     ),
     tags$p(
       "Si activé, le découpage recherche la meilleure frontière autour de segment_size avec priorité . ! ?, puis ; :, puis , puis espace ; un retour à la ligne clôture aussi le segment.",
@@ -166,7 +166,7 @@ ui_form_parametres_analyse <- function(defaults = NULL) {
     tags$p("Upload du dictionnaire dans l'onglet Annotation expressions.", style = "font-size: 0.9em; color: #555;"),
 
     tags$div(class = "sidebar-section-title", "Nettoyage"),
-    checkboxInput("nettoyage_caracteres", "Nettoyage caractères (regex)", value = valeur_defaut("nettoyage_caracteres", FALSE)),
+    checkboxInput("nettoyage_caracteres", "Nettoyage caractères (regex)", value = valeur_defaut("nettoyage_caracteres", TRUE)),
     tags$p(
       "[^a-zA-Z0-9àÀâÂäÄáÁåÅãéÉèÈêÊëËìÌîÎïÏíÍóÓòÒôÔöÖõÕøØùÙûÛüÜúÚçÇßœŒ’ñÑ_\\.:,;!\\?']",
       style = "color: #c00; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
@@ -181,7 +181,7 @@ ui_form_parametres_analyse <- function(defaults = NULL) {
       style = "color: #c00; font-size: 0.9em; margin-top: 4px; margin-bottom: 8px;"
     ),
     checkboxInput("supprimer_chiffres", "Supprimer les chiffres (0-9)", value = valeur_defaut("supprimer_chiffres", FALSE)),
-    checkboxInput("supprimer_apostrophes", "Traiter les élisions FR (c'est→est, m'écrire→écrire)", value = valeur_defaut("supprimer_apostrophes", FALSE)),
+    checkboxInput("supprimer_apostrophes", "Traiter les élisions FR (c'est→est, m'écrire→écrire)", value = valeur_defaut("supprimer_apostrophes", TRUE)),
     checkboxInput("remplacer_tirets_espaces", "Remplacer les tirets (-) par des espaces", value = valeur_defaut("remplacer_tirets_espaces", FALSE)),
     checkboxInput("retirer_stopwords", "Retirer les stopwords (liste française quanteda)", value = valeur_defaut("retirer_stopwords", FALSE)),
     checkboxInput("filtrage_morpho", "Filtrage morphosyntaxique", value = valeur_defaut("filtrage_morpho", FALSE)),
@@ -203,7 +203,7 @@ ui_form_parametres_analyse <- function(defaults = NULL) {
     ),
 
     tags$div(class = "sidebar-section-title", "Paramètres AFC"),
-    checkboxInput("afc_reduire_chevauchement", "Réduire les chevauchements des mots (AFC)", value = valeur_defaut("afc_reduire_chevauchement", FALSE)),
+    checkboxInput("afc_reduire_chevauchement", "Réduire les chevauchements des mots (AFC)", value = valeur_defaut("afc_reduire_chevauchement", TRUE)),
     radioButtons(
       "afc_taille_mots",
       "Taille des mots (AFC termes)",
