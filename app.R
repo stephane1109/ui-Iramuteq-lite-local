@@ -680,6 +680,7 @@ server <- function(input, output, session) {
         tags$li(paste0("Seuil: ", seuil_label)),
         tags$li(paste0("Top termes: ", if (is.null(input$simi_top_terms)) 100 else input$simi_top_terms)),
         tags$li(paste0("Layout: ", if (is.null(input$simi_layout)) "frutch" else input$simi_layout)),
+        tags$li(paste0("Moteur de rendu: ", if (is.null(input$simi_graph_engine)) "igraph" else input$simi_graph_engine)),
         tags$li(paste0("Arbre max: ", if (isTRUE(input$simi_max_tree)) "oui" else "non")),
         tags$li(paste0("Labels des arêtes: ", if (isTRUE(input$simi_edge_labels)) "oui" else "non")),
         tags$li(paste0("Largeur des arêtes proportionnelle à l'indice: ", if (isTRUE(input$simi_edge_width_by_index)) "oui" else "non")),
@@ -1168,6 +1169,23 @@ server <- function(input, output, session) {
   }, rownames = FALSE)
   
   output$plot_simi_container <- renderUI({
+    use_visnetwork <- identical(input$simi_graph_engine, "visnetwork")
+    visnetwork_available <- requireNamespace("visNetwork", quietly = TRUE)
+
+    if (isTRUE(use_visnetwork) && isTRUE(visnetwork_available)) {
+      return(visNetwork::visNetworkOutput("plot_simi_visnetwork", height = "980px"))
+    }
+
+    if (isTRUE(use_visnetwork) && !isTRUE(visnetwork_available)) {
+      return(tagList(
+        tags$p(
+          style = "margin-bottom: 10px; color: #8a5a00;",
+          "visNetwork n'est pas installé dans cet environnement. Affichage basculé automatiquement sur igraph."
+        ),
+        plotOutput("plot_simi_static", height = "980px")
+      ))
+    }
+
     plotOutput("plot_simi_static", height = "980px")
   })
 
@@ -1197,6 +1215,30 @@ server <- function(input, output, session) {
       info_text = info_txt
     )
   })
+
+  if (requireNamespace("visNetwork", quietly = TRUE)) {
+    output$plot_simi_visnetwork <- visNetwork::renderVisNetwork({
+      req(identical(input$simi_graph_engine, "visnetwork"))
+      req(!is.null(rv$simi_graph), inherits(rv$simi_graph, "igraph"))
+
+      edge_width_by_index_on <- if (is.null(input$simi_edge_width_by_index)) TRUE else isTRUE(input$simi_edge_width_by_index)
+      info_txt <- paste0(
+        "Méthode: ", rv$simi_method,
+        " | Mots conservés: ", rv$simi_terms_used, "/", rv$simi_terms_total,
+        " (top demandé=", rv$simi_top_terms_requested, ")"
+      )
+
+      tracer_graphe_similitudes_visnetwork(
+        g = rv$simi_graph,
+        layout = rv$simi_layout,
+        edge_width_by_index = edge_width_by_index_on,
+        vertex_freq = rv$simi_vertex_freq,
+        communities = rv$simi_communities,
+        halo = isTRUE(input$simi_halo),
+        info_text = info_txt
+      )
+    })
+  }
   
   output$plot_chd_iramuteq_dendro <- renderPlot({
     req(zone_trace_disponible("plot_chd_iramuteq_dendro", min_width = 200, min_height = 180))
