@@ -13,7 +13,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="spaCy POS parser for IRaMuTeQ-lite")
     parser.add_argument("--input-csv", required=True, help="CSV input path with columns: doc_id,text")
     parser.add_argument("--output-csv", required=True, help="CSV output path with columns: doc_id,token,pos")
-    parser.add_argument("--model", default="fr_core_news_sm", help="spaCy model name")
+    parser.add_argument("--model", default="fr_core_news_lg", help="spaCy model name")
     return parser.parse_args()
 
 
