@@ -76,9 +76,22 @@ tracer_graphe_similitudes <- function(g,
   freq <- simi_extraire_freq_vertices(g, vertex_freq = vertex_freq)
   vertex_size <- simi_tailles_sommets_igraph(freq, min_out = 5, max_out = 58, power = 0.9)
 
-  vertex_label_cex <- 1.15
+  vertex_label_cex <- 1.0
   if (isTRUE(vertex_text_by_freq) || !isTRUE(vertex_bubbles)) {
-    vertex_label_cex <- simi_tailles_labels_igraph(freq, min_out = 0.9, max_out = 4.8, power = 0.85)
+    vertex_label_cex <- simi_tailles_labels_igraph(freq, min_out = 0.8, max_out = 2.6, power = 0.9)
+  }
+  if (length(vertex_label_cex) == 1L) {
+    vertex_label_cex <- rep(vertex_label_cex, igraph::vcount(g))
+  }
+  vertex_labels <- as.character(igraph::V(g)$name)
+  if (length(vertex_labels) == igraph::vcount(g) && igraph::vcount(g) > 60) {
+    ord <- order(freq, decreasing = TRUE, na.last = TRUE)
+    n_keep <- min(max(40L, round(igraph::vcount(g) * 0.55)), 90L)
+    keep_idx <- ord[seq_len(min(length(ord), n_keep))]
+    shown <- rep(FALSE, igraph::vcount(g))
+    shown[keep_idx] <- TRUE
+    vertex_labels[!shown] <- ""
+    vertex_label_cex[!shown] <- 0
   }
 
   if (isTRUE(edge_width_by_index)) {
@@ -129,13 +142,13 @@ tracer_graphe_similitudes <- function(g,
   afficher_bulles <- FALSE
   # Sommets "tampon" invisibles pour éviter que les arêtes ne traversent les mots.
   # Les arêtes s'arrêtent au bord du sommet: on calibre donc la taille sur la taille du label.
-  vertex_hitbox <- pmax(4, as.numeric(vertex_label_cex) * 6.5)
+  vertex_hitbox <- pmax(3, as.numeric(vertex_label_cex) * 4.6)
 
   plot(
     g,
     layout = lo_plot,
     main = main,
-    vertex.label = igraph::V(g)$name,
+    vertex.label = vertex_labels,
     vertex.size = if (isTRUE(afficher_bulles)) vertex_size else vertex_hitbox,
     vertex.shape = if (isTRUE(afficher_bulles)) "circle" else "circle",
     vertex.color = if (isTRUE(afficher_bulles)) vcol else NA,
@@ -145,7 +158,7 @@ tracer_graphe_similitudes <- function(g,
     vertex.label.cex = vertex_label_cex,
     vertex.label.color = "#111111",
     edge.width = edge_width,
-    edge.color = grDevices::adjustcolor("#303030", alpha.f = 0.82),
+    edge.color = grDevices::adjustcolor("#303030", alpha.f = 0.58),
     edge.label = edge_lab,
     edge.label.cex = 0.72,
     edge.label.color = "navy",
