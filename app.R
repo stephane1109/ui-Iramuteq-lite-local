@@ -455,7 +455,7 @@ server <- function(input, output, session) {
     defaults <- list(
       modele_chd = "iramuteq",
       segment_size = 40,
-      segmenter_sur_ponctuation_forte = FALSE,
+      segmenter_sur_ponctuation_forte = TRUE,
       iramuteq_max_formes = 20000,
       iramuteq_mincl_mode = "auto",
       iramuteq_mincl = 5,
@@ -468,6 +468,9 @@ server <- function(input, output, session) {
       utiliser_stopwords = FALSE,
       min_docfreq = 3,
       max_p = 0.05,
+      nettoyage_caracteres = TRUE,
+      supprimer_apostrophes = TRUE,
+      afc_reduire_chevauchement = TRUE,
       afc_taille_mots = "frequency",
       top_n = 20
     )
