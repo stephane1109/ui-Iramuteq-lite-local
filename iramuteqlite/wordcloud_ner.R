@@ -8,13 +8,14 @@ detecter_ner_automatique <- function(texte, label_defaut = "MISC", min_chars = 2
     return(data.frame(text = character(0), label = character(0), freq = integer(0), stringsAsFactors = FALSE))
   }
 
-  motif <- "(?u)\\b(?:[A-ZÀ-ÖØ-Ý][\\p{L}\\p{M}'’-]+|[A-Z]{2,})(?:\\s+(?:[A-ZÀ-ÖØ-Ý][\\p{L}\\p{M}'’-]+|[A-Z]{2,}))*\\b"
-  m <- gregexpr(motif, texte, perl = TRUE)[[1]]
+  motif <- "\\b(?:[A-ZÀ-ÖØ-Ý][\\p{L}\\p{M}'’-]+|[A-Z]{2,})(?:\\s+(?:[A-ZÀ-ÖØ-Ý][\\p{L}\\p{M}'’-]+|[A-Z]{2,}))*\\b"
+  match_all <- gregexpr(motif, texte, perl = TRUE)
+  m <- match_all[[1]]
   if (length(m) == 1 && identical(m[[1]], -1L)) {
     return(data.frame(text = character(0), label = character(0), freq = integer(0), stringsAsFactors = FALSE))
   }
 
-  candidats <- regmatches(texte, gregexpr(motif, texte, perl = TRUE))[[1]]
+  candidats <- regmatches(texte, match_all)[[1]]
   if (!length(candidats)) {
     return(data.frame(text = character(0), label = character(0), freq = integer(0), stringsAsFactors = FALSE))
   }
