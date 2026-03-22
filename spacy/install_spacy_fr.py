@@ -7,8 +7,10 @@ Usage:
 
 from __future__ import annotations
 
+import argparse
 import subprocess
 import sys
+from typing import Iterable
 
 
 def run_cmd(cmd: list[str]) -> None:
@@ -16,20 +18,41 @@ def run_cmd(cmd: list[str]) -> None:
     subprocess.check_call(cmd)
 
 
+def is_venv() -> bool:
+    return (
+        getattr(sys, "real_prefix", None) is not None
+        or getattr(sys, "base_prefix", sys.prefix) != sys.prefix
+    )
+
+
+def pip_install(args: Iterable[str]) -> None:
+    base = [sys.executable, "-m", "pip", "install"]
+    if not is_venv():
+        # En environnement système, éviter les erreurs de droits.
+        base.append("--user")
+    run_cmd(base + list(args))
+
+
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Installe spaCy et un modèle français.")
+    p.add_argument("--model", default="fr_core_news_lg", help="Nom du modèle spaCy à installer.")
+    return p.parse_args()
+
+
 def main() -> int:
+    args = parse_args()
     py = sys.executable
 
-    # 1) Installe/maj spaCy côté Python.
-    run_cmd([py, "-m", "pip", "install", "--upgrade", "pip"])
-    run_cmd([py, "-m", "pip", "install", "--upgrade", "spacy"])
+    # 1) Installe spaCy côté Python (sans upgrade forcé de pip).
+    pip_install(["spacy>=3.7,<4"])
 
     # 2) Télécharge le modèle large FR demandé.
-    run_cmd([py, "-m", "spacy", "download", "fr_core_news_lg"])
+    run_cmd([py, "-m", "spacy", "download", args.model])
 
     # 3) Vérification rapide.
     code = (
         "import spacy; "
-        "nlp=spacy.load('fr_core_news_lg'); "
+        f"nlp=spacy.load('{args.model}'); "
         "print('OK spaCy:', spacy.__version__, '| model:', nlp.meta.get('name'))"
     )
     run_cmd([py, "-c", code])
