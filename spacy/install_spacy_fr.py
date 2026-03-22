@@ -25,37 +25,47 @@ def is_venv() -> bool:
     )
 
 
-def pip_install(args: Iterable[str]) -> None:
+def pip_install(args: Iterable[str], repo_args: list[str] | None = None) -> None:
     base = [sys.executable, "-m", "pip", "install"]
     if not is_venv():
         # En environnement système, éviter les erreurs de droits.
         base.append("--user")
+    if repo_args:
+        base.extend(repo_args)
     run_cmd(base + list(args))
 
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Installe spaCy et un modèle français.")
     p.add_argument("--model", default="fr_core_news_lg", help="Nom du modèle spaCy à installer.")
+    p.add_argument("--index-url", default=None, help="Dépôt Python principal (ex: https://pypi.org/simple).")
+    p.add_argument("--extra-index-url", action="append", default=None, help="Dépôt Python secondaire (option répétable).")
+    p.add_argument("--trusted-host", action="append", default=None, help="Hôte de confiance pip (option répétable).")
     return p.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     py = sys.executable
+    repo_args: list[str] = []
+    if args.index_url:
+        repo_args.extend(["--index-url", args.index_url])
+    if args.extra_index_url:
+        for url in args.extra_index_url:
+            repo_args.extend(["--extra-index-url", url])
+    if args.trusted_host:
+        for host in args.trusted_host:
+            repo_args.extend(["--trusted-host", host])
 
     # 1) Installe spaCy côté Python (sans upgrade forcé de pip).
-    pip_install(["spacy>=3.7,<4"])
+    pip_install(["spacy>=3.7,<4"], repo_args=repo_args)
 
-    # 2) Télécharge le modèle large FR demandé.
-    run_cmd([py, "-m", "spacy", "download", args.model])
+    # 2) Installe le modèle FR via pip (compatible dépôts internes/miroirs).
+    pip_model_name = args.model.replace("_", "-")
+    pip_install([pip_model_name], repo_args=repo_args)
 
     # 3) Vérification rapide.
-    code = (
-        "import spacy; "
-        f"nlp=spacy.load('{args.model}'); "
-        "print('OK spaCy:', spacy.__version__, '| model:', nlp.meta.get('name'))"
-    )
-    run_cmd([py, "-c", code])
+    run_cmd([py, "-m", "spacy", "info", args.model])
     return 0
 
 

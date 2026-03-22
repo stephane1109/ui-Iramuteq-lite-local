@@ -41,12 +41,14 @@ installer_spacy_si_necessaire <- function(model = "fr_core_news_lg", installer_p
   if (spacy_modele_disponible(model = model)) return(TRUE)
   if (isTRUE(getOption("iramuteq_spacy_install_attempted", FALSE))) return(FALSE)
   options(iramuteq_spacy_install_attempted = TRUE)
+  options(iramuteq_spacy_install_last_log = NULL)
 
   python_bin <- Sys.which("python3")
   if (!nzchar(python_bin)) python_bin <- Sys.which("python")
   if (!nzchar(python_bin) || !file.exists(installer_path)) return(FALSE)
 
   out <- suppressWarnings(system2(python_bin, args = installer_path, stdout = TRUE, stderr = TRUE))
+  options(iramuteq_spacy_install_last_log = paste(out, collapse = "\n"))
   status <- attr(out, "status")
   if (is.null(status)) status <- 0L
   identical(as.integer(status), 0L) && spacy_modele_disponible(model = model)

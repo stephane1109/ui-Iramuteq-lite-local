@@ -336,7 +336,20 @@ server <- function(input, output, session) {
     if (ok_install) {
       showNotification("spaCy installé avec succès pour la détection NER.", type = "message", duration = 6)
     } else {
-      showNotification("Échec installation spaCy: vérifiez Python/réseau/proxy puis relancez.", type = "error", duration = 10)
+      install_log <- getOption("iramuteq_spacy_install_last_log", "")
+      install_log <- trimws(as.character(install_log))
+      resume_log <- if (nzchar(install_log)) {
+        lignes <- strsplit(install_log, "\n", fixed = TRUE)[[1]]
+        tail_txt <- paste(tail(lignes, 3), collapse = " | ")
+        paste0(" Détail: ", substr(tail_txt, 1, 240))
+      } else {
+        ""
+      }
+      showNotification(
+        paste0("Échec installation spaCy auto. Essayez avec votre dépôt: python3 spacy/install_spacy_fr.py --model fr_core_news_lg --index-url <URL_DEPOT_PYPI>.", resume_log),
+        type = "warning",
+        duration = 12
+      )
     }
     invisible(NULL)
   }, once = TRUE, ignoreInit = FALSE)
