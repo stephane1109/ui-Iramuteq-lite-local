@@ -13,15 +13,28 @@ spacy_modele_disponible <- function(model = "fr_core_news_lg") {
   if (!nzchar(python_bin)) python_bin <- Sys.which("python")
   if (!nzchar(python_bin)) return(FALSE)
 
-  probe <- paste0(
-    "import spacy; ",
-    "spacy.load('", gsub("'", "\\\\'", model, fixed = TRUE), "'); ",
-    "print('OK')"
-  )
-  out <- suppressWarnings(system2(python_bin, args = c("-c", probe), stdout = TRUE, stderr = TRUE))
+  script_path <- file.path("spacy", "ner_spacy.py")
+  if (!file.exists(script_path)) return(FALSE)
+
+  in_txt <- tempfile(pattern = "spacy_probe_in_", fileext = ".txt")
+  out_csv <- tempfile(pattern = "spacy_probe_out_", fileext = ".csv")
+  on.exit(unlink(c(in_txt, out_csv), force = TRUE), add = TRUE)
+  writeLines("", in_txt, useBytes = TRUE)
+
+  out <- suppressWarnings(system2(
+    python_bin,
+    args = c(
+      script_path,
+      "--input-txt", in_txt,
+      "--output-csv", out_csv,
+      "--model", model
+    ),
+    stdout = TRUE,
+    stderr = TRUE
+  ))
   status <- attr(out, "status")
   if (is.null(status)) status <- 0L
-  identical(as.integer(status), 0L)
+  identical(as.integer(status), 0L) && file.exists(out_csv)
 }
 
 installer_spacy_si_necessaire <- function(model = "fr_core_news_lg", installer_path = file.path("spacy", "install_spacy_fr.py")) {

@@ -328,6 +328,18 @@ server <- function(input, output, session) {
   
   app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
   if (is.null(app_dir) || !nzchar(app_dir)) app_dir <- getwd()
+
+  observeEvent(TRUE, {
+    if (isTRUE(spacy_modele_disponible())) return(invisible(NULL))
+    showNotification("Installation de spaCy en cours (premier lancement)...", type = "message", duration = 6)
+    ok_install <- isTRUE(installer_spacy_si_necessaire())
+    if (ok_install) {
+      showNotification("spaCy installé avec succès pour la détection NER.", type = "message", duration = 6)
+    } else {
+      showNotification("Échec installation spaCy: vérifiez Python/réseau/proxy puis relancez.", type = "error", duration = 10)
+    }
+    invisible(NULL)
+  }, once = TRUE, ignoreInit = FALSE)
   
   sauvegarder_add_expression <- function(df) {
     if (is.null(df) || !is.data.frame(df)) return(invisible(NULL))
