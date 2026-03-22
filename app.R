@@ -290,6 +290,7 @@ server <- function(input, output, session) {
     expressions_actives_df = NULL,
     utiliser_add_expression = FALSE,
     utiliser_add_ner = FALSE,
+    ner_spacy_notice_shown = FALSE,
     textes_indexation = NULL,
     
     afc_obj = NULL,
@@ -327,6 +328,31 @@ server <- function(input, output, session) {
   
   app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
   if (is.null(app_dir) || !nzchar(app_dir)) app_dir <- getwd()
+
+  observeEvent(TRUE, {
+    if (isTRUE(spacy_modele_disponible())) return(invisible(NULL))
+    showNotification("Installation de spaCy en cours (premier lancement)...", type = "message", duration = 6)
+    ok_install <- isTRUE(installer_spacy_si_necessaire())
+    if (ok_install) {
+      showNotification("spaCy installé avec succès pour la détection NER.", type = "message", duration = 6)
+    } else {
+      install_log <- getOption("iramuteq_spacy_install_last_log", "")
+      install_log <- trimws(as.character(install_log))
+      resume_log <- if (nzchar(install_log)) {
+        lignes <- strsplit(install_log, "\n", fixed = TRUE)[[1]]
+        tail_txt <- paste(tail(lignes, 3), collapse = " | ")
+        paste0(" Détail: ", substr(tail_txt, 1, 240))
+      } else {
+        ""
+      }
+      showNotification(
+        paste0("Échec installation spaCy auto. Essayez avec votre dépôt: python3 spacy/install_spacy_fr.py --model fr_core_news_lg --index-url <URL_DEPOT_PYPI>.", resume_log),
+        type = "warning",
+        duration = 12
+      )
+    }
+    invisible(NULL)
+  }, once = TRUE, ignoreInit = FALSE)
   
   sauvegarder_add_expression <- function(df) {
     if (is.null(df) || !is.data.frame(df)) return(invisible(NULL))
@@ -836,6 +862,14 @@ server <- function(input, output, session) {
     }
 
     auto_df <- detecter_ner_automatique(texte_corpus)
+    if (!isTRUE(rv$ner_spacy_notice_shown) && !isTRUE(spacy_ner_disponible())) {
+      rv$ner_spacy_notice_shown <- TRUE
+      showNotification(
+        "NER désactivé: spaCy non disponible (python/modèle manquant).",
+        type = "warning",
+        duration = 8
+      )
+    }
     rv$ner_detectes_auto_df <- auto_df
     if (is.data.frame(auto_df) && nrow(auto_df) > 0) {
       rv$ner_annotations_df <- fusionner_annotations_ner(rv$ner_annotations_df, auto_df)
@@ -1196,6 +1230,14 @@ server <- function(input, output, session) {
     updateTextAreaInput(session, "ner_corpus_text", value = txt)
 
     auto_df <- detecter_ner_automatique(txt)
+    if (!isTRUE(rv$ner_spacy_notice_shown) && !isTRUE(spacy_ner_disponible())) {
+      rv$ner_spacy_notice_shown <- TRUE
+      showNotification(
+        "NER désactivé: spaCy non disponible (python/modèle manquant).",
+        type = "warning",
+        duration = 8
+      )
+    }
     rv$ner_detectes_auto_df <- auto_df
     if (is.data.frame(auto_df) && nrow(auto_df) > 0) {
       rv$ner_annotations_df <- fusionner_annotations_ner(rv$ner_annotations_df, auto_df)
