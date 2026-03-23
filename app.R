@@ -6,7 +6,7 @@
 #                        DEV EN LOCAL + ANNOTATIONS                           #
 ###############################################################################
 
-required_packages <- c("shiny", "bslib", "htmltools", "quanteda", "wordcloud", "RColorBrewer", "igraph", "dplyr", "remotes", "rgexf", "Matrix", "factoextra", "FactoMineR", "ggplot2", "plotly", "visNetwork", "DT", "jsonlite", "sna", "intergraph", "colorspace", "rgl")
+required_packages <- c("shiny", "bslib", "htmltools", "quanteda", "wordcloud", "RColorBrewer", "igraph", "dplyr", "remotes", "rgexf", "Matrix", "factoextra", "FactoMineR", "ggplot2", "plotly", "visNetwork", "DT", "jsonlite", "sna", "intergraph", "colorspace", "rgl", "reticulate", "spacyr")
 installed_packages <- rownames(installed.packages())
 missing_packages <- setdiff(required_packages, installed_packages)
 packages_manquants <- missing_packages
@@ -356,6 +356,7 @@ server <- function(input, output, session) {
     if (!isTRUE(deps$python)) manquants <- c(manquants, "Python")
     if (!isTRUE(deps$script_ner)) manquants <- c(manquants, "script ner_spacy.py")
     if (!isTRUE(deps$script_install)) manquants <- c(manquants, "script install_spacy_fr.py")
+    if (!isTRUE(deps$reticulate)) manquants <- c(manquants, "package R reticulate")
     if (!isTRUE(deps$spacyr)) manquants <- c(manquants, "package R spacyr")
     if (!isTRUE(deps$spacy_model)) manquants <- c(manquants, "modèle spaCy FR (lg/md/sm)")
     if (!isTRUE(deps$wordcloud)) manquants <- c(manquants, "package R wordcloud")
@@ -370,7 +371,7 @@ server <- function(input, output, session) {
       commande <- paste0(commande, " --model-url ", model_url_hint)
     }
 
-    commande_r <- "R -q -e \"install.packages('spacyr'); library(spacyr); spacyr::spacy_install(lang_models='fr_core_news_sm', prompt=FALSE); spacyr::spacy_initialize(model='fr_core_news_sm')\""
+    commande_r <- "R -q -e \"install.packages(c('reticulate','spacyr')); library(spacyr); spacyr::spacy_install(lang_models='fr_core_news_sm', prompt=FALSE); spacyr::spacy_initialize(model='fr_core_news_sm')\""
 
     showNotification(
       paste0(

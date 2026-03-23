@@ -30,12 +30,14 @@ diagnostiquer_dependances_ner <- function(model = "fr_core_news_sm") {
   has_model <- !is.null(modele_actif)
   has_wordcloud <- requireNamespace("wordcloud", quietly = TRUE)
   has_brewer <- requireNamespace("RColorBrewer", quietly = TRUE)
+  has_reticulate <- requireNamespace("reticulate", quietly = TRUE)
   has_spacyr <- requireNamespace("spacyr", quietly = TRUE)
 
   list(
     python = has_python,
     script_ner = has_script_ner,
     script_install = has_script_install,
+    reticulate = has_reticulate,
     spacyr = has_spacyr,
     spacy_model = has_model,
     spacy_model_name = if (is.null(modele_actif)) "" else as.character(modele_actif),
