@@ -23,19 +23,18 @@ diagnostiquer_dependances_ner <- function(model = "fr_core_news_sm") {
   has_python <- nzchar(python_bin)
 
   script_ner <- file.path("spacy", "ner_spacy.py")
-  script_install <- file.path("spacy", "install_spacy_fr.py")
   has_script_ner <- file.exists(script_ner)
-  has_script_install <- file.exists(script_install)
   modele_actif <- if (has_python && has_script_ner) modele_spacy_fr_disponible(models = c(model, "fr_core_news_sm", "fr_core_news_md", "fr_core_news_lg")) else NULL
   has_model <- !is.null(modele_actif)
   has_wordcloud <- requireNamespace("wordcloud", quietly = TRUE)
   has_brewer <- requireNamespace("RColorBrewer", quietly = TRUE)
+  has_reticulate <- requireNamespace("reticulate", quietly = TRUE)
   has_spacyr <- requireNamespace("spacyr", quietly = TRUE)
 
   list(
     python = has_python,
     script_ner = has_script_ner,
-    script_install = has_script_install,
+    reticulate = has_reticulate,
     spacyr = has_spacyr,
     spacy_model = has_model,
     spacy_model_name = if (is.null(modele_actif)) "" else as.character(modele_actif),
@@ -102,7 +101,7 @@ installer_package_spacyr_si_necessaire <- function() {
   requireNamespace("spacyr", quietly = TRUE)
 }
 
-installer_spacy_si_necessaire <- function(model = "fr_core_news_sm", installer_path = file.path("spacy", "install_spacy_fr.py")) {
+installer_spacy_si_necessaire <- function(model = "fr_core_news_sm") {
   if (spacy_modele_disponible(model = model)) return(TRUE)
   if (isTRUE(getOption("iramuteq_spacy_install_attempted", FALSE))) return(FALSE)
   options(iramuteq_spacy_install_attempted = TRUE)
@@ -127,30 +126,7 @@ installer_spacy_si_necessaire <- function(model = "fr_core_news_sm", installer_p
     options(iramuteq_spacy_install_last_log = paste(log_spacyr, log_initialize, sep = "\n\n"))
     if (isTRUE(spacy_modele_disponible(model = model))) return(TRUE)
   }
-
-  # Fallback: script Python existant.
-  python_bin <- Sys.which("python3")
-  if (!nzchar(python_bin)) python_bin <- Sys.which("python")
-  if (!nzchar(python_bin) || !file.exists(installer_path)) return(FALSE)
-
-  repo_url <- trimws(Sys.getenv("IRAMUTEQ_SPACY_REPO_URL", unset = ""))
-  if (!nzchar(repo_url)) repo_url <- trimws(Sys.getenv("PIP_INDEX_URL", unset = ""))
-  if (!nzchar(repo_url)) repo_url <- "https://pypi.org/simple"
-  extra_index_url <- trimws(Sys.getenv("PIP_EXTRA_INDEX_URL", unset = ""))
-  trusted_host <- trimws(Sys.getenv("PIP_TRUSTED_HOST", unset = ""))
-  model_url <- trimws(Sys.getenv("IRAMUTEQ_SPACY_MODEL_URL", unset = ""))
-
-  args <- c(installer_path, "--model", model)
-  if (nzchar(repo_url)) args <- c(args, "--repo-url", repo_url)
-  if (nzchar(model_url)) args <- c(args, "--model-url", model_url)
-  if (nzchar(extra_index_url)) args <- c(args, "--extra-index-url", extra_index_url)
-  if (nzchar(trusted_host)) args <- c(args, "--trusted-host", trusted_host)
-
-  out <- suppressWarnings(system2(python_bin, args = args, stdout = TRUE, stderr = TRUE))
-  options(iramuteq_spacy_install_last_log = paste(out, collapse = "\n"))
-  status <- attr(out, "status")
-  if (is.null(status)) status <- 0L
-  identical(as.integer(status), 0L) && spacy_modele_disponible(model = model)
+  FALSE
 }
 
 
