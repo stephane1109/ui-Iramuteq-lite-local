@@ -356,6 +356,7 @@ server <- function(input, output, session) {
     if (!isTRUE(deps$python)) manquants <- c(manquants, "Python")
     if (!isTRUE(deps$script_ner)) manquants <- c(manquants, "script ner_spacy.py")
     if (!isTRUE(deps$script_install)) manquants <- c(manquants, "script install_spacy_fr.py")
+    if (!isTRUE(deps$spacyr)) manquants <- c(manquants, "package R spacyr")
     if (!isTRUE(deps$spacy_model)) manquants <- c(manquants, "modèle spaCy FR (lg/md/sm)")
     if (!isTRUE(deps$wordcloud)) manquants <- c(manquants, "package R wordcloud")
     if (!isTRUE(deps$rcolorbrewer)) manquants <- c(manquants, "package R RColorBrewer")
@@ -369,11 +370,14 @@ server <- function(input, output, session) {
       commande <- paste0(commande, " --model-url ", model_url_hint)
     }
 
+    commande_r <- "R -q -e \"install.packages('spacyr'); spacyr::spacy_install(lang_models='fr_core_news_lg', prompt=FALSE)\""
+
     showNotification(
       paste0(
         "Scan dépendances NER: manquant -> ",
         paste(manquants, collapse = ", "),
-        ". Installer spaCy: ", commande
+        ". Installer spaCy (R/spacyr): ", commande_r,
+        " | Fallback Python: ", commande
       ),
       type = "warning",
       duration = 14

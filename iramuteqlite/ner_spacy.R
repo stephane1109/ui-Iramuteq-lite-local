@@ -30,11 +30,13 @@ diagnostiquer_dependances_ner <- function(model = "fr_core_news_lg") {
   has_model <- !is.null(modele_actif)
   has_wordcloud <- requireNamespace("wordcloud", quietly = TRUE)
   has_brewer <- requireNamespace("RColorBrewer", quietly = TRUE)
+  has_spacyr <- requireNamespace("spacyr", quietly = TRUE)
 
   list(
     python = has_python,
     script_ner = has_script_ner,
     script_install = has_script_install,
+    spacyr = has_spacyr,
     spacy_model = has_model,
     spacy_model_name = if (is.null(modele_actif)) "" else as.character(modele_actif),
     wordcloud = has_wordcloud,
@@ -78,6 +80,22 @@ installer_spacy_si_necessaire <- function(model = "fr_core_news_lg", installer_p
   options(iramuteq_spacy_install_attempted = TRUE)
   options(iramuteq_spacy_install_last_log = NULL)
 
+  # Priorité: installation via spacyr (env Python isolé via reticulate).
+  if (requireNamespace("spacyr", quietly = TRUE)) {
+    install_args <- list()
+    fml <- tryCatch(names(formals(spacyr::spacy_install)), error = function(e) character(0))
+    if ("lang_models" %in% fml) install_args$lang_models <- model
+    if ("prompt" %in% fml) install_args$prompt <- FALSE
+    if ("python_executable" %in% fml) install_args$python_executable <- Sys.which("python3")
+    log_spacyr <- tryCatch({
+      out <- capture.output(do.call(spacyr::spacy_install, install_args), type = "output")
+      paste(out, collapse = "\n")
+    }, error = function(e) paste("spacyr::spacy_install error:", conditionMessage(e)))
+    options(iramuteq_spacy_install_last_log = log_spacyr)
+    if (isTRUE(spacy_modele_disponible(model = model))) return(TRUE)
+  }
+
+  # Fallback: script Python existant.
   python_bin <- Sys.which("python3")
   if (!nzchar(python_bin)) python_bin <- Sys.which("python")
   if (!nzchar(python_bin) || !file.exists(installer_path)) return(FALSE)
