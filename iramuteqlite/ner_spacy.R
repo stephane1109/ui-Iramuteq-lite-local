@@ -10,14 +10,14 @@ spacy_ner_disponible <- function(script_path = file.path("spacy", "ner_spacy.py"
   nzchar(python_bin) && file.exists(script_path)
 }
 
-modele_spacy_fr_disponible <- function(models = c("fr_core_news_lg", "fr_core_news_md", "fr_core_news_sm")) {
+modele_spacy_fr_disponible <- function(models = c("fr_core_news_sm", "fr_core_news_md", "fr_core_news_lg")) {
   for (m in models) {
     if (isTRUE(spacy_modele_disponible(model = m))) return(m)
   }
   NULL
 }
 
-diagnostiquer_dependances_ner <- function(model = "fr_core_news_lg") {
+diagnostiquer_dependances_ner <- function(model = "fr_core_news_sm") {
   python_bin <- Sys.which("python3")
   if (!nzchar(python_bin)) python_bin <- Sys.which("python")
   has_python <- nzchar(python_bin)
@@ -26,16 +26,18 @@ diagnostiquer_dependances_ner <- function(model = "fr_core_news_lg") {
   script_install <- file.path("spacy", "install_spacy_fr.py")
   has_script_ner <- file.exists(script_ner)
   has_script_install <- file.exists(script_install)
-  modele_actif <- if (has_python && has_script_ner) modele_spacy_fr_disponible(models = c(model, "fr_core_news_md", "fr_core_news_sm")) else NULL
+  modele_actif <- if (has_python && has_script_ner) modele_spacy_fr_disponible(models = c(model, "fr_core_news_sm", "fr_core_news_md", "fr_core_news_lg")) else NULL
   has_model <- !is.null(modele_actif)
   has_wordcloud <- requireNamespace("wordcloud", quietly = TRUE)
   has_brewer <- requireNamespace("RColorBrewer", quietly = TRUE)
+  has_reticulate <- requireNamespace("reticulate", quietly = TRUE)
   has_spacyr <- requireNamespace("spacyr", quietly = TRUE)
 
   list(
     python = has_python,
     script_ner = has_script_ner,
     script_install = has_script_install,
+    reticulate = has_reticulate,
     spacyr = has_spacyr,
     spacy_model = has_model,
     spacy_model_name = if (is.null(modele_actif)) "" else as.character(modele_actif),
@@ -45,7 +47,7 @@ diagnostiquer_dependances_ner <- function(model = "fr_core_news_lg") {
   )
 }
 
-spacy_modele_disponible <- function(model = "fr_core_news_lg") {
+spacy_modele_disponible <- function(model = "fr_core_news_sm") {
   python_bin <- Sys.which("python3")
   if (!nzchar(python_bin)) python_bin <- Sys.which("python")
   if (!nzchar(python_bin)) return(FALSE)
@@ -102,7 +104,7 @@ installer_package_spacyr_si_necessaire <- function() {
   requireNamespace("spacyr", quietly = TRUE)
 }
 
-installer_spacy_si_necessaire <- function(model = "fr_core_news_lg", installer_path = file.path("spacy", "install_spacy_fr.py")) {
+installer_spacy_si_necessaire <- function(model = "fr_core_news_sm", installer_path = file.path("spacy", "install_spacy_fr.py")) {
   if (spacy_modele_disponible(model = model)) return(TRUE)
   if (isTRUE(getOption("iramuteq_spacy_install_attempted", FALSE))) return(FALSE)
   options(iramuteq_spacy_install_attempted = TRUE)
@@ -120,7 +122,11 @@ installer_spacy_si_necessaire <- function(model = "fr_core_news_lg", installer_p
       out <- capture.output(do.call(spacyr::spacy_install, install_args), type = "output")
       paste(out, collapse = "\n")
     }, error = function(e) paste("spacyr::spacy_install error:", conditionMessage(e)))
-    options(iramuteq_spacy_install_last_log = log_spacyr)
+    log_initialize <- tryCatch({
+      out <- capture.output(spacyr::spacy_initialize(model = model), type = "output")
+      paste(out, collapse = "\n")
+    }, error = function(e) paste("spacyr::spacy_initialize error:", conditionMessage(e)))
+    options(iramuteq_spacy_install_last_log = paste(log_spacyr, log_initialize, sep = "\n\n"))
     if (isTRUE(spacy_modele_disponible(model = model))) return(TRUE)
   }
 
@@ -150,7 +156,7 @@ installer_spacy_si_necessaire <- function(model = "fr_core_news_lg", installer_p
 }
 
 
-detecter_ner_spacy <- function(texte, model = "fr_core_news_lg", script_path = file.path("spacy", "ner_spacy.py")) {
+detecter_ner_spacy <- function(texte, model = "fr_core_news_sm", script_path = file.path("spacy", "ner_spacy.py")) {
   texte <- if (is.null(texte)) "" else as.character(texte)
   if (!nzchar(trimws(texte))) {
     return(data.frame(text = character(0), label = character(0), freq = integer(0), stringsAsFactors = FALSE))
@@ -305,4 +311,3 @@ extraire_ner_corpus <- function(texte, ner_df) {
 
   out[order(-out$freq, out$text), , drop = FALSE]
 }
-
