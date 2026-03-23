@@ -336,6 +336,21 @@ server <- function(input, output, session) {
       return(invisible(NULL))
     }
 
+    # Tentative d'installation auto au lancement si Python + script install sont présents.
+    if (isTRUE(deps$python) && isTRUE(deps$script_install) && !isTRUE(deps$spacy_model)) {
+      showNotification("Dépendances NER: installation automatique de spaCy en cours…", type = "message", duration = 6)
+      ok_install <- isTRUE(installer_spacy_si_necessaire(model = "fr_core_news_lg"))
+      deps <- diagnostiquer_dependances_ner()
+      if (ok_install && isTRUE(deps$spacy_model)) {
+        showNotification("Installation spaCy réussie au lancement.", type = "message", duration = 6)
+      }
+    }
+
+    if (isTRUE(deps$ok_ner)) {
+      showNotification("Dépendances NER OK après initialisation (spaCy prêt).", type = "message", duration = 5)
+      return(invisible(NULL))
+    }
+
     manquants <- character(0)
     if (!isTRUE(deps$python)) manquants <- c(manquants, "Python")
     if (!isTRUE(deps$script_ner)) manquants <- c(manquants, "script ner_spacy.py")
