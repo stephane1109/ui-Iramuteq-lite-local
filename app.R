@@ -360,11 +360,16 @@ server <- function(input, output, session) {
     if (!isTRUE(deps$wordcloud)) manquants <- c(manquants, "package R wordcloud")
     if (!isTRUE(deps$rcolorbrewer)) manquants <- c(manquants, "package R RColorBrewer")
 
-    repo_hint <- trimws(Sys.getenv("PIP_INDEX_URL", unset = ""))
+    repo_hint <- trimws(Sys.getenv("IRAMUTEQ_SPACY_REPO_URL", unset = ""))
+    if (!nzchar(repo_hint)) repo_hint <- trimws(Sys.getenv("PIP_INDEX_URL", unset = ""))
+    model_url_hint <- trimws(Sys.getenv("IRAMUTEQ_SPACY_MODEL_URL", unset = ""))
+    if (!nzchar(model_url_hint)) {
+      model_url_hint <- "https://github.com/explosion/spacy-models/releases/download/fr_core_news_lg-3.7.0/fr_core_news_lg-3.7.0-py3-none-any.whl"
+    }
     commande <- if (nzchar(repo_hint)) {
-      paste0("python3 spacy/install_spacy_fr.py --model fr_core_news_lg --index-url ", repo_hint)
+      paste0("python3 spacy/install_spacy_fr.py --model fr_core_news_lg --repo-url ", repo_hint, " --model-url ", model_url_hint)
     } else {
-      "python3 spacy/install_spacy_fr.py --model fr_core_news_lg"
+      paste0("python3 spacy/install_spacy_fr.py --model fr_core_news_lg --model-url ", model_url_hint)
     }
 
     showNotification(
