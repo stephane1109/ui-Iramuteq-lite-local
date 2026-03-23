@@ -84,6 +84,7 @@ installer_spacy_si_necessaire <- function(model = "fr_core_news_lg", installer_p
 
   repo_url <- trimws(Sys.getenv("IRAMUTEQ_SPACY_REPO_URL", unset = ""))
   if (!nzchar(repo_url)) repo_url <- trimws(Sys.getenv("PIP_INDEX_URL", unset = ""))
+  if (!nzchar(repo_url)) repo_url <- "https://pypi.org/simple"
   extra_index_url <- trimws(Sys.getenv("PIP_EXTRA_INDEX_URL", unset = ""))
   trusted_host <- trimws(Sys.getenv("PIP_TRUSTED_HOST", unset = ""))
   model_url <- trimws(Sys.getenv("IRAMUTEQ_SPACY_MODEL_URL", unset = ""))

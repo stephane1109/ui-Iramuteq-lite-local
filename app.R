@@ -362,14 +362,11 @@ server <- function(input, output, session) {
 
     repo_hint <- trimws(Sys.getenv("IRAMUTEQ_SPACY_REPO_URL", unset = ""))
     if (!nzchar(repo_hint)) repo_hint <- trimws(Sys.getenv("PIP_INDEX_URL", unset = ""))
+    if (!nzchar(repo_hint)) repo_hint <- "https://pypi.org/simple"
     model_url_hint <- trimws(Sys.getenv("IRAMUTEQ_SPACY_MODEL_URL", unset = ""))
-    if (!nzchar(model_url_hint)) {
-      model_url_hint <- "https://github.com/explosion/spacy-models/releases/download/fr_core_news_lg-3.7.0/fr_core_news_lg-3.7.0-py3-none-any.whl"
-    }
-    commande <- if (nzchar(repo_hint)) {
-      paste0("python3 spacy/install_spacy_fr.py --model fr_core_news_lg --repo-url ", repo_hint, " --model-url ", model_url_hint)
-    } else {
-      paste0("python3 spacy/install_spacy_fr.py --model fr_core_news_lg --model-url ", model_url_hint)
+    commande <- paste0("python3 spacy/install_spacy_fr.py --model fr_core_news_lg --repo-url ", repo_hint)
+    if (nzchar(model_url_hint)) {
+      commande <- paste0(commande, " --model-url ", model_url_hint)
     }
 
     showNotification(

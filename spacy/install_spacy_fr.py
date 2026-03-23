@@ -47,7 +47,7 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Installe spaCy et un modèle français.")
     p.add_argument("--model", default="fr_core_news_lg", help="Nom du modèle spaCy à installer.")
     p.add_argument("--model-url", default=None, help="URL wheel directe du modèle (prioritaire).")
-    p.add_argument("--repo-url", default=None, help="URL de dépôt pip pour spaCy / dépendances.")
+    p.add_argument("--repo-url", default="https://pypi.org/simple", help="URL de dépôt pip pour spaCy / dépendances.")
     p.add_argument("--index-url", default=None, help="Alias de compatibilité pour --repo-url.")
     p.add_argument("--extra-index-url", action="append", default=None, help="Dépôt pip secondaire (répétable).")
     p.add_argument("--trusted-host", action="append", default=None, help="Hôte pip de confiance (répétable).")
@@ -57,7 +57,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    repo_url = args.repo_url or args.index_url
+    repo_url = args.repo_url or args.index_url or "https://pypi.org/simple"
     repo_args: list[str] = []
     if repo_url:
         repo_args.extend(["--index-url", repo_url])
@@ -71,24 +71,34 @@ def main() -> int:
     # 1) spaCy + lookups (style Dockerfile fourni par l'utilisateur)
     pip_install([f"spacy=={SPACY_VERSION}", "spacy-lookups-data"], repo_args=repo_args)
 
-    # 2) modèle FR via URL wheel prioritaire
-    model_target = args.model_url or DEFAULT_MODEL_WHEELS.get(args.model) or args.model.replace("_", "-")
-    model_ok = run_cmd([
-        sys.executable,
-        "-m",
-        "pip",
-        "install",
-        "--no-cache-dir",
-        *( ["--user"] if not is_venv() else [] ),
-        *repo_args,
-        model_target,
-    ], allow_fail=True)
+    # 2) modèle FR: d'abord paquet pip depuis repo (lg demandé), puis URL wheel.
+    pip_model_name = args.model.replace("_", "-")
+    model_targets: list[str] = [pip_model_name]
+    if args.model_url:
+        model_targets.append(args.model_url)
+    elif args.model in DEFAULT_MODEL_WHEELS:
+        model_targets.append(DEFAULT_MODEL_WHEELS[args.model])
+
+    model_ok = False
+    for model_target in model_targets:
+        model_ok = run_cmd([
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--no-cache-dir",
+            *( ["--user"] if not is_venv() else [] ),
+            *repo_args,
+            model_target,
+        ], allow_fail=True)
+        if model_ok:
+            break
 
     if not model_ok:
         if not args.allow_download_fallback:
             print(
-                "ERREUR: impossible d'installer le modèle. Fournissez --model-url vers un .whl valide "
-                "ou activez --allow-download-fallback.",
+                "ERREUR: impossible d'installer le modèle lg depuis le repo et/ou l'URL fournie. "
+                "Fournissez --model-url valide ou activez --allow-download-fallback.",
                 file=sys.stderr,
             )
             return 1
