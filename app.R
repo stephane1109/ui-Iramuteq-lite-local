@@ -370,7 +370,7 @@ server <- function(input, output, session) {
       commande <- paste0(commande, " --model-url ", model_url_hint)
     }
 
-    commande_r <- "R -q -e \"install.packages('spacyr'); spacyr::spacy_install(lang_models='fr_core_news_lg', prompt=FALSE)\""
+    commande_r <- "R -q -e \"install.packages('spacyr'); if (!requireNamespace('spacyr', quietly=TRUE)) { if (!requireNamespace('remotes', quietly=TRUE)) install.packages('remotes'); remotes::install_github('quanteda/spacyr') }; spacyr::spacy_install(lang_models='fr_core_news_lg', prompt=FALSE)\""
 
     showNotification(
       paste0(

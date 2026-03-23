@@ -74,6 +74,34 @@ spacy_modele_disponible <- function(model = "fr_core_news_lg") {
   identical(as.integer(status), 0L) && file.exists(out_csv)
 }
 
+installer_package_spacyr_si_necessaire <- function() {
+  if (requireNamespace("spacyr", quietly = TRUE)) return(TRUE)
+
+  cran_repo <- trimws(Sys.getenv("R_CRAN_MIRROR", unset = "https://cloud.r-project.org"))
+  log_parts <- character(0)
+
+  out_cran <- tryCatch({
+    out <- capture.output(utils::install.packages("spacyr", repos = cran_repo), type = "output")
+    paste(out, collapse = "\n")
+  }, error = function(e) paste("install.packages('spacyr') error:", conditionMessage(e)))
+  log_parts <- c(log_parts, out_cran)
+  if (requireNamespace("spacyr", quietly = TRUE)) {
+    options(iramuteq_spacy_install_last_log = paste(log_parts, collapse = "\n\n"))
+    return(TRUE)
+  }
+
+  out_remotes <- tryCatch({
+    if (!requireNamespace("remotes", quietly = TRUE)) {
+      utils::install.packages("remotes", repos = cran_repo)
+    }
+    out <- capture.output(remotes::install_github("quanteda/spacyr"), type = "output")
+    paste(out, collapse = "\n")
+  }, error = function(e) paste("remotes::install_github('quanteda/spacyr') error:", conditionMessage(e)))
+  log_parts <- c(log_parts, out_remotes)
+  options(iramuteq_spacy_install_last_log = paste(log_parts, collapse = "\n\n"))
+  requireNamespace("spacyr", quietly = TRUE)
+}
+
 installer_spacy_si_necessaire <- function(model = "fr_core_news_lg", installer_path = file.path("spacy", "install_spacy_fr.py")) {
   if (spacy_modele_disponible(model = model)) return(TRUE)
   if (isTRUE(getOption("iramuteq_spacy_install_attempted", FALSE))) return(FALSE)
@@ -81,6 +109,7 @@ installer_spacy_si_necessaire <- function(model = "fr_core_news_lg", installer_p
   options(iramuteq_spacy_install_last_log = NULL)
 
   # Priorité: installation via spacyr (env Python isolé via reticulate).
+  installer_package_spacyr_si_necessaire()
   if (requireNamespace("spacyr", quietly = TRUE)) {
     install_args <- list()
     fml <- tryCatch(names(formals(spacyr::spacy_install)), error = function(e) character(0))
