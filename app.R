@@ -360,11 +360,13 @@ server <- function(input, output, session) {
     if (!isTRUE(deps$wordcloud)) manquants <- c(manquants, "package R wordcloud")
     if (!isTRUE(deps$rcolorbrewer)) manquants <- c(manquants, "package R RColorBrewer")
 
-    repo_hint <- trimws(Sys.getenv("PIP_INDEX_URL", unset = ""))
-    commande <- if (nzchar(repo_hint)) {
-      paste0("python3 spacy/install_spacy_fr.py --model fr_core_news_lg --index-url ", repo_hint)
-    } else {
-      "python3 spacy/install_spacy_fr.py --model fr_core_news_lg"
+    repo_hint <- trimws(Sys.getenv("IRAMUTEQ_SPACY_REPO_URL", unset = ""))
+    if (!nzchar(repo_hint)) repo_hint <- trimws(Sys.getenv("PIP_INDEX_URL", unset = ""))
+    if (!nzchar(repo_hint)) repo_hint <- "https://pypi.org/simple"
+    model_url_hint <- trimws(Sys.getenv("IRAMUTEQ_SPACY_MODEL_URL", unset = ""))
+    commande <- paste0("python3 spacy/install_spacy_fr.py --model fr_core_news_lg --repo-url ", repo_hint)
+    if (nzchar(model_url_hint)) {
+      commande <- paste0(commande, " --model-url ", model_url_hint)
     }
 
     showNotification(
