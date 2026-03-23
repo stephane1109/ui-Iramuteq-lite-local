@@ -50,6 +50,32 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+def is_venv() -> bool:
+    return (
+        getattr(sys, "real_prefix", None) is not None
+        or getattr(sys, "base_prefix", sys.prefix) != sys.prefix
+    )
+
+
+def pip_install(args: Iterable[str], repo_args: list[str] | None = None) -> None:
+    base = [sys.executable, "-m", "pip", "install"]
+    if not is_venv():
+        # En environnement système, éviter les erreurs de droits.
+        base.append("--user")
+    if repo_args:
+        base.extend(repo_args)
+    run_cmd(base + list(args))
+
+
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Installe spaCy et un modèle français.")
+    p.add_argument("--model", default="fr_core_news_lg", help="Nom du modèle spaCy à installer.")
+    p.add_argument("--index-url", default=None, help="Dépôt Python principal (ex: https://pypi.org/simple).")
+    p.add_argument("--extra-index-url", action="append", default=None, help="Dépôt Python secondaire (option répétable).")
+    p.add_argument("--trusted-host", action="append", default=None, help="Hôte de confiance pip (option répétable).")
+    return p.parse_args()
+
+
 def main() -> int:
     args = parse_args()
     py = sys.executable
