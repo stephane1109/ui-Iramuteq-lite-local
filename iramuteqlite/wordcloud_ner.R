@@ -8,6 +8,13 @@ spacy_ner_disponible <- function(script_path = file.path("spacy", "ner_spacy.py"
   nzchar(python_bin) && file.exists(script_path)
 }
 
+modele_spacy_fr_disponible <- function(models = c("fr_core_news_lg", "fr_core_news_md", "fr_core_news_sm")) {
+  for (m in models) {
+    if (isTRUE(spacy_modele_disponible(model = m))) return(m)
+  }
+  NULL
+}
+
 diagnostiquer_dependances_ner <- function(model = "fr_core_news_lg") {
   python_bin <- Sys.which("python3")
   if (!nzchar(python_bin)) python_bin <- Sys.which("python")
@@ -17,7 +24,8 @@ diagnostiquer_dependances_ner <- function(model = "fr_core_news_lg") {
   script_install <- file.path("spacy", "install_spacy_fr.py")
   has_script_ner <- file.exists(script_ner)
   has_script_install <- file.exists(script_install)
-  has_model <- if (has_python && has_script_ner) isTRUE(spacy_modele_disponible(model = model)) else FALSE
+  modele_actif <- if (has_python && has_script_ner) modele_spacy_fr_disponible(models = c(model, "fr_core_news_md", "fr_core_news_sm")) else NULL
+  has_model <- !is.null(modele_actif)
   has_wordcloud <- requireNamespace("wordcloud", quietly = TRUE)
   has_brewer <- requireNamespace("RColorBrewer", quietly = TRUE)
 
@@ -26,6 +34,7 @@ diagnostiquer_dependances_ner <- function(model = "fr_core_news_lg") {
     script_ner = has_script_ner,
     script_install = has_script_install,
     spacy_model = has_model,
+    spacy_model_name = if (is.null(modele_actif)) "" else as.character(modele_actif),
     wordcloud = has_wordcloud,
     rcolorbrewer = has_brewer,
     ok_ner = has_python && has_script_ner && has_model
@@ -97,6 +106,14 @@ detecter_ner_spacy <- function(texte, model = "fr_core_news_lg", script_path = f
   if (!nzchar(python_bin)) python_bin <- Sys.which("python")
   if (!spacy_ner_disponible(script_path = script_path)) {
     return(NULL)
+  }
+  if (!spacy_modele_disponible(model = model)) {
+    modele_alt <- modele_spacy_fr_disponible()
+    if (!is.null(modele_alt)) {
+      model <- modele_alt
+    } else {
+      return(NULL)
+    }
   }
   if (!spacy_modele_disponible(model = model)) {
     return(NULL)
