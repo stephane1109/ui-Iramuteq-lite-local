@@ -140,6 +140,7 @@ source("iramuteqlite/ui_options_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/ui_explorateur_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/affichage_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/wordcloud_iramuteq.R", encoding = "UTF-8", local = TRUE)
+source("iramuteqlite/ner_spacy.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/wordcloud_ner.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_graph.R", encoding = "UTF-8", local = TRUE)
@@ -290,6 +291,7 @@ server <- function(input, output, session) {
     expressions_actives_df = NULL,
     utiliser_add_expression = FALSE,
     utiliser_add_ner = FALSE,
+    ner_spacy_notice_shown = FALSE,
     textes_indexation = NULL,
     
     afc_obj = NULL,
@@ -327,6 +329,49 @@ server <- function(input, output, session) {
   
   app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
   if (is.null(app_dir) || !nzchar(app_dir)) app_dir <- getwd()
+
+  observeEvent(TRUE, {
+    deps <- diagnostiquer_dependances_ner()
+    if (isTRUE(deps$ok_ner)) {
+      showNotification("Dépendances NER OK (spaCy prêt).", type = "message", duration = 5)
+      return(invisible(NULL))
+    }
+
+    # Tentative d'installation auto au lancement via spacyr si le modèle manque.
+    if (!isTRUE(deps$spacy_model)) {
+      showNotification("Dépendances NER: installation automatique de spaCy en cours…", type = "message", duration = 6)
+      ok_install <- isTRUE(installer_spacy_si_necessaire(model = "fr_core_news_sm"))
+      deps <- diagnostiquer_dependances_ner()
+      if (ok_install && isTRUE(deps$spacy_model)) {
+        showNotification("Installation spaCy réussie au lancement.", type = "message", duration = 6)
+      }
+    }
+
+    if (isTRUE(deps$ok_ner)) {
+      showNotification("Dépendances NER OK après initialisation (spaCy prêt).", type = "message", duration = 5)
+      return(invisible(NULL))
+    }
+
+    manquants <- character(0)
+    if (!isTRUE(deps$python)) manquants <- c(manquants, "Python")
+    if (!isTRUE(deps$script_ner)) manquants <- c(manquants, "script ner_spacy.py")
+    if (!isTRUE(deps$spacy_model)) manquants <- c(manquants, "modèle spaCy FR (lg/md/sm)")
+    if (!isTRUE(deps$wordcloud)) manquants <- c(manquants, "package R wordcloud")
+    if (!isTRUE(deps$rcolorbrewer)) manquants <- c(manquants, "package R RColorBrewer")
+
+    commande_r <- "R -q -e \"install.packages('spacyr'); library(spacyr); spacy_install(lang_models='fr_core_news_sm', prompt=FALSE); spacy_initialize(model='fr_core_news_sm')\""
+
+    showNotification(
+      paste0(
+        "Scan dépendances NER: manquant -> ",
+        paste(manquants, collapse = ", "),
+        ". Installer spaCy (R/spacyr): ", commande_r
+      ),
+      type = "warning",
+      duration = 14
+    )
+    invisible(NULL)
+  }, once = TRUE, ignoreInit = FALSE)
   
   sauvegarder_add_expression <- function(df) {
     if (is.null(df) || !is.data.frame(df)) return(invisible(NULL))
@@ -836,6 +881,14 @@ server <- function(input, output, session) {
     }
 
     auto_df <- detecter_ner_automatique(texte_corpus)
+    if (!isTRUE(rv$ner_spacy_notice_shown) && !isTRUE(spacy_ner_disponible())) {
+      rv$ner_spacy_notice_shown <- TRUE
+      showNotification(
+        "NER désactivé: spaCy non disponible (python/modèle manquant).",
+        type = "warning",
+        duration = 8
+      )
+    }
     rv$ner_detectes_auto_df <- auto_df
     if (is.data.frame(auto_df) && nrow(auto_df) > 0) {
       rv$ner_annotations_df <- fusionner_annotations_ner(rv$ner_annotations_df, auto_df)
@@ -1196,6 +1249,14 @@ server <- function(input, output, session) {
     updateTextAreaInput(session, "ner_corpus_text", value = txt)
 
     auto_df <- detecter_ner_automatique(txt)
+    if (!isTRUE(rv$ner_spacy_notice_shown) && !isTRUE(spacy_ner_disponible())) {
+      rv$ner_spacy_notice_shown <- TRUE
+      showNotification(
+        "NER désactivé: spaCy non disponible (python/modèle manquant).",
+        type = "warning",
+        duration = 8
+      )
+    }
     rv$ner_detectes_auto_df <- auto_df
     if (is.data.frame(auto_df) && nrow(auto_df) > 0) {
       rv$ner_annotations_df <- fusionner_annotations_ner(rv$ner_annotations_df, auto_df)
