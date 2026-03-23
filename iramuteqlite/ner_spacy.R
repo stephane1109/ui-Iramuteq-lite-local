@@ -74,17 +74,17 @@ spacy_modele_disponible <- function(model = "fr_core_news_sm") {
 }
 
 installer_package_spacyr_si_necessaire <- function() {
-  if (requireNamespace("spacyr", quietly = TRUE)) return(TRUE)
+  if (requireNamespace("spacyr", quietly = TRUE) && requireNamespace("reticulate", quietly = TRUE)) return(TRUE)
 
   cran_repo <- trimws(Sys.getenv("R_CRAN_MIRROR", unset = "https://cloud.r-project.org"))
   log_parts <- character(0)
 
   out_cran <- tryCatch({
-    out <- capture.output(utils::install.packages("spacyr", repos = cran_repo), type = "output")
+    out <- capture.output(utils::install.packages(c("reticulate", "spacyr"), repos = cran_repo, dependencies = TRUE), type = "output")
     paste(out, collapse = "\n")
-  }, error = function(e) paste("install.packages('spacyr') error:", conditionMessage(e)))
+  }, error = function(e) paste("install.packages(c('reticulate','spacyr')) error:", conditionMessage(e)))
   log_parts <- c(log_parts, out_cran)
-  if (requireNamespace("spacyr", quietly = TRUE)) {
+  if (requireNamespace("spacyr", quietly = TRUE) && requireNamespace("reticulate", quietly = TRUE)) {
     options(iramuteq_spacy_install_last_log = paste(log_parts, collapse = "\n\n"))
     return(TRUE)
   }
@@ -98,7 +98,7 @@ installer_package_spacyr_si_necessaire <- function() {
   }, error = function(e) paste("remotes::install_github('quanteda/spacyr') error:", conditionMessage(e)))
   log_parts <- c(log_parts, out_remotes)
   options(iramuteq_spacy_install_last_log = paste(log_parts, collapse = "\n\n"))
-  requireNamespace("spacyr", quietly = TRUE)
+  requireNamespace("spacyr", quietly = TRUE) && requireNamespace("reticulate", quietly = TRUE)
 }
 
 installer_spacy_si_necessaire <- function(model = "fr_core_news_sm") {

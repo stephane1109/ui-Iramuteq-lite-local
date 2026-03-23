@@ -11,8 +11,18 @@ installed_packages <- rownames(installed.packages())
 missing_packages <- setdiff(required_packages, installed_packages)
 packages_manquants <- missing_packages
 
+cran_repo <- trimws(Sys.getenv("R_CRAN_MIRROR", unset = "https://cloud.r-project.org"))
+if (is.null(getOption("repos")) || identical(getOption("repos")[["CRAN"]], "@CRAN")) {
+  options(repos = c(CRAN = cran_repo))
+}
+
 if (length(missing_packages) > 0) {
-  install.packages(missing_packages)
+  tryCatch(
+    install.packages(missing_packages, repos = cran_repo, dependencies = TRUE),
+    error = function(e) message("Installation des packages manquants impossible: ", conditionMessage(e))
+  )
+  installed_packages <- rownames(installed.packages())
+  packages_manquants <- setdiff(required_packages, installed_packages)
 }
 
 charger_packages_requis <- function(packages) {
