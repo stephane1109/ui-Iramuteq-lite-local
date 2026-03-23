@@ -371,13 +371,14 @@ server <- function(input, output, session) {
     if (!isTRUE(deps$wordcloud)) manquants <- c(manquants, "package R wordcloud")
     if (!isTRUE(deps$rcolorbrewer)) manquants <- c(manquants, "package R RColorBrewer")
 
-    commande_r <- "R -q -e \"install.packages(c('reticulate','spacyr')); library(spacyr); spacyr::spacy_install(lang_models='fr_core_news_sm', prompt=FALSE); spacyr::spacy_initialize(model='fr_core_news_sm')\""
+    commande_r <- "install.packages(c('reticulate','spacyr')); spacyr::spacy_install(lang_models='fr_core_news_sm', prompt=FALSE)"
 
     showNotification(
       paste0(
         "Scan dépendances NER: manquant -> ",
         paste(manquants, collapse = ", "),
-        ". Installer spaCy (R/spacyr): ", commande_r
+        ". Installer spaCy (R/spacyr): ", commande_r,
+        ". Puis: spacyr::spacy_initialize(model='fr_core_news_sm')"
       ),
       type = "warning",
       duration = 14
