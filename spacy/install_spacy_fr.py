@@ -13,9 +13,41 @@ import sys
 from typing import Iterable
 
 
-def run_cmd(cmd: list[str]) -> None:
+def run_cmd(cmd: list[str], allow_fail: bool = False) -> bool:
     print("$", " ".join(cmd), flush=True)
-    subprocess.check_call(cmd)
+    try:
+        subprocess.check_call(cmd)
+        return True
+    except subprocess.CalledProcessError:
+        if allow_fail:
+            return False
+        raise
+
+
+def is_venv() -> bool:
+    return (
+        getattr(sys, "real_prefix", None) is not None
+        or getattr(sys, "base_prefix", sys.prefix) != sys.prefix
+    )
+
+
+def pip_install(args: Iterable[str], repo_args: list[str] | None = None) -> None:
+    base = [sys.executable, "-m", "pip", "install"]
+    if not is_venv():
+        # En environnement système, éviter les erreurs de droits.
+        base.append("--user")
+    if repo_args:
+        base.extend(repo_args)
+    run_cmd(base + list(args))
+
+
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Installe spaCy et un modèle français.")
+    p.add_argument("--model", default="fr_core_news_lg", help="Nom du modèle spaCy à installer.")
+    p.add_argument("--index-url", default=None, help="Dépôt Python principal (ex: https://pypi.org/simple).")
+    p.add_argument("--extra-index-url", action="append", default=None, help="Dépôt Python secondaire (option répétable).")
+    p.add_argument("--trusted-host", action="append", default=None, help="Hôte de confiance pip (option répétable).")
+    return p.parse_args()
 
 
 def is_venv() -> bool:
@@ -62,7 +94,16 @@ def main() -> int:
 
     # 2) Installe le modèle FR via pip (compatible dépôts internes/miroirs).
     pip_model_name = args.model.replace("_", "-")
-    pip_install([pip_model_name], repo_args=repo_args)
+    model_cmd = [sys.executable, "-m", "pip", "install"]
+    if not is_venv():
+        model_cmd.append("--user")
+    model_cmd.extend(repo_args)
+    model_cmd.append(pip_model_name)
+    model_ok = run_cmd(model_cmd, allow_fail=True)
+
+    # 2b) Fallback: `spacy download` (utile si le package modèle n'est pas publié dans le dépôt pip ciblé).
+    if not model_ok:
+        run_cmd([py, "-m", "spacy", "download", args.model], allow_fail=False)
 
     # 3) Vérification rapide.
     run_cmd([py, "-m", "spacy", "info", args.model])
