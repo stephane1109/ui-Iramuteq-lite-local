@@ -363,7 +363,7 @@ server <- function(input, output, session) {
     commande <- if (nzchar(repo_hint)) {
       paste0("python3 spacy/install_spacy_fr.py --model fr_core_news_lg --index-url ", repo_hint)
     } else {
-      "python3 spacy/install_spacy_fr.py --model fr_core_news_lg --index-url <URL_DEPOT_PYPI>"
+      "python3 spacy/install_spacy_fr.py --model fr_core_news_lg"
     }
 
     showNotification(
