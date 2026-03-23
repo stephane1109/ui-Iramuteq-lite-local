@@ -330,27 +330,36 @@ server <- function(input, output, session) {
   if (is.null(app_dir) || !nzchar(app_dir)) app_dir <- getwd()
 
   observeEvent(TRUE, {
-    if (isTRUE(spacy_modele_disponible())) return(invisible(NULL))
-    showNotification("Installation de spaCy en cours (premier lancement)...", type = "message", duration = 6)
-    ok_install <- isTRUE(installer_spacy_si_necessaire())
-    if (ok_install) {
-      showNotification("spaCy installé avec succès pour la détection NER.", type = "message", duration = 6)
-    } else {
-      install_log <- getOption("iramuteq_spacy_install_last_log", "")
-      install_log <- trimws(as.character(install_log))
-      resume_log <- if (nzchar(install_log)) {
-        lignes <- strsplit(install_log, "\n", fixed = TRUE)[[1]]
-        tail_txt <- paste(tail(lignes, 3), collapse = " | ")
-        paste0(" Détail: ", substr(tail_txt, 1, 240))
-      } else {
-        ""
-      }
-      showNotification(
-        paste0("Échec installation spaCy auto. Essayez avec votre dépôt: python3 spacy/install_spacy_fr.py --model fr_core_news_lg --index-url <URL_DEPOT_PYPI>.", resume_log),
-        type = "warning",
-        duration = 12
-      )
+    deps <- diagnostiquer_dependances_ner()
+    if (isTRUE(deps$ok_ner)) {
+      showNotification("Dépendances NER OK (spaCy prêt).", type = "message", duration = 5)
+      return(invisible(NULL))
     }
+
+    manquants <- character(0)
+    if (!isTRUE(deps$python)) manquants <- c(manquants, "Python")
+    if (!isTRUE(deps$script_ner)) manquants <- c(manquants, "script ner_spacy.py")
+    if (!isTRUE(deps$script_install)) manquants <- c(manquants, "script install_spacy_fr.py")
+    if (!isTRUE(deps$spacy_model)) manquants <- c(manquants, "modèle spaCy fr_core_news_lg")
+    if (!isTRUE(deps$wordcloud)) manquants <- c(manquants, "package R wordcloud")
+    if (!isTRUE(deps$rcolorbrewer)) manquants <- c(manquants, "package R RColorBrewer")
+
+    repo_hint <- trimws(Sys.getenv("PIP_INDEX_URL", unset = ""))
+    commande <- if (nzchar(repo_hint)) {
+      paste0("python3 spacy/install_spacy_fr.py --model fr_core_news_lg --index-url ", repo_hint)
+    } else {
+      "python3 spacy/install_spacy_fr.py --model fr_core_news_lg --index-url <URL_DEPOT_PYPI>"
+    }
+
+    showNotification(
+      paste0(
+        "Scan dépendances NER: manquant -> ",
+        paste(manquants, collapse = ", "),
+        ". Installer spaCy: ", commande
+      ),
+      type = "warning",
+      duration = 14
+    )
     invisible(NULL)
   }, once = TRUE, ignoreInit = FALSE)
   

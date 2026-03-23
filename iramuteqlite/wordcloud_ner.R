@@ -8,6 +8,30 @@ spacy_ner_disponible <- function(script_path = file.path("spacy", "ner_spacy.py"
   nzchar(python_bin) && file.exists(script_path)
 }
 
+diagnostiquer_dependances_ner <- function(model = "fr_core_news_lg") {
+  python_bin <- Sys.which("python3")
+  if (!nzchar(python_bin)) python_bin <- Sys.which("python")
+  has_python <- nzchar(python_bin)
+
+  script_ner <- file.path("spacy", "ner_spacy.py")
+  script_install <- file.path("spacy", "install_spacy_fr.py")
+  has_script_ner <- file.exists(script_ner)
+  has_script_install <- file.exists(script_install)
+  has_model <- if (has_python && has_script_ner) isTRUE(spacy_modele_disponible(model = model)) else FALSE
+  has_wordcloud <- requireNamespace("wordcloud", quietly = TRUE)
+  has_brewer <- requireNamespace("RColorBrewer", quietly = TRUE)
+
+  list(
+    python = has_python,
+    script_ner = has_script_ner,
+    script_install = has_script_install,
+    spacy_model = has_model,
+    wordcloud = has_wordcloud,
+    rcolorbrewer = has_brewer,
+    ok_ner = has_python && has_script_ner && has_model
+  )
+}
+
 spacy_modele_disponible <- function(model = "fr_core_news_lg") {
   python_bin <- Sys.which("python3")
   if (!nzchar(python_bin)) python_bin <- Sys.which("python")
@@ -47,7 +71,16 @@ installer_spacy_si_necessaire <- function(model = "fr_core_news_lg", installer_p
   if (!nzchar(python_bin)) python_bin <- Sys.which("python")
   if (!nzchar(python_bin) || !file.exists(installer_path)) return(FALSE)
 
-  out <- suppressWarnings(system2(python_bin, args = installer_path, stdout = TRUE, stderr = TRUE))
+  index_url <- trimws(Sys.getenv("PIP_INDEX_URL", unset = ""))
+  extra_index_url <- trimws(Sys.getenv("PIP_EXTRA_INDEX_URL", unset = ""))
+  trusted_host <- trimws(Sys.getenv("PIP_TRUSTED_HOST", unset = ""))
+
+  args <- c(installer_path, "--model", model)
+  if (nzchar(index_url)) args <- c(args, "--index-url", index_url)
+  if (nzchar(extra_index_url)) args <- c(args, "--extra-index-url", extra_index_url)
+  if (nzchar(trusted_host)) args <- c(args, "--trusted-host", trusted_host)
+
+  out <- suppressWarnings(system2(python_bin, args = args, stdout = TRUE, stderr = TRUE))
   options(iramuteq_spacy_install_last_log = paste(out, collapse = "\n"))
   status <- attr(out, "status")
   if (is.null(status)) status <- 0L
@@ -66,8 +99,7 @@ detecter_ner_spacy <- function(texte, model = "fr_core_news_lg", script_path = f
     return(NULL)
   }
   if (!spacy_modele_disponible(model = model)) {
-    ok_install <- installer_spacy_si_necessaire(model = model)
-    if (!isTRUE(ok_install)) return(NULL)
+    return(NULL)
   }
 
   in_txt <- tempfile(pattern = "ner_spacy_in_", fileext = ".txt")
