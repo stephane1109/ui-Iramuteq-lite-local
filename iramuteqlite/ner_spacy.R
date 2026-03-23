@@ -30,11 +30,13 @@ diagnostiquer_dependances_ner <- function(model = "fr_core_news_lg") {
   has_model <- !is.null(modele_actif)
   has_wordcloud <- requireNamespace("wordcloud", quietly = TRUE)
   has_brewer <- requireNamespace("RColorBrewer", quietly = TRUE)
+  has_spacyr <- requireNamespace("spacyr", quietly = TRUE)
 
   list(
     python = has_python,
     script_ner = has_script_ner,
     script_install = has_script_install,
+    spacyr = has_spacyr,
     spacy_model = has_model,
     spacy_model_name = if (is.null(modele_actif)) "" else as.character(modele_actif),
     wordcloud = has_wordcloud,
@@ -78,16 +80,36 @@ installer_spacy_si_necessaire <- function(model = "fr_core_news_lg", installer_p
   options(iramuteq_spacy_install_attempted = TRUE)
   options(iramuteq_spacy_install_last_log = NULL)
 
+  # Priorité: installation via spacyr (env Python isolé via reticulate).
+  if (requireNamespace("spacyr", quietly = TRUE)) {
+    install_args <- list()
+    fml <- tryCatch(names(formals(spacyr::spacy_install)), error = function(e) character(0))
+    if ("lang_models" %in% fml) install_args$lang_models <- model
+    if ("prompt" %in% fml) install_args$prompt <- FALSE
+    if ("python_executable" %in% fml) install_args$python_executable <- Sys.which("python3")
+    log_spacyr <- tryCatch({
+      out <- capture.output(do.call(spacyr::spacy_install, install_args), type = "output")
+      paste(out, collapse = "\n")
+    }, error = function(e) paste("spacyr::spacy_install error:", conditionMessage(e)))
+    options(iramuteq_spacy_install_last_log = log_spacyr)
+    if (isTRUE(spacy_modele_disponible(model = model))) return(TRUE)
+  }
+
+  # Fallback: script Python existant.
   python_bin <- Sys.which("python3")
   if (!nzchar(python_bin)) python_bin <- Sys.which("python")
   if (!nzchar(python_bin) || !file.exists(installer_path)) return(FALSE)
 
-  index_url <- trimws(Sys.getenv("PIP_INDEX_URL", unset = ""))
+  repo_url <- trimws(Sys.getenv("IRAMUTEQ_SPACY_REPO_URL", unset = ""))
+  if (!nzchar(repo_url)) repo_url <- trimws(Sys.getenv("PIP_INDEX_URL", unset = ""))
+  if (!nzchar(repo_url)) repo_url <- "https://pypi.org/simple"
   extra_index_url <- trimws(Sys.getenv("PIP_EXTRA_INDEX_URL", unset = ""))
   trusted_host <- trimws(Sys.getenv("PIP_TRUSTED_HOST", unset = ""))
+  model_url <- trimws(Sys.getenv("IRAMUTEQ_SPACY_MODEL_URL", unset = ""))
 
   args <- c(installer_path, "--model", model)
-  if (nzchar(index_url)) args <- c(args, "--index-url", index_url)
+  if (nzchar(repo_url)) args <- c(args, "--repo-url", repo_url)
+  if (nzchar(model_url)) args <- c(args, "--model-url", model_url)
   if (nzchar(extra_index_url)) args <- c(args, "--extra-index-url", extra_index_url)
   if (nzchar(trusted_host)) args <- c(args, "--trusted-host", trusted_host)
 
@@ -97,6 +119,7 @@ installer_spacy_si_necessaire <- function(model = "fr_core_news_lg", installer_p
   if (is.null(status)) status <- 0L
   identical(as.integer(status), 0L) && spacy_modele_disponible(model = model)
 }
+
 
 detecter_ner_spacy <- function(texte, model = "fr_core_news_lg", script_path = file.path("spacy", "ner_spacy.py")) {
   texte <- if (is.null(texte)) "" else as.character(texte)
