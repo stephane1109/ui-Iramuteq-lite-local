@@ -340,7 +340,7 @@ server <- function(input, output, session) {
     # Tentative d'installation auto au lancement si Python + script install sont présents.
     if (isTRUE(deps$python) && isTRUE(deps$script_install) && !isTRUE(deps$spacy_model)) {
       showNotification("Dépendances NER: installation automatique de spaCy en cours…", type = "message", duration = 6)
-      ok_install <- isTRUE(installer_spacy_si_necessaire(model = "fr_core_news_lg"))
+      ok_install <- isTRUE(installer_spacy_si_necessaire(model = "fr_core_news_sm"))
       deps <- diagnostiquer_dependances_ner()
       if (ok_install && isTRUE(deps$spacy_model)) {
         showNotification("Installation spaCy réussie au lancement.", type = "message", duration = 6)
@@ -365,12 +365,12 @@ server <- function(input, output, session) {
     if (!nzchar(repo_hint)) repo_hint <- trimws(Sys.getenv("PIP_INDEX_URL", unset = ""))
     if (!nzchar(repo_hint)) repo_hint <- "https://pypi.org/simple"
     model_url_hint <- trimws(Sys.getenv("IRAMUTEQ_SPACY_MODEL_URL", unset = ""))
-    commande <- paste0("python3 spacy/install_spacy_fr.py --model fr_core_news_lg --repo-url ", repo_hint)
+    commande <- paste0("python3 spacy/install_spacy_fr.py --model fr_core_news_sm --repo-url ", repo_hint)
     if (nzchar(model_url_hint)) {
       commande <- paste0(commande, " --model-url ", model_url_hint)
     }
 
-    commande_r <- "R -q -e \"install.packages('spacyr'); if (!requireNamespace('spacyr', quietly=TRUE)) { if (!requireNamespace('remotes', quietly=TRUE)) install.packages('remotes'); remotes::install_github('quanteda/spacyr') }; spacyr::spacy_install(lang_models='fr_core_news_lg', prompt=FALSE)\""
+    commande_r <- "R -q -e \"install.packages('spacyr'); library(spacyr); spacyr::spacy_install(lang_models='fr_core_news_sm', prompt=FALSE); spacyr::spacy_initialize(model='fr_core_news_sm')\""
 
     showNotification(
       paste0(
