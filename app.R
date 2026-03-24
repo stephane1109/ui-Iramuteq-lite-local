@@ -315,15 +315,26 @@ server <- function(input, output, session) {
   app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
   if (is.null(app_dir) || !nzchar(app_dir)) app_dir <- getwd()
   env_install_dialog_open <- reactiveVal(FALSE)
+  has_shinyfiles <- requireNamespace("shinyFiles", quietly = TRUE)
+  if (!isTRUE(has_shinyfiles)) {
+    cran_repo <- trimws(Sys.getenv("R_CRAN_MIRROR", unset = "https://cloud.r-project.org"))
+    tryCatch(
+      install.packages("shinyFiles", repos = cran_repo, dependencies = TRUE),
+      error = function(e) message("Installation shinyFiles impossible: ", conditionMessage(e))
+    )
+    has_shinyfiles <- requireNamespace("shinyFiles", quietly = TRUE)
+  }
   env_roots <- c(Home = path.expand("~"), WorkingDir = getwd())
 
-  shinyFiles::shinyDirChoose(input, "env_install_folder", roots = env_roots, session = session)
-  observeEvent(input$env_install_folder, {
-    dir_path <- tryCatch(shinyFiles::parseDirPath(env_roots, input$env_install_folder), error = function(e) character(0))
-    if (length(dir_path) && nzchar(dir_path[[1]])) {
-      updateTextInput(session, "env_install_dir", value = normalizePath(dir_path[[1]], winslash = "/", mustWork = FALSE))
-    }
-  }, ignoreInit = TRUE)
+  if (isTRUE(has_shinyfiles)) {
+    shinyFiles::shinyDirChoose(input, "env_install_folder", roots = env_roots, session = session)
+    observeEvent(input$env_install_folder, {
+      dir_path <- tryCatch(shinyFiles::parseDirPath(env_roots, input$env_install_folder), error = function(e) character(0))
+      if (length(dir_path) && nzchar(dir_path[[1]])) {
+        updateTextInput(session, "env_install_dir", value = normalizePath(dir_path[[1]], winslash = "/", mustWork = FALSE))
+      }
+    }, ignoreInit = TRUE)
+  }
 
   observeEvent(input$btn_install_env, {
     req(env_install_dialog_open())
@@ -432,7 +443,14 @@ server <- function(input, output, session) {
         tags$p("L'application doit installer/configurer R, Python et spaCy pour la NER."),
         tags$p("Choisissez le répertoire de l'environnement Python à créer/utiliser :"),
         textInput("env_install_dir", "Répertoire environnement", value = env_default),
-        shinyFiles::shinyDirButton("env_install_folder", "Parcourir le disque…", "Sélectionner un dossier"),
+        if (isTRUE(has_shinyfiles)) {
+          shinyFiles::shinyDirButton("env_install_folder", "Parcourir le disque…", "Sélectionner un dossier")
+        } else {
+          tags$p(
+            style = "color:#8a6d3b;",
+            "Le package shinyFiles est absent : saisissez le chemin manuellement."
+          )
+        },
         tags$p("Puis lancez l'installation automatique des dépendances."),
         footer = tagList(
           actionButton("btn_install_env", "Installer l'environnement", class = "btn-primary"),
