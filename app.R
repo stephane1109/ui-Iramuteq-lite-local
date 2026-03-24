@@ -6,28 +6,13 @@
 #                        DEV EN LOCAL + ANNOTATIONS                           #
 ###############################################################################
 
-required_packages <- c("shiny", "bslib", "htmltools", "quanteda", "wordcloud", "RColorBrewer", "igraph", "dplyr", "remotes", "rgexf", "Matrix", "factoextra", "FactoMineR", "ggplot2", "plotly", "visNetwork", "DT", "jsonlite", "sna", "intergraph", "colorspace", "rgl")
-installed_packages <- rownames(installed.packages())
-missing_packages <- setdiff(required_packages, installed_packages)
-packages_manquants <- missing_packages
-
-if (length(missing_packages) > 0) {
-  install.packages(missing_packages)
-}
-
-charger_packages_requis <- function(packages) {
-  for (pkg in packages) {
-    suppressPackageStartupMessages(
-      library(pkg, character.only = TRUE, quietly = TRUE, warn.conflicts = FALSE)
-    )
+if (!exists("IRAMUTEQ_GLOBAL_INIT_DONE", inherits = TRUE)) {
+  app_root <- dirname(normalizePath("app.R", winslash = "/", mustWork = FALSE))
+  if (!nzchar(app_root) || identical(app_root, ".")) app_root <- getwd()
+  global_path <- file.path(app_root, "global.R")
+  if (file.exists(global_path)) {
+    source(global_path, local = globalenv())
   }
-}
-
-charger_packages_requis(required_packages)
-installed_packages <- rownames(installed.packages())
-
-if (!"FactoMineR" %in% installed_packages) {
-  remotes::install_github("husson/FactoMineR", dependencies = NA, upgrade = "never")
 }
 
 detecter_base_app <- function() {
@@ -329,18 +314,79 @@ server <- function(input, output, session) {
   
   app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
   if (is.null(app_dir) || !nzchar(app_dir)) app_dir <- getwd()
+  env_install_dialog_open <- reactiveVal(FALSE)
+  has_shinyfiles <- requireNamespace("shinyFiles", quietly = TRUE)
+  if (!isTRUE(has_shinyfiles)) {
+    cran_repo <- trimws(Sys.getenv("R_CRAN_MIRROR", unset = "https://cloud.r-project.org"))
+    tryCatch(
+      install.packages("shinyFiles", repos = cran_repo, dependencies = TRUE),
+      error = function(e) message("Installation shinyFiles impossible: ", conditionMessage(e))
+    )
+    has_shinyfiles <- requireNamespace("shinyFiles", quietly = TRUE)
+  }
+  env_roots <- c(Home = path.expand("~"), WorkingDir = getwd())
+
+  if (isTRUE(has_shinyfiles)) {
+    shinyFiles::shinyDirChoose(input, "env_install_folder", roots = env_roots, session = session)
+    observeEvent(input$env_install_folder, {
+      dir_path <- tryCatch(shinyFiles::parseDirPath(env_roots, input$env_install_folder), error = function(e) character(0))
+      if (length(dir_path) && nzchar(dir_path[[1]])) {
+        updateTextInput(session, "env_install_dir", value = normalizePath(dir_path[[1]], winslash = "/", mustWork = FALSE))
+      }
+    }, ignoreInit = TRUE)
+  }
+
+  observeEvent(input$btn_install_env, {
+    req(env_install_dialog_open())
+    showNotification("Installation de l'environnement en cours…", type = "message", duration = 6)
+    env_dir <- ""
+    if (!is.null(input$env_install_dir)) env_dir <- trimws(as.character(input$env_install_dir))
+    if (!nzchar(env_dir)) env_dir <- "iramuteq-spacy"
+    Sys.setenv(IRAMUTEQ_SPACY_ENV = env_dir)
+    res <- tryCatch(
+      installer_environnement_application(envname = env_dir),
+      error = function(e) list(ok_r = FALSE, ok_py = FALSE, envname = env_dir, error = conditionMessage(e))
+    )
+
+    deps_post <- tryCatch(diagnostiquer_dependances_ner(), error = function(e) NULL)
+    ok_final <- is.list(deps_post) && isTRUE(deps_post$ok_ner)
+    if (ok_final) {
+      showNotification("Environnement installé avec succès. spaCy est prêt.", type = "message", duration = 8)
+      removeModal()
+      env_install_dialog_open(FALSE)
+    } else {
+      details <- paste0(
+        "Installation incomplète. Vérifiez les logs options('iramuteq_spacy_env_last_log') / ",
+        "options('iramuteq_spacy_install_last_log'). Répertoire demandé: ", env_dir
+      )
+      showNotification(details, type = "error", duration = 12)
+    }
+    invisible(res)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$btn_cancel_env_install, {
+    removeModal()
+    env_install_dialog_open(FALSE)
+  }, ignoreInit = TRUE)
 
   observeEvent(TRUE, {
-    deps <- diagnostiquer_dependances_ner()
+    deps <- tryCatch(diagnostiquer_dependances_ner(), error = function(e) {
+      list(
+        python = FALSE, script_ner = FALSE, reticulate = FALSE, spacyr = FALSE,
+        spacy_model = FALSE, wordcloud = requireNamespace("wordcloud", quietly = TRUE),
+        rcolorbrewer = requireNamespace("RColorBrewer", quietly = TRUE), ok_ner = FALSE,
+        error = conditionMessage(e)
+      )
+    })
     if (isTRUE(deps$ok_ner)) {
       showNotification("Dépendances NER OK (spaCy prêt).", type = "message", duration = 5)
       return(invisible(NULL))
     }
 
-    # Tentative d'installation auto au lancement si Python + script install sont présents.
-    if (isTRUE(deps$python) && isTRUE(deps$script_install) && !isTRUE(deps$spacy_model)) {
+    # Tentative d'installation auto au lancement via spacyr/reticulate.
+    if (!isTRUE(deps$spacy_model)) {
       showNotification("Dépendances NER: installation automatique de spaCy en cours…", type = "message", duration = 6)
-      ok_install <- isTRUE(installer_spacy_si_necessaire(model = "fr_core_news_lg"))
+      ok_install <- isTRUE(installer_spacy_si_necessaire(model = "fr_core_news_sm"))
       deps <- diagnostiquer_dependances_ner()
       if (ok_install && isTRUE(deps$spacy_model)) {
         showNotification("Installation spaCy réussie au lancement.", type = "message", duration = 6)
@@ -355,33 +401,65 @@ server <- function(input, output, session) {
     manquants <- character(0)
     if (!isTRUE(deps$python)) manquants <- c(manquants, "Python")
     if (!isTRUE(deps$script_ner)) manquants <- c(manquants, "script ner_spacy.py")
-    if (!isTRUE(deps$script_install)) manquants <- c(manquants, "script install_spacy_fr.py")
+    if (!isTRUE(deps$reticulate)) manquants <- c(manquants, "package R reticulate")
     if (!isTRUE(deps$spacyr)) manquants <- c(manquants, "package R spacyr")
     if (!isTRUE(deps$spacy_model)) manquants <- c(manquants, "modèle spaCy FR (lg/md/sm)")
     if (!isTRUE(deps$wordcloud)) manquants <- c(manquants, "package R wordcloud")
     if (!isTRUE(deps$rcolorbrewer)) manquants <- c(manquants, "package R RColorBrewer")
 
-    repo_hint <- trimws(Sys.getenv("IRAMUTEQ_SPACY_REPO_URL", unset = ""))
-    if (!nzchar(repo_hint)) repo_hint <- trimws(Sys.getenv("PIP_INDEX_URL", unset = ""))
-    if (!nzchar(repo_hint)) repo_hint <- "https://pypi.org/simple"
-    model_url_hint <- trimws(Sys.getenv("IRAMUTEQ_SPACY_MODEL_URL", unset = ""))
-    commande <- paste0("python3 spacy/install_spacy_fr.py --model fr_core_news_lg --repo-url ", repo_hint)
-    if (nzchar(model_url_hint)) {
-      commande <- paste0(commande, " --model-url ", model_url_hint)
+    commande_r <- "install.packages(c('reticulate','spacyr')); spacyr::spacy_install(lang_models='fr_core_news_sm', prompt=FALSE)"
+    python_actif <- tryCatch(python_ner_bin(), error = function(e) "")
+    python_hint <- if (nzchar(python_actif)) paste0(" | Python NER actif: ", python_actif) else ""
+    if (nzchar(python_actif) && grepl("/uv/cache/archive-v[0-9]+/", python_actif)) {
+      python_hint <- paste0(
+        python_hint,
+        " (cache temporaire détecté, définissez RETICULATE_PYTHON ou IRAMUTEQ_PYTHON_BIN)"
+      )
     }
 
-    commande_r <- "R -q -e \"install.packages('spacyr'); if (!requireNamespace('spacyr', quietly=TRUE)) { if (!requireNamespace('remotes', quietly=TRUE)) install.packages('remotes'); remotes::install_github('quanteda/spacyr') }; spacyr::spacy_install(lang_models='fr_core_news_lg', prompt=FALSE)\""
+    notification_ner <- paste0(
+      "Scan dépendances NER: manquant -> ",
+      paste(manquants, collapse = ", "),
+      ". Installer spaCy (R/spacyr): ", commande_r,
+      ". Puis: spacyr::spacy_initialize(model='fr_core_news_sm')",
+      python_hint
+    )
+
+    debug_ner <- isTRUE(getOption("iramuteq_debug_ner", FALSE)) ||
+      tolower(trimws(Sys.getenv("IRAMUTEQ_DEBUG_NER", unset = ""))) %in% c("1", "true", "yes", "y", "on")
+    if (debug_ner) {
+      message("[DEBUG NER] ", notification_ner)
+    }
 
     showNotification(
-      paste0(
-        "Scan dépendances NER: manquant -> ",
-        paste(manquants, collapse = ", "),
-        ". Installer spaCy (R/spacyr): ", commande_r,
-        " | Fallback Python: ", commande
-      ),
+      notification_ner,
       type = "warning",
       duration = 14
     )
+    if (!isTRUE(env_install_dialog_open())) {
+      env_default <- trimws(Sys.getenv("IRAMUTEQ_SPACY_ENV", unset = file.path(path.expand("~"), ".iramuteq-spacy")))
+      showModal(modalDialog(
+        title = "Installation de l'environnement requis",
+        tags$p("L'application doit installer/configurer R, Python et spaCy pour la NER."),
+        tags$p("Choisissez le répertoire de l'environnement Python à créer/utiliser :"),
+        textInput("env_install_dir", "Répertoire environnement", value = env_default),
+        if (isTRUE(has_shinyfiles)) {
+          shinyFiles::shinyDirButton("env_install_folder", "Parcourir le disque…", "Sélectionner un dossier")
+        } else {
+          tags$p(
+            style = "color:#8a6d3b;",
+            "Le package shinyFiles est absent : saisissez le chemin manuellement."
+          )
+        },
+        tags$p("Puis lancez l'installation automatique des dépendances."),
+        footer = tagList(
+          actionButton("btn_install_env", "Installer l'environnement", class = "btn-primary"),
+          actionButton("btn_cancel_env_install", "Annuler")
+        ),
+        easyClose = FALSE
+      ))
+      env_install_dialog_open(TRUE)
+    }
     invisible(NULL)
   }, once = TRUE, ignoreInit = FALSE)
   
