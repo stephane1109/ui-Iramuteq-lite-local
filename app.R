@@ -392,7 +392,14 @@ server <- function(input, output, session) {
     register_outputs_status(input, output, session, rv)
   } else {
     output$statut <- renderText({ rv$statut })
-    output$logs <- renderText({ rv$logs })
+    output$logs <- renderPrint({
+      logs <- rv$logs
+      if (is.null(logs) || !length(logs) || all(is.na(logs)) || !any(nzchar(logs))) {
+        cat("Aucun événement pour le moment.")
+        return(invisible(NULL))
+      }
+      cat(paste(logs[!is.na(logs) & nzchar(logs)], collapse = "\n"))
+    })
   }
   
   if (exists("server_explorateur_iramuteq", mode = "function", inherits = TRUE)) {
@@ -1013,7 +1020,9 @@ server <- function(input, output, session) {
   )
 
   output$ui_table_stats_corpus <- renderUI({
-    req(rv$stats_corpus_df)
+    if (is.null(rv$stats_corpus_df) || !is.data.frame(rv$stats_corpus_df) || nrow(rv$stats_corpus_df) == 0) {
+      return(tags$p("Statistiques corpus indisponibles : lancez une analyse."))
+    }
     
     definitions <- c(
       "Nom du corpus" = "Nom du fichier corpus importé.",
@@ -1054,11 +1063,32 @@ server <- function(input, output, session) {
       tags$tbody(lignes)
     )
   })
+
+  output$ui_logs_debug <- renderUI({
+    logs <- rv$logs
+    txt <- if (is.null(logs) || !length(logs) || all(is.na(logs)) || !any(nzchar(logs))) {
+      "Aucun événement pour le moment."
+    } else {
+      paste(logs[!is.na(logs) & nzchar(logs)], collapse = "\n")
+    }
+    tags$pre(
+      style = "max-height: 320px; overflow-y: auto; border: 1px solid #ddd; padding: 8px; background: #fafafa; font-size: 0.85rem;",
+      txt
+    )
+  })
   
   
   output$plot_stats_zipf <- renderPlot({
-    req(zone_trace_disponible("plot_stats_zipf", min_width = 180, min_height = 180))
-    req(rv$stats_zipf_df)
+    if (!isTRUE(zone_trace_disponible("plot_stats_zipf", min_width = 180, min_height = 180))) {
+      plot.new()
+      text(0.5, 0.5, "Zone de tracé en attente (ouvrez l'onglet Analyse).", cex = 1.0)
+      return(invisible(NULL))
+    }
+    if (is.null(rv$stats_zipf_df) || !is.data.frame(rv$stats_zipf_df) || nrow(rv$stats_zipf_df) < 2) {
+      plot.new()
+      text(0.5, 0.5, "Loi de Zpif indisponible : lancez une analyse.", cex = 1.1)
+      return(invisible(NULL))
+    }
     df <- rv$stats_zipf_df
     if (is.null(df) || nrow(df) < 2) {
       plot.new()
