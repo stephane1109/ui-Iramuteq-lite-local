@@ -5,6 +5,36 @@
 2. Dans le script un mini-filtrage a été ajouté pour supprimer des faux positifs (ponctuation seule, cas bruités, etc...)
 3. Vous pouvez ajouter un fichier au format **.json**, ses règles seront appliquées : exclusions et ajouts
    
+## Installer spaCy sous R (spacyr + reticulate)
+En pratique, **reticulate est nécessaire** parce que **spacyr** s'appuie dessus pour dialoguer avec Python depuis R.
+
+Dans la plupart des cas, vous n'avez pas besoin d'installer `reticulate` à la main :
+
+```r
+install.packages("spacyr")
+library(spacyr)
+
+spacy_install(lang_models = "fr_core_news_sm")
+spacy_initialize(model = "fr_core_news_sm")
+```
+
+`install.packages("spacyr")` installe généralement les dépendances requises (dont `reticulate`), puis `spacy_install()` crée un environnement Python isolé avec spaCy.
+
+Si vous voulez diagnostiquer un problème Python ou contrôler précisément l'environnement, installez et chargez explicitement `reticulate`, puis vérifiez la configuration :
+
+```r
+install.packages("reticulate")
+install.packages("spacyr")
+
+library(reticulate)
+py_config()
+
+library(spacyr)
+spacy_install(lang_models = "fr_core_news_sm")
+spacy_initialize(model = "fr_core_news_sm")
+```
+
+En résumé : **oui, `reticulate` est requis**, mais **non, vous n'avez pas forcément besoin de l'installer manuellement** si l'installation standard de `spacyr` fonctionne.
 
 ![Import NER](import_ner.png)
 
