@@ -2,6 +2,7 @@ required_packages <- c(
   "shiny", "bslib", "htmltools", "quanteda", "wordcloud", "RColorBrewer",
   "igraph", "dplyr", "remotes", "rgexf", "Matrix", "factoextra", "FactoMineR",
   "ggplot2", "plotly", "visNetwork", "DT", "jsonlite", "sna", "intergraph",
+  "shinyFiles",
   "colorspace", "rgl", "reticulate", "spacyr"
 )
 
