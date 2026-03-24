@@ -10,11 +10,12 @@ register_outputs_status <- function(input, output, session, rv) {
     paste(statut[!is.na(statut) & nzchar(statut)], collapse = "\n")
   })
 
-  output$logs <- renderText({
+  output$logs <- renderPrint({
     logs <- rv$logs
     if (is.null(logs) || !length(logs) || all(is.na(logs)) || !any(nzchar(logs))) {
-      return("Aucun événement pour le moment.")
+      cat("Aucun événement pour le moment.")
+      return(invisible(NULL))
     }
-    paste(logs[!is.na(logs) & nzchar(logs)], collapse = "\n")
+    cat(paste(logs[!is.na(logs) & nzchar(logs)], collapse = "\n"))
   })
 }
