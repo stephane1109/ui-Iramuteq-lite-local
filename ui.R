@@ -257,6 +257,8 @@ ui <- page_navbar(
     width = 320,
     open = "always",
     title = "Résultats",
+    actionButton("menu_importer_fichier_sidebar", "Importer un fichier texte", class = "btn-primary"),
+    tags$hr(style = "margin-top: 10px; margin-bottom: 10px;"),
     downloadButton("dl_zip", "Télécharger les résultats")
   ),
 
@@ -343,6 +345,23 @@ ui <- page_navbar(
   ),
 
   nav_panel("Corpus", value = "corpus", tags$h3("Corpus importé"), uiOutput("ui_corpus_preview")),
+  nav_panel(
+    "Analyse", value = "analyse",
+    tags$h3("Analyse du corpus"),
+    uiOutput("ui_table_stats_corpus"),
+    tags$h4("Loi de Zpif"),
+    plotOutput("plot_stats_zipf", height = "500px"),
+    tags$hr(),
+    checkboxInput("mode_debug", "Mode debug (afficher le journal)", value = FALSE),
+    conditionalPanel(
+      condition = "input.mode_debug == true",
+      tags$h4("Journal debug"),
+      tags$pre(
+        style = "max-height: 320px; overflow-y: auto; border: 1px solid #ddd; padding: 8px; background: #fafafa; font-size: 0.85rem;",
+        textOutput("logs")
+      )
+    )
+  ),
   nav_panel(
     "Annotation", value = "annotation_expressions",
     tags$h3("Annotation du corpus => add_expression_fr.csv"),
