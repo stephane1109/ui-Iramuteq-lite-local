@@ -373,13 +373,21 @@ server <- function(input, output, session) {
 
     commande_r <- "install.packages(c('reticulate','spacyr')); spacyr::spacy_install(lang_models='fr_core_news_sm', prompt=FALSE)"
 
+    notification_ner <- paste0(
+      "Scan dépendances NER: manquant -> ",
+      paste(manquants, collapse = ", "),
+      ". Installer spaCy (R/spacyr): ", commande_r,
+      ". Puis: spacyr::spacy_initialize(model='fr_core_news_sm')"
+    )
+
+    debug_ner <- isTRUE(getOption("iramuteq_debug_ner", FALSE)) ||
+      tolower(trimws(Sys.getenv("IRAMUTEQ_DEBUG_NER", unset = ""))) %in% c("1", "true", "yes", "y", "on")
+    if (debug_ner) {
+      message("[DEBUG NER] ", notification_ner)
+    }
+
     showNotification(
-      paste0(
-        "Scan dépendances NER: manquant -> ",
-        paste(manquants, collapse = ", "),
-        ". Installer spaCy (R/spacyr): ", commande_r,
-        ". Puis: spacyr::spacy_initialize(model='fr_core_news_sm')"
-      ),
+      notification_ner,
       type = "warning",
       duration = 14
     )
