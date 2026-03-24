@@ -18,15 +18,27 @@ python_ner_bin <- function() {
 
   if (requireNamespace("reticulate", quietly = TRUE)) {
     py_cfg <- tryCatch(reticulate::py_config(), error = function(e) NULL)
+    py_runtime <- tryCatch(trimws(as.character(reticulate::py_eval("import sys; sys.executable", convert = TRUE))), error = function(e) "")
     py_bin <- tryCatch(trimws(as.character(py_cfg$python)), error = function(e) "")
+    py_home <- tryCatch(trimws(as.character(py_cfg$pythonhome)), error = function(e) "")
+    if (nzchar(py_runtime)) candidates <- c(candidates, py_runtime)
     if (nzchar(py_bin)) candidates <- c(candidates, py_bin)
+    if (nzchar(py_home)) candidates <- c(candidates, file.path(py_home, "bin", "python"))
   }
 
   candidates <- c(candidates, Sys.which("python3"), Sys.which("python"))
   candidates <- unique(trimws(candidates[nzchar(candidates)]))
   candidates <- candidates[file.exists(candidates)]
   if (!length(candidates)) return("")
-  candidates[[1]]
+
+  score_path <- function(path) {
+    score <- 0L
+    if (grepl("/uv/cache/archive-v[0-9]+/", path)) score <- score + 100L
+    if (grepl("r-reticulate|virtualenv|venv", path, ignore.case = TRUE)) score <- score - 10L
+    score
+  }
+  scores <- vapply(candidates, score_path, integer(1))
+  candidates[order(scores)][[1]]
 }
 
 spacy_ner_disponible <- function(script_path = file.path("spacy", "ner_spacy.py")) {
@@ -146,7 +158,22 @@ installer_spacy_si_necessaire <- function(model = "fr_core_news_sm") {
       paste(out, collapse = "\n")
     }, error = function(e) paste("spacyr::spacy_initialize error:", conditionMessage(e)))
     py_cfg <- tryCatch(reticulate::py_config(), error = function(e) NULL)
-    py_bin <- tryCatch(trimws(as.character(py_cfg$python)), error = function(e) "")
+    py_runtime <- tryCatch(trimws(as.character(reticulate::py_eval("import sys; sys.executable", convert = TRUE))), error = function(e) "")
+    py_bin_cfg <- tryCatch(trimws(as.character(py_cfg$python)), error = function(e) "")
+    py_home <- tryCatch(trimws(as.character(py_cfg$pythonhome)), error = function(e) "")
+    py_candidates <- unique(c(py_runtime, py_bin_cfg, if (nzchar(py_home)) file.path(py_home, "bin", "python") else ""))
+    py_candidates <- py_candidates[nzchar(py_candidates) & file.exists(py_candidates)]
+    if (length(py_candidates)) {
+      py_scores <- vapply(py_candidates, function(path) {
+        score <- 0L
+        if (grepl("/uv/cache/archive-v[0-9]+/", path)) score <- score + 100L
+        if (grepl("r-reticulate|virtualenv|venv", path, ignore.case = TRUE)) score <- score - 10L
+        score
+      }, integer(1))
+      py_bin <- py_candidates[order(py_scores)][[1]]
+    } else {
+      py_bin <- ""
+    }
     if (nzchar(py_bin)) {
       options(iramuteq_python_bin = py_bin)
       Sys.setenv(RETICULATE_PYTHON = py_bin)

@@ -349,6 +349,12 @@ server <- function(input, output, session) {
     commande_r <- "install.packages(c('reticulate','spacyr')); spacyr::spacy_install(lang_models='fr_core_news_sm', prompt=FALSE)"
     python_actif <- tryCatch(python_ner_bin(), error = function(e) "")
     python_hint <- if (nzchar(python_actif)) paste0(" | Python NER actif: ", python_actif) else ""
+    if (nzchar(python_actif) && grepl("/uv/cache/archive-v[0-9]+/", python_actif)) {
+      python_hint <- paste0(
+        python_hint,
+        " (cache temporaire détecté, définissez RETICULATE_PYTHON ou IRAMUTEQ_PYTHON_BIN)"
+      )
+    }
 
     notification_ner <- paste0(
       "Scan dépendances NER: manquant -> ",
