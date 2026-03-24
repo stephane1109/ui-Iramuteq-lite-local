@@ -74,10 +74,11 @@ assurer_env_spacy <- function(
 
     reticulate::use_virtualenv(env_path, required = TRUE)
     Sys.setenv(RETICULATE_PYTHON = py_env)
+    Sys.setenv(IRAMUTEQ_SPACY_ENV = env_path)
     options(iramuteq_python_bin = py_env)
 
     if (!reticulate::py_module_available("spacy")) {
-      out_install <- capture.output(reticulate::py_install("spacy", envname = envname, pip = TRUE), type = "output")
+      out_install <- capture.output(reticulate::py_install("spacy", envname = env_path, pip = TRUE), type = "output")
       log_parts <<- c(log_parts, paste(out_install, collapse = "\n"))
     }
 
