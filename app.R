@@ -347,12 +347,15 @@ server <- function(input, output, session) {
     if (!isTRUE(deps$rcolorbrewer)) manquants <- c(manquants, "package R RColorBrewer")
 
     commande_r <- "install.packages(c('reticulate','spacyr')); spacyr::spacy_install(lang_models='fr_core_news_sm', prompt=FALSE)"
+    python_actif <- tryCatch(python_ner_bin(), error = function(e) "")
+    python_hint <- if (nzchar(python_actif)) paste0(" | Python NER actif: ", python_actif) else ""
 
     notification_ner <- paste0(
       "Scan dépendances NER: manquant -> ",
       paste(manquants, collapse = ", "),
       ". Installer spaCy (R/spacyr): ", commande_r,
-      ". Puis: spacyr::spacy_initialize(model='fr_core_news_sm')"
+      ". Puis: spacyr::spacy_initialize(model='fr_core_news_sm')",
+      python_hint
     )
 
     debug_ner <- isTRUE(getOption("iramuteq_debug_ner", FALSE)) ||

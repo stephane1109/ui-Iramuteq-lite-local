@@ -4,9 +4,33 @@
 # et générer un nuage de mots (fréquence par entité).
 
 # Essaie d'utiliser spaCy (script Python) pour une détection NER fiable.
+python_ner_bin <- function() {
+  candidates <- character(0)
+
+  from_option <- trimws(as.character(getOption("iramuteq_python_bin", "")))
+  if (nzchar(from_option)) candidates <- c(candidates, from_option)
+
+  from_env_reticulate <- trimws(Sys.getenv("RETICULATE_PYTHON", unset = ""))
+  if (nzchar(from_env_reticulate)) candidates <- c(candidates, from_env_reticulate)
+
+  from_env_custom <- trimws(Sys.getenv("IRAMUTEQ_PYTHON_BIN", unset = ""))
+  if (nzchar(from_env_custom)) candidates <- c(candidates, from_env_custom)
+
+  if (requireNamespace("reticulate", quietly = TRUE)) {
+    py_cfg <- tryCatch(reticulate::py_config(), error = function(e) NULL)
+    py_bin <- tryCatch(trimws(as.character(py_cfg$python)), error = function(e) "")
+    if (nzchar(py_bin)) candidates <- c(candidates, py_bin)
+  }
+
+  candidates <- c(candidates, Sys.which("python3"), Sys.which("python"))
+  candidates <- unique(trimws(candidates[nzchar(candidates)]))
+  candidates <- candidates[file.exists(candidates)]
+  if (!length(candidates)) return("")
+  candidates[[1]]
+}
+
 spacy_ner_disponible <- function(script_path = file.path("spacy", "ner_spacy.py")) {
-  python_bin <- Sys.which("python3")
-  if (!nzchar(python_bin)) python_bin <- Sys.which("python")
+  python_bin <- python_ner_bin()
   nzchar(python_bin) && file.exists(script_path)
 }
 
@@ -18,8 +42,7 @@ modele_spacy_fr_disponible <- function(models = c("fr_core_news_sm", "fr_core_ne
 }
 
 diagnostiquer_dependances_ner <- function(model = "fr_core_news_sm") {
-  python_bin <- Sys.which("python3")
-  if (!nzchar(python_bin)) python_bin <- Sys.which("python")
+  python_bin <- python_ner_bin()
   has_python <- nzchar(python_bin)
 
   script_ner <- file.path("spacy", "ner_spacy.py")
@@ -45,8 +68,7 @@ diagnostiquer_dependances_ner <- function(model = "fr_core_news_sm") {
 }
 
 spacy_modele_disponible <- function(model = "fr_core_news_sm") {
-  python_bin <- Sys.which("python3")
-  if (!nzchar(python_bin)) python_bin <- Sys.which("python")
+  python_bin <- python_ner_bin()
   if (!nzchar(python_bin)) return(FALSE)
 
   script_path <- file.path("spacy", "ner_spacy.py")
@@ -123,6 +145,12 @@ installer_spacy_si_necessaire <- function(model = "fr_core_news_sm") {
       out <- capture.output(spacyr::spacy_initialize(model = model), type = "output")
       paste(out, collapse = "\n")
     }, error = function(e) paste("spacyr::spacy_initialize error:", conditionMessage(e)))
+    py_cfg <- tryCatch(reticulate::py_config(), error = function(e) NULL)
+    py_bin <- tryCatch(trimws(as.character(py_cfg$python)), error = function(e) "")
+    if (nzchar(py_bin)) {
+      options(iramuteq_python_bin = py_bin)
+      Sys.setenv(RETICULATE_PYTHON = py_bin)
+    }
     options(iramuteq_spacy_install_last_log = paste(log_spacyr, log_initialize, sep = "\n\n"))
     if (isTRUE(spacy_modele_disponible(model = model))) return(TRUE)
   }
@@ -136,8 +164,7 @@ detecter_ner_spacy <- function(texte, model = "fr_core_news_sm", script_path = f
     return(data.frame(text = character(0), label = character(0), freq = integer(0), stringsAsFactors = FALSE))
   }
 
-  python_bin <- Sys.which("python3")
-  if (!nzchar(python_bin)) python_bin <- Sys.which("python")
+  python_bin <- python_ner_bin()
   if (!spacy_ner_disponible(script_path = script_path)) {
     return(NULL)
   }
