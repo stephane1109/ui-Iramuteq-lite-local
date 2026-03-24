@@ -1,124 +1,41 @@
-# ---------------------------------------------------------
-# Bootstrap automatique des dépendances R et spaCy
-# À placer tout en haut de global.R ou app.R
-# ---------------------------------------------------------
-
-options(repos = c(CRAN = "https://cloud.r-project.org"))
-
 required_packages <- c(
-  "shiny", "bslib", "htmltools", "quanteda", "wordcloud",
-  "RColorBrewer", "igraph", "dplyr", "remotes", "rgexf",
-  "Matrix", "factoextra", "FactoMineR", "ggplot2", "plotly",
-  "visNetwork", "DT", "jsonlite", "sna", "intergraph",
+  "shiny", "bslib", "htmltools", "quanteda", "wordcloud", "RColorBrewer",
+  "igraph", "dplyr", "remotes", "rgexf", "Matrix", "factoextra", "FactoMineR",
+  "ggplot2", "plotly", "visNetwork", "DT", "jsonlite", "sna", "intergraph",
   "colorspace", "rgl", "reticulate", "spacyr"
 )
 
-installer_packages_r <- function(packages) {
-  manquants <- packages[!vapply(packages, requireNamespace, quietly = TRUE, FUN.VALUE = logical(1))]
+installed_packages <- rownames(installed.packages())
+missing_packages <- setdiff(required_packages, installed_packages)
+packages_manquants <- missing_packages
 
-  if (length(manquants) > 0) {
-    message("Installation des packages R manquants : ", paste(manquants, collapse = ", "))
-    install.packages(manquants, dependencies = TRUE)
-  } else {
-    message("Tous les packages R requis sont déjà installés.")
-  }
+cran_repo <- trimws(Sys.getenv("R_CRAN_MIRROR", unset = "https://cloud.r-project.org"))
+if (is.null(getOption("repos")) || identical(getOption("repos")[["CRAN"]], "@CRAN")) {
+  options(repos = c(CRAN = cran_repo))
 }
 
-est_mac_apple_silicon <- function() {
-  if (Sys.info()[["sysname"]] != "Darwin") {
-    return(FALSE)
-  }
-
-  arch <- tryCatch(system("uname -m", intern = TRUE), error = function(e) "")
-  identical(arch, "arm64")
+if (length(missing_packages) > 0) {
+  tryCatch(
+    install.packages(missing_packages, repos = cran_repo, dependencies = TRUE),
+    error = function(e) message("Installation des packages manquants impossible: ", conditionMessage(e))
+  )
+  installed_packages <- rownames(installed.packages())
+  packages_manquants <- setdiff(required_packages, installed_packages)
 }
 
-initialiser_spacy_si_possible <- function() {
-  if (!requireNamespace("spacyr", quietly = TRUE)) {
-    stop("Le package 'spacyr' n'est pas disponible après installation.")
-  }
-
-  if (!requireNamespace("reticulate", quietly = TRUE)) {
-    stop("Le package 'reticulate' n'est pas disponible après installation.")
-  }
-
-  modeles_a_tester <- c("fr_core_news_lg", "fr_core_news_md", "fr_core_news_sm")
-
-  for (modele in modeles_a_tester) {
-    ok <- tryCatch({
-      spacyr::spacy_initialize(model = modele)
-      TRUE
-    }, error = function(e) {
-      FALSE
-    })
-
-    if (ok) {
-      message("Modèle spaCy chargé avec succès : ", modele)
-      return(modele)
-    }
-  }
-
-  message("Aucun modèle spaCy FR détecté. Lancement de l'installation automatique...")
-
-  version_spacy <- if (est_mac_apple_silicon()) "apple" else "latest"
-
-  tryCatch({
-    spacyr::spacy_install(
-      version = version_spacy,
-      lang_models = "fr_core_news_sm",
-      ask = FALSE,
-      force = FALSE
+charger_packages_requis <- function(packages) {
+  for (pkg in packages) {
+    suppressPackageStartupMessages(
+      library(pkg, character.only = TRUE, quietly = TRUE, warn.conflicts = FALSE)
     )
-  }, error = function(e) {
-    stop("Échec de l'installation automatique de spaCy : ", conditionMessage(e))
-  })
-
-  ok <- tryCatch({
-    spacyr::spacy_initialize(model = "fr_core_news_sm")
-    TRUE
-  }, error = function(e) {
-    FALSE
-  })
-
-  if (!ok) {
-    stop("spaCy a été installé, mais le modèle 'fr_core_news_sm' n'a pas pu être initialisé.")
   }
-
-  message("spaCy et le modèle français ont été installés puis initialisés avec succès.")
-  return("fr_core_news_sm")
 }
 
-# ---------------------------------------------------------
-# Exécution du bootstrap
-# ---------------------------------------------------------
+charger_packages_requis(required_packages)
+installed_packages <- rownames(installed.packages())
 
-installer_packages_r(required_packages)
+if (!"FactoMineR" %in% installed_packages) {
+  remotes::install_github("husson/FactoMineR", dependencies = NA, upgrade = "never")
+}
 
-library(shiny)
-library(bslib)
-library(htmltools)
-library(quanteda)
-library(wordcloud)
-library(RColorBrewer)
-library(igraph)
-library(dplyr)
-library(remotes)
-library(rgexf)
-library(Matrix)
-library(factoextra)
-library(FactoMineR)
-library(ggplot2)
-library(plotly)
-library(visNetwork)
-library(DT)
-library(jsonlite)
-library(sna)
-library(intergraph)
-library(colorspace)
-library(rgl)
-library(reticulate)
-library(spacyr)
-
-modele_spacy_charge <- initialiser_spacy_si_possible()
-
-message("Bootstrap terminé. Modèle spaCy actif : ", modele_spacy_charge)
+IRAMUTEQ_GLOBAL_INIT_DONE <- TRUE
