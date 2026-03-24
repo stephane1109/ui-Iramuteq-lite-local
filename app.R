@@ -355,9 +355,17 @@ server <- function(input, output, session) {
       removeModal()
       env_install_dialog_open(FALSE)
     } else {
+      log_env <- tryCatch(as.character(getOption("iramuteq_spacy_env_last_log", "")), error = function(e) "")
+      log_spacy <- tryCatch(as.character(getOption("iramuteq_spacy_install_last_log", "")), error = function(e) "")
+      log_resume <- paste(
+        if (nzchar(log_env)) paste("env:", utils::head(strsplit(log_env, "\n", fixed = TRUE)[[1]], 2), collapse = " | ") else NULL,
+        if (nzchar(log_spacy)) paste("spacy:", utils::head(strsplit(log_spacy, "\n", fixed = TRUE)[[1]], 2), collapse = " | ") else NULL,
+        collapse = " || "
+      )
       details <- paste0(
         "Installation incomplète. Vérifiez les logs options('iramuteq_spacy_env_last_log') / ",
-        "options('iramuteq_spacy_install_last_log'). Répertoire demandé: ", env_dir
+        "options('iramuteq_spacy_install_last_log'). Répertoire demandé: ", env_dir,
+        if (nzchar(log_resume)) paste0(" | ", log_resume) else ""
       )
       showNotification(details, type = "error", duration = 12)
     }

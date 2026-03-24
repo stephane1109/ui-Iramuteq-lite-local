@@ -54,7 +54,15 @@ assurer_env_spacy <- function(
   ok <- tryCatch({
     env_root <- reticulate::virtualenv_root()
     env_path <- if (grepl("^(/|[A-Za-z]:)", envname)) envname else file.path(env_root, envname)
+    env_default_name <- trimws(Sys.getenv("IRAMUTEQ_SPACY_ENV_NAME", unset = "iramuteq-spacy-env"))
+    if (dir.exists(env_path) && !file.exists(file.path(env_path, "bin", "python"))) {
+      existing <- list.files(env_path, all.files = TRUE, no.. = TRUE)
+      if (length(existing) > 0L) {
+        env_path <- file.path(env_path, env_default_name)
+      }
+    }
     py_env <- file.path(env_path, "bin", "python")
+    log_parts <<- c(log_parts, paste("assurer_env_spacy/env_path:", env_path))
 
     if (!file.exists(py_env)) {
       out_create <- capture.output(
