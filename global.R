@@ -52,18 +52,18 @@ assurer_env_spacy <- function(
   log_parts <- character(0)
   ok <- tryCatch({
     env_root <- reticulate::virtualenv_root()
-    env_path <- file.path(env_root, envname)
+    env_path <- if (grepl("^(/|[A-Za-z]:)", envname)) envname else file.path(env_root, envname)
     py_env <- file.path(env_path, "bin", "python")
 
     if (!file.exists(py_env)) {
       out_create <- capture.output(
-        reticulate::virtualenv_create(envname = envname, python = if (nzchar(py_sys)) py_sys else NULL),
+        reticulate::virtualenv_create(envname = env_path, python = if (nzchar(py_sys)) py_sys else NULL),
         type = "output"
       )
       log_parts <<- c(log_parts, paste(out_create, collapse = "\n"))
     }
 
-    reticulate::use_virtualenv(envname, required = TRUE)
+    reticulate::use_virtualenv(env_path, required = TRUE)
     Sys.setenv(RETICULATE_PYTHON = py_env)
     options(iramuteq_python_bin = py_env)
 
@@ -96,6 +96,32 @@ assurer_env_spacy <- function(
 
   options(iramuteq_spacy_env_last_log = paste(log_parts, collapse = "\n\n"))
   invisible(ok)
+}
+
+installer_environnement_application <- function(envname = NULL) {
+  if (is.null(envname) || !nzchar(trimws(envname))) {
+    envname <- trimws(Sys.getenv("IRAMUTEQ_SPACY_ENV", unset = "iramuteq-spacy"))
+  }
+
+  cran_repo <- trimws(Sys.getenv("R_CRAN_MIRROR", unset = "https://cloud.r-project.org"))
+  if (is.null(getOption("repos")) || identical(getOption("repos")[["CRAN"]], "@CRAN")) {
+    options(repos = c(CRAN = cran_repo))
+  }
+
+  missing_packages <- setdiff(required_packages, rownames(installed.packages()))
+  ok_r <- TRUE
+  if (length(missing_packages) > 0) {
+    ok_r <- tryCatch({
+      install.packages(missing_packages, repos = cran_repo, dependencies = TRUE)
+      TRUE
+    }, error = function(e) {
+      message("installer_environnement_application/install.packages error: ", conditionMessage(e))
+      FALSE
+    })
+  }
+
+  ok_py <- isTRUE(assurer_env_spacy(envname = envname))
+  invisible(list(ok_r = ok_r, ok_py = ok_py, envname = envname))
 }
 
 # Bootstrap d'un environnement Python dédié à spaCy pour exécution packagée/compilée.

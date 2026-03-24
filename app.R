@@ -314,9 +314,50 @@ server <- function(input, output, session) {
   
   app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
   if (is.null(app_dir) || !nzchar(app_dir)) app_dir <- getwd()
+  env_install_dialog_open <- reactiveVal(FALSE)
+
+  observeEvent(input$btn_install_env, {
+    req(env_install_dialog_open())
+    showNotification("Installation de l'environnement en cours…", type = "message", duration = 6)
+    env_dir <- ""
+    if (!is.null(input$env_install_dir)) env_dir <- trimws(as.character(input$env_install_dir))
+    if (!nzchar(env_dir)) env_dir <- "iramuteq-spacy"
+    Sys.setenv(IRAMUTEQ_SPACY_ENV = env_dir)
+    res <- tryCatch(
+      installer_environnement_application(envname = env_dir),
+      error = function(e) list(ok_r = FALSE, ok_py = FALSE, envname = env_dir, error = conditionMessage(e))
+    )
+
+    deps_post <- tryCatch(diagnostiquer_dependances_ner(), error = function(e) NULL)
+    ok_final <- is.list(deps_post) && isTRUE(deps_post$ok_ner)
+    if (ok_final) {
+      showNotification("Environnement installé avec succès. spaCy est prêt.", type = "message", duration = 8)
+      removeModal()
+      env_install_dialog_open(FALSE)
+    } else {
+      details <- paste0(
+        "Installation incomplète. Vérifiez les logs options('iramuteq_spacy_env_last_log') / ",
+        "options('iramuteq_spacy_install_last_log'). Répertoire demandé: ", env_dir
+      )
+      showNotification(details, type = "error", duration = 12)
+    }
+    invisible(res)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$btn_cancel_env_install, {
+    removeModal()
+    env_install_dialog_open(FALSE)
+  }, ignoreInit = TRUE)
 
   observeEvent(TRUE, {
-    deps <- diagnostiquer_dependances_ner()
+    deps <- tryCatch(diagnostiquer_dependances_ner(), error = function(e) {
+      list(
+        python = FALSE, script_ner = FALSE, reticulate = FALSE, spacyr = FALSE,
+        spacy_model = FALSE, wordcloud = requireNamespace("wordcloud", quietly = TRUE),
+        rcolorbrewer = requireNamespace("RColorBrewer", quietly = TRUE), ok_ner = FALSE,
+        error = conditionMessage(e)
+      )
+    })
     if (isTRUE(deps$ok_ner)) {
       showNotification("Dépendances NER OK (spaCy prêt).", type = "message", duration = 5)
       return(invisible(NULL))
@@ -375,6 +416,22 @@ server <- function(input, output, session) {
       type = "warning",
       duration = 14
     )
+    if (!isTRUE(env_install_dialog_open())) {
+      env_default <- trimws(Sys.getenv("IRAMUTEQ_SPACY_ENV", unset = file.path(path.expand("~"), ".iramuteq-spacy")))
+      showModal(modalDialog(
+        title = "Installation de l'environnement requis",
+        tags$p("L'application doit installer/configurer R, Python et spaCy pour la NER."),
+        tags$p("Choisissez le répertoire de l'environnement Python à créer/utiliser :"),
+        textInput("env_install_dir", "Répertoire environnement", value = env_default),
+        tags$p("Puis lancez l'installation automatique des dépendances."),
+        footer = tagList(
+          actionButton("btn_install_env", "Installer l'environnement", class = "btn-primary"),
+          actionButton("btn_cancel_env_install", "Annuler")
+        ),
+        easyClose = FALSE
+      ))
+      env_install_dialog_open(TRUE)
+    }
     invisible(NULL)
   }, once = TRUE, ignoreInit = FALSE)
   

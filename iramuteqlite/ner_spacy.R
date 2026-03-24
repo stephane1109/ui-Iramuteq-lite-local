@@ -111,17 +111,21 @@ spacy_modele_disponible <- function(model = "fr_core_news_sm") {
   on.exit(unlink(c(in_txt, out_csv), force = TRUE), add = TRUE)
   writeLines("", in_txt, useBytes = TRUE)
 
-  out <- suppressWarnings(system2(
-    python_bin,
-    args = c(
-      script_path,
-      "--input-txt", in_txt,
-      "--output-csv", out_csv,
-      "--model", model
-    ),
-    stdout = TRUE,
-    stderr = TRUE
-  ))
+  out <- tryCatch({
+    suppressWarnings(system2(
+      python_bin,
+      args = c(
+        script_path,
+        "--input-txt", in_txt,
+        "--output-csv", out_csv,
+        "--model", model
+      ),
+      stdout = TRUE,
+      stderr = TRUE
+    ))
+  }, error = function(e) {
+    paste("spacy_modele_disponible/system2 error:", conditionMessage(e))
+  })
   status <- attr(out, "status")
   if (is.null(status)) status <- 0L
   identical(as.integer(status), 0L) && file.exists(out_csv)
