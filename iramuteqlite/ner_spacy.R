@@ -4,7 +4,20 @@
 # et générer un nuage de mots (fréquence par entité).
 
 # Essaie d'utiliser spaCy (script Python) pour une détection NER fiable.
-python_ner_bin <- function() {
+python_has_spacy_model <- function(python_bin, model = "fr_core_news_sm") {
+  if (!nzchar(python_bin) || !file.exists(python_bin)) return(FALSE)
+  probe_code <- paste0(
+    "import importlib.util,sys;sys.exit(0 if importlib.util.find_spec('",
+    model,
+    "') else 1)"
+  )
+  out <- suppressWarnings(system2(python_bin, args = c("-c", probe_code), stdout = TRUE, stderr = TRUE))
+  status <- attr(out, "status")
+  if (is.null(status)) status <- 0L
+  identical(as.integer(status), 0L)
+}
+
+python_ner_bin <- function(model = "fr_core_news_sm") {
   candidates <- character(0)
 
   from_option <- trimws(as.character(getOption("iramuteq_python_bin", "")))
@@ -24,6 +37,12 @@ python_ner_bin <- function() {
     if (nzchar(py_runtime)) candidates <- c(candidates, py_runtime)
     if (nzchar(py_bin)) candidates <- c(candidates, py_bin)
     if (nzchar(py_home)) candidates <- c(candidates, file.path(py_home, "bin", "python"))
+    venv_root <- tryCatch(trimws(as.character(reticulate::virtualenv_root())), error = function(e) "")
+    venv_list <- tryCatch(reticulate::virtualenv_list(), error = function(e) character(0))
+    if (length(venv_list) && nzchar(venv_root)) {
+      venv_bins <- file.path(venv_root, venv_list, "bin", "python")
+      candidates <- c(candidates, venv_bins)
+    }
   }
 
   candidates <- c(candidates, Sys.which("python3"), Sys.which("python"))
@@ -33,6 +52,7 @@ python_ner_bin <- function() {
 
   score_path <- function(path) {
     score <- 0L
+    if (isTRUE(python_has_spacy_model(path, model = model))) score <- score - 1000L
     if (grepl("/uv/cache/archive-v[0-9]+/", path)) score <- score + 100L
     if (grepl("r-reticulate|virtualenv|venv", path, ignore.case = TRUE)) score <- score - 10L
     score
@@ -42,7 +62,7 @@ python_ner_bin <- function() {
 }
 
 spacy_ner_disponible <- function(script_path = file.path("spacy", "ner_spacy.py")) {
-  python_bin <- python_ner_bin()
+  python_bin <- python_ner_bin(model = "fr_core_news_sm")
   nzchar(python_bin) && file.exists(script_path)
 }
 
@@ -54,7 +74,7 @@ modele_spacy_fr_disponible <- function(models = c("fr_core_news_sm", "fr_core_ne
 }
 
 diagnostiquer_dependances_ner <- function(model = "fr_core_news_sm") {
-  python_bin <- python_ner_bin()
+  python_bin <- python_ner_bin(model = model)
   has_python <- nzchar(python_bin)
 
   script_ner <- file.path("spacy", "ner_spacy.py")
@@ -80,7 +100,7 @@ diagnostiquer_dependances_ner <- function(model = "fr_core_news_sm") {
 }
 
 spacy_modele_disponible <- function(model = "fr_core_news_sm") {
-  python_bin <- python_ner_bin()
+  python_bin <- python_ner_bin(model = model)
   if (!nzchar(python_bin)) return(FALSE)
 
   script_path <- file.path("spacy", "ner_spacy.py")
@@ -166,6 +186,7 @@ installer_spacy_si_necessaire <- function(model = "fr_core_news_sm") {
     if (length(py_candidates)) {
       py_scores <- vapply(py_candidates, function(path) {
         score <- 0L
+        if (isTRUE(python_has_spacy_model(path, model = model))) score <- score - 1000L
         if (grepl("/uv/cache/archive-v[0-9]+/", path)) score <- score + 100L
         if (grepl("r-reticulate|virtualenv|venv", path, ignore.case = TRUE)) score <- score - 10L
         score
@@ -191,7 +212,7 @@ detecter_ner_spacy <- function(texte, model = "fr_core_news_sm", script_path = f
     return(data.frame(text = character(0), label = character(0), freq = integer(0), stringsAsFactors = FALSE))
   }
 
-  python_bin <- python_ner_bin()
+  python_bin <- python_ner_bin(model = model)
   if (!spacy_ner_disponible(script_path = script_path)) {
     return(NULL)
   }
