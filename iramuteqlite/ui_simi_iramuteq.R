@@ -113,7 +113,7 @@ ui_form_parametres_similitudes <- function() {
 
 ui_panel_similitudes_iramuteq <- function() {
   nav_panel(
-    "Analyse similitudes", value = "similitudes",
+    "Similitudes", value = "similitudes",
     tags$h3("Analyse de similitudes"),
     tags$p("Ouvrez la boîte de dialogue pour configurer les paramètres de l'analyse."),
     tags$p(
