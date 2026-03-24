@@ -387,39 +387,6 @@ ui <- page_navbar(
     tags$h4("Dictionnaire d'expressions (session)"),
     tableOutput("table_annotation_dict")
   ),
-  nav_panel(
-    "Détéction NER", value = "annotation_ner",
-    tags$h3("Détéction NER automatique + correction manuelle => add_ner.json"),
-    fileInput("ner_import_json", "Charger un dictionnaire NER (.json)", accept = c(".json", "application/json")),
-    fileInput("ner_import_txt", "Importer un texte (.txt) pour annotation NER", accept = c(".txt")),
-    tags$p("Vous pouvez réimporter un fichier nommé add_ner.json (format JSON)."),
-    tags$p("Étape 1 : importez un corpus pour lancer la détection automatique des NER."),
-    tags$h4("Entités NER détectées dans le corpus importé"),
-    tableOutput("table_ner_detectes"),
-    tags$h4("Wordcloud NER"),
-    plotOutput("plot_wordcloud_ner", height = "500px"),
-    tags$p("Étape 2 : corrigez/ajoutez/supprimez des paires text/label pour enrichir add_ner.json."),
-    textAreaInput("ner_corpus_text", NULL, value = "", rows = 14, width = "100%"),
-    tags$h4("Prévisualisation annotée NER"),
-    uiOutput("ner_corpus_colore"),
-    tags$div(
-      style = "display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;",
-      tags$div(style = "flex:1; min-width:220px;", textInput("ner_selection", "Texte sélectionné", value = "")),
-      tags$div(style = "flex:1; min-width:220px;", textInput("ner_label", "Label NER (ex: ORG, PER, PRODUCT)", value = "ORG"))
-    ),
-    tags$div(style = "display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-bottom:10px;",
-      actionButton("ner_add_entry", "Ajouter / mettre à jour", class = "annotation-action-btn"),
-      textInput("ner_remove_key", NULL, value = "", placeholder = "text à supprimer", width = "190px"),
-      actionButton("ner_remove_entry", "Supprimer", class = "annotation-action-btn")
-    ),
-    downloadButton("dl_ner_json", "Télécharger add_ner.json"),
-    tags$h4("Règles NER (session)"),
-    tableOutput("table_ner_dict"),
-    tags$h4("Entités NER détectées dans le corpus importé"),
-    tableOutput("table_ner_detectes"),
-    tags$h4("Wordcloud NER"),
-    plotOutput("plot_wordcloud_ner", height = "500px")
-  ),
   nav_panel("CHD", value = "resultats_chd", ui_resultats_chd_iramuteq()),
   nav_panel(
     "AFC", value = "afc",
