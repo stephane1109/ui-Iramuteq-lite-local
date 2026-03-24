@@ -257,6 +257,20 @@ ui <- page_navbar(
     width = 320,
     open = "always",
     title = "Résultats",
+    actionButton("menu_importer_fichier_sidebar", "Importer un fichier texte", class = "btn-primary"),
+    checkboxInput("mode_debug", "Mode debug (afficher le journal)", value = FALSE),
+    conditionalPanel(
+      condition = "input.mode_debug == true",
+      tags$div(
+        style = "margin-top:8px;",
+        tags$label("Journal debug"),
+        tags$pre(
+          style = "max-height: 180px; overflow-y: auto; border: 1px solid #ddd; padding: 8px; background: #fafafa; font-size: 0.8rem;",
+          textOutput("logs")
+        )
+      )
+    ),
+    tags$hr(style = "margin-top: 10px; margin-bottom: 10px;"),
     downloadButton("dl_zip", "Télécharger les résultats")
   ),
 
