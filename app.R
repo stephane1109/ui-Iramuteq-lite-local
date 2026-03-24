@@ -125,7 +125,6 @@ source("iramuteqlite/ui_options_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/ui_explorateur_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/affichage_iramuteq.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/wordcloud_iramuteq.R", encoding = "UTF-8", local = TRUE)
-source("iramuteqlite/ner_spacy.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_graph.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_igraph.R", encoding = "UTF-8", local = TRUE)
@@ -270,12 +269,8 @@ server <- function(input, output, session) {
     lexique_fr_df = NULL,
     expression_fr_df = NULL,
     expression_annotations_df = data.frame(dic_mot = character(0), dic_norm = character(0), dic_morpho = character(0), stringsAsFactors = FALSE),
-    ner_annotations_df = data.frame(text = character(0), label = character(0), stringsAsFactors = FALSE),
-    ner_detectes_auto_df = data.frame(text = character(0), label = character(0), freq = integer(0), stringsAsFactors = FALSE),
     expressions_actives_df = NULL,
     utiliser_add_expression = FALSE,
-    utiliser_add_ner = FALSE,
-    ner_spacy_notice_shown = FALSE,
     textes_indexation = NULL,
     
     afc_obj = NULL,
@@ -334,141 +329,6 @@ server <- function(input, output, session) {
       }
     }, ignoreInit = TRUE)
   }
-
-  observeEvent(input$btn_install_env, {
-    req(env_install_dialog_open())
-    showNotification("Installation de l'environnement en cours…", type = "message", duration = 6)
-    env_dir <- ""
-    if (!is.null(input$env_install_dir)) env_dir <- trimws(as.character(input$env_install_dir))
-    if (!nzchar(env_dir)) env_dir <- "iramuteq-spacy"
-    Sys.setenv(IRAMUTEQ_SPACY_ENV = env_dir)
-    res <- tryCatch(
-      installer_environnement_application(envname = env_dir),
-      error = function(e) list(ok_r = FALSE, ok_py = FALSE, envname = env_dir, error = conditionMessage(e))
-    )
-
-    deps_post <- tryCatch(diagnostiquer_dependances_ner(), error = function(e) NULL)
-    ok_final <- is.list(deps_post) && isTRUE(deps_post$ok_ner)
-    if (ok_final) {
-      showNotification("Environnement installé avec succès. spaCy est prêt.", type = "message", duration = 8)
-      removeModal()
-      env_install_dialog_open(FALSE)
-    } else {
-      log_env <- tryCatch(as.character(getOption("iramuteq_spacy_env_last_log", "")), error = function(e) "")
-      log_spacy <- tryCatch(as.character(getOption("iramuteq_spacy_install_last_log", "")), error = function(e) "")
-      log_resume <- paste(
-        if (nzchar(log_env)) paste("env:", utils::head(strsplit(log_env, "\n", fixed = TRUE)[[1]], 2), collapse = " | ") else NULL,
-        if (nzchar(log_spacy)) paste("spacy:", utils::head(strsplit(log_spacy, "\n", fixed = TRUE)[[1]], 2), collapse = " | ") else NULL,
-        collapse = " || "
-      )
-      details <- paste0(
-        "Installation incomplète. Vérifiez les logs options('iramuteq_spacy_env_last_log') / ",
-        "options('iramuteq_spacy_install_last_log'). Répertoire demandé: ", env_dir,
-        if (nzchar(log_resume)) paste0(" | ", log_resume) else ""
-      )
-      showNotification(details, type = "error", duration = 12)
-    }
-    invisible(res)
-  }, ignoreInit = TRUE)
-
-  observeEvent(input$btn_cancel_env_install, {
-    removeModal()
-    env_install_dialog_open(FALSE)
-  }, ignoreInit = TRUE)
-
-  observeEvent(TRUE, {
-    deps <- tryCatch(diagnostiquer_dependances_ner(), error = function(e) {
-      list(
-        python = FALSE, script_ner = FALSE, reticulate = FALSE, spacyr = FALSE,
-        spacy_model = FALSE, wordcloud = requireNamespace("wordcloud", quietly = TRUE),
-        rcolorbrewer = requireNamespace("RColorBrewer", quietly = TRUE), ok_ner = FALSE,
-        error = conditionMessage(e)
-      )
-    })
-    if (isTRUE(deps$ok_ner)) {
-      showNotification("Dépendances NER OK (spaCy prêt).", type = "message", duration = 5)
-      return(invisible(NULL))
-    }
-
-    # Tentative d'installation auto au lancement via spacyr/reticulate.
-    if (!isTRUE(deps$spacy_model)) {
-      showNotification("Dépendances NER: installation automatique de spaCy en cours…", type = "message", duration = 6)
-      ok_install <- isTRUE(installer_spacy_si_necessaire(model = "fr_core_news_sm"))
-      deps <- diagnostiquer_dependances_ner()
-      if (ok_install && isTRUE(deps$spacy_model)) {
-        showNotification("Installation spaCy réussie au lancement.", type = "message", duration = 6)
-      }
-    }
-
-    if (isTRUE(deps$ok_ner)) {
-      showNotification("Dépendances NER OK après initialisation (spaCy prêt).", type = "message", duration = 5)
-      return(invisible(NULL))
-    }
-
-    manquants <- character(0)
-    if (!isTRUE(deps$python)) manquants <- c(manquants, "Python")
-    if (!isTRUE(deps$script_ner)) manquants <- c(manquants, "script ner_spacy.py")
-    if (!isTRUE(deps$reticulate)) manquants <- c(manquants, "package R reticulate")
-    if (!isTRUE(deps$spacyr)) manquants <- c(manquants, "package R spacyr")
-    if (!isTRUE(deps$spacy_model)) manquants <- c(manquants, "modèle spaCy FR (lg/md/sm)")
-    if (!isTRUE(deps$wordcloud)) manquants <- c(manquants, "package R wordcloud")
-    if (!isTRUE(deps$rcolorbrewer)) manquants <- c(manquants, "package R RColorBrewer")
-
-    commande_r <- "install.packages(c('reticulate','spacyr')); spacyr::spacy_install(lang_models='fr_core_news_sm', prompt=FALSE)"
-    python_actif <- tryCatch(python_ner_bin(), error = function(e) "")
-    python_hint <- if (nzchar(python_actif)) paste0(" | Python NER actif: ", python_actif) else ""
-    if (nzchar(python_actif) && grepl("/uv/cache/archive-v[0-9]+/", python_actif)) {
-      python_hint <- paste0(
-        python_hint,
-        " (cache temporaire détecté, définissez RETICULATE_PYTHON ou IRAMUTEQ_PYTHON_BIN)"
-      )
-    }
-
-    notification_ner <- paste0(
-      "Scan dépendances NER: manquant -> ",
-      paste(manquants, collapse = ", "),
-      ". Installer spaCy (R/spacyr): ", commande_r,
-      ". Puis: spacyr::spacy_initialize(model='fr_core_news_sm')",
-      python_hint
-    )
-
-    debug_ner <- isTRUE(getOption("iramuteq_debug_ner", FALSE)) ||
-      tolower(trimws(Sys.getenv("IRAMUTEQ_DEBUG_NER", unset = ""))) %in% c("1", "true", "yes", "y", "on")
-    if (debug_ner) {
-      message("[DEBUG NER] ", notification_ner)
-    }
-
-    showNotification(
-      notification_ner,
-      type = "warning",
-      duration = 14
-    )
-    if (!isTRUE(env_install_dialog_open())) {
-      env_default <- trimws(Sys.getenv("IRAMUTEQ_SPACY_ENV", unset = file.path(path.expand("~"), ".iramuteq-spacy")))
-      showModal(modalDialog(
-        title = "Installation de l'environnement requis",
-        tags$p("L'application doit installer/configurer R, Python et spaCy pour la NER."),
-        tags$p("Choisissez le répertoire de l'environnement Python à créer/utiliser :"),
-        textInput("env_install_dir", "Répertoire environnement", value = env_default),
-        if (isTRUE(has_shinyfiles)) {
-          shinyFiles::shinyDirButton("env_install_folder", "Parcourir le disque…", "Sélectionner un dossier")
-        } else {
-          tags$p(
-            style = "color:#8a6d3b;",
-            "Le package shinyFiles est absent : saisissez le chemin manuellement."
-          )
-        },
-        tags$p("Puis lancez l'installation automatique des dépendances."),
-        footer = tagList(
-          actionButton("btn_install_env", "Installer l'environnement", class = "btn-primary"),
-          actionButton("btn_cancel_env_install", "Annuler")
-        ),
-        easyClose = FALSE
-      ))
-      env_install_dialog_open(TRUE)
-    }
-    invisible(NULL)
-  }, once = TRUE, ignoreInit = FALSE)
   
   sauvegarder_add_expression <- function(df) {
     if (is.null(df) || !is.data.frame(df)) return(invisible(NULL))
@@ -526,77 +386,6 @@ server <- function(input, output, session) {
   }
   
   reinitialiser_add_expression_travail()
-
-  normaliser_add_ner_df <- function(df) {
-    if (is.null(df) || !is.data.frame(df)) return(NULL)
-    if (!all(c("text", "label") %in% names(df))) return(NULL)
-    out <- df[, c("text", "label"), drop = FALSE]
-    out$text <- trimws(as.character(out$text))
-    out$label <- toupper(trimws(as.character(out$label)))
-    out <- out[nzchar(out$text) & nzchar(out$label), , drop = FALSE]
-    out <- out[!duplicated(tolower(out$text)), , drop = FALSE]
-    out
-  }
-
-  lire_add_ner_depuis_json <- function(path_in) {
-    if (!requireNamespace("jsonlite", quietly = TRUE)) return(NULL)
-    payload <- tryCatch(jsonlite::fromJSON(path_in, simplifyVector = TRUE), error = function(e) NULL)
-    if (is.null(payload)) return(NULL)
-
-    include_df <- NULL
-    if (is.data.frame(payload) && all(c("text", "label") %in% names(payload))) {
-      include_df <- payload
-    } else if (is.list(payload) && !is.null(payload$include)) {
-      include_raw <- payload$include
-      if (is.data.frame(include_raw)) {
-        include_df <- include_raw
-      } else if (is.list(include_raw) && length(include_raw) > 0) {
-        include_df <- do.call(rbind, lapply(include_raw, function(x) {
-          data.frame(
-            text = if (!is.null(x$text)) as.character(x$text) else "",
-            label = if (!is.null(x$label)) as.character(x$label) else "",
-            stringsAsFactors = FALSE
-          )
-        }))
-      }
-    }
-
-    normaliser_add_ner_df(include_df)
-  }
-
-  sauvegarder_add_ner <- function(df) {
-    if (!requireNamespace("jsonlite", quietly = TRUE)) return(invisible(NULL))
-    df <- normaliser_add_ner_df(df)
-    if (is.null(df)) df <- data.frame(text = character(0), label = character(0), stringsAsFactors = FALSE)
-    payload <- list(
-      exclude_texts = character(0),
-      exclude_labels = character(0),
-      include = lapply(seq_len(nrow(df)), function(i) list(text = df$text[[i]], label = df$label[[i]]))
-    )
-    path_out <- file.path(app_dir, "dictionnaires", "add_ner.json")
-    tryCatch({
-      jsonlite::write_json(payload, path = path_out, auto_unbox = TRUE, pretty = TRUE)
-      invisible(path_out)
-    }, error = function(e) invisible(NULL))
-  }
-
-  initialiser_add_ner_travail <- function() {
-    path_in <- file.path(app_dir, "dictionnaires", "add_ner.json")
-    if (!file.exists(path_in)) {
-      rv$ner_annotations_df <- data.frame(text = character(0), label = character(0), stringsAsFactors = FALSE)
-      return(invisible(NULL))
-    }
-    df <- lire_add_ner_depuis_json(path_in)
-    if (is.null(df)) {
-      rv$ner_annotations_df <- data.frame(text = character(0), label = character(0), stringsAsFactors = FALSE)
-      return(invisible(NULL))
-    }
-    rv$ner_annotations_df <- df
-    rv$utiliser_add_ner <- nrow(df) > 0
-    invisible(NULL)
-  }
-
-  initialiser_add_ner_travail()
   
   
   if (exists("register_outputs_status", mode = "function", inherits = TRUE)) {
