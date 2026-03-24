@@ -6,13 +6,23 @@
 #                        DEV EN LOCAL + ANNOTATIONS                           #
 ###############################################################################
 
-required_packages <- c("shiny", "bslib", "htmltools", "quanteda", "wordcloud", "RColorBrewer", "igraph", "dplyr", "remotes", "rgexf", "Matrix", "factoextra", "FactoMineR", "ggplot2", "plotly", "visNetwork", "DT", "jsonlite", "sna", "intergraph", "colorspace", "rgl")
+required_packages <- c("shiny", "bslib", "htmltools", "quanteda", "wordcloud", "RColorBrewer", "igraph", "dplyr", "remotes", "rgexf", "Matrix", "factoextra", "FactoMineR", "ggplot2", "plotly", "visNetwork", "DT", "jsonlite", "sna", "intergraph", "colorspace", "rgl", "reticulate", "spacyr")
 installed_packages <- rownames(installed.packages())
 missing_packages <- setdiff(required_packages, installed_packages)
 packages_manquants <- missing_packages
 
+cran_repo <- trimws(Sys.getenv("R_CRAN_MIRROR", unset = "https://cloud.r-project.org"))
+if (is.null(getOption("repos")) || identical(getOption("repos")[["CRAN"]], "@CRAN")) {
+  options(repos = c(CRAN = cran_repo))
+}
+
 if (length(missing_packages) > 0) {
-  install.packages(missing_packages)
+  tryCatch(
+    install.packages(missing_packages, repos = cran_repo, dependencies = TRUE),
+    error = function(e) message("Installation des packages manquants impossible: ", conditionMessage(e))
+  )
+  installed_packages <- rownames(installed.packages())
+  packages_manquants <- setdiff(required_packages, installed_packages)
 }
 
 charger_packages_requis <- function(packages) {
@@ -337,10 +347,10 @@ server <- function(input, output, session) {
       return(invisible(NULL))
     }
 
-    # Tentative d'installation auto au lancement si Python + script install sont présents.
-    if (isTRUE(deps$python) && isTRUE(deps$script_install) && !isTRUE(deps$spacy_model)) {
+    # Tentative d'installation auto au lancement via spacyr/reticulate.
+    if (!isTRUE(deps$spacy_model)) {
       showNotification("Dépendances NER: installation automatique de spaCy en cours…", type = "message", duration = 6)
-      ok_install <- isTRUE(installer_spacy_si_necessaire(model = "fr_core_news_lg"))
+      ok_install <- isTRUE(installer_spacy_si_necessaire(model = "fr_core_news_sm"))
       deps <- diagnostiquer_dependances_ner()
       if (ok_install && isTRUE(deps$spacy_model)) {
         showNotification("Installation spaCy réussie au lancement.", type = "message", duration = 6)
@@ -355,30 +365,29 @@ server <- function(input, output, session) {
     manquants <- character(0)
     if (!isTRUE(deps$python)) manquants <- c(manquants, "Python")
     if (!isTRUE(deps$script_ner)) manquants <- c(manquants, "script ner_spacy.py")
-    if (!isTRUE(deps$script_install)) manquants <- c(manquants, "script install_spacy_fr.py")
+    if (!isTRUE(deps$reticulate)) manquants <- c(manquants, "package R reticulate")
     if (!isTRUE(deps$spacyr)) manquants <- c(manquants, "package R spacyr")
     if (!isTRUE(deps$spacy_model)) manquants <- c(manquants, "modèle spaCy FR (lg/md/sm)")
     if (!isTRUE(deps$wordcloud)) manquants <- c(manquants, "package R wordcloud")
     if (!isTRUE(deps$rcolorbrewer)) manquants <- c(manquants, "package R RColorBrewer")
 
-    repo_hint <- trimws(Sys.getenv("IRAMUTEQ_SPACY_REPO_URL", unset = ""))
-    if (!nzchar(repo_hint)) repo_hint <- trimws(Sys.getenv("PIP_INDEX_URL", unset = ""))
-    if (!nzchar(repo_hint)) repo_hint <- "https://pypi.org/simple"
-    model_url_hint <- trimws(Sys.getenv("IRAMUTEQ_SPACY_MODEL_URL", unset = ""))
-    commande <- paste0("python3 spacy/install_spacy_fr.py --model fr_core_news_lg --repo-url ", repo_hint)
-    if (nzchar(model_url_hint)) {
-      commande <- paste0(commande, " --model-url ", model_url_hint)
+    commande_r <- "install.packages(c('reticulate','spacyr')); spacyr::spacy_install(lang_models='fr_core_news_sm', prompt=FALSE)"
+
+    notification_ner <- paste0(
+      "Scan dépendances NER: manquant -> ",
+      paste(manquants, collapse = ", "),
+      ". Installer spaCy (R/spacyr): ", commande_r,
+      ". Puis: spacyr::spacy_initialize(model='fr_core_news_sm')"
+    )
+
+    debug_ner <- isTRUE(getOption("iramuteq_debug_ner", FALSE)) ||
+      tolower(trimws(Sys.getenv("IRAMUTEQ_DEBUG_NER", unset = ""))) %in% c("1", "true", "yes", "y", "on")
+    if (debug_ner) {
+      message("[DEBUG NER] ", notification_ner)
     }
 
-    commande_r <- "R -q -e \"install.packages('spacyr'); if (!requireNamespace('spacyr', quietly=TRUE)) { if (!requireNamespace('remotes', quietly=TRUE)) install.packages('remotes'); remotes::install_github('quanteda/spacyr') }; spacyr::spacy_install(lang_models='fr_core_news_lg', prompt=FALSE)\""
-
     showNotification(
-      paste0(
-        "Scan dépendances NER: manquant -> ",
-        paste(manquants, collapse = ", "),
-        ". Installer spaCy (R/spacyr): ", commande_r,
-        " | Fallback Python: ", commande
-      ),
+      notification_ner,
       type = "warning",
       duration = 14
     )
