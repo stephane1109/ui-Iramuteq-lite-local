@@ -344,6 +344,19 @@ ui <- page_navbar(
     "))
   ),
 
+  nav_panel(
+    "Analyse", value = "analyse",
+    tags$h3("Analyse du corpus"),
+    uiOutput("ui_table_stats_corpus"),
+    tags$h4("Loi de Zpif"),
+    plotOutput("plot_stats_zipf", height = "500px"),
+    tags$hr(),
+    tags$h4("Journal debug"),
+    tags$pre(
+      style = "max-height: 320px; overflow-y: auto; border: 1px solid #ddd; padding: 8px; background: #fafafa; font-size: 0.85rem;",
+      textOutput("logs")
+    )
+  ),
   nav_panel("Corpus", value = "corpus", tags$h3("Corpus importé"), uiOutput("ui_corpus_preview")),
   nav_panel(
     "Analyse", value = "analyse",
