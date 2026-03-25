@@ -355,9 +355,9 @@ ui <- page_navbar(
     conditionalPanel(
       condition = "input.mode_debug == true",
       tags$h4("Journal debug"),
-      tags$pre(
-        style = "max-height: 320px; overflow-y: auto; border: 1px solid #ddd; padding: 8px; background: #fafafa; font-size: 0.85rem;",
-        textOutput("logs")
+      tags$div(
+        style = "max-height: 320px; overflow-y: auto;",
+        verbatimTextOutput("logs", placeholder = TRUE)
       )
     )
   ),
