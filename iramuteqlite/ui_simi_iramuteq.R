@@ -69,7 +69,7 @@ ui_form_parametres_similitudes <- function() {
     ),
     checkboxInput(
       "simi_edge_labels",
-      "Afficher les labels des arêtes",
+      "Afficher le score de l'indice (arêtes / info-bulles)",
       value = TRUE
     ),
     checkboxInput(
