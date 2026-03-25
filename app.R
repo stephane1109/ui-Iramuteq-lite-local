@@ -1037,7 +1037,10 @@ server <- function(input, output, session) {
     lignes <- lapply(seq_len(nrow(rv$stats_corpus_df)), function(i) {
       metrique <- as.character(rv$stats_corpus_df$Metrique[i])
       valeur <- as.character(rv$stats_corpus_df$Valeur[i])
-      definition <- unname(definitions[[metrique]])
+      definition <- ""
+      if (!is.null(metrique) && length(metrique) > 0 && !is.na(metrique) && metrique %in% names(definitions)) {
+        definition <- unname(definitions[[metrique]])
+      }
       if (is.null(definition) || !nzchar(definition)) definition <- ""
       
       tags$tr(
