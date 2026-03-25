@@ -49,7 +49,7 @@ simi_largeurs_aretes_igraph <- function(weight, min_out = 0.35, max_out = 4.2, c
 simi_etirer_layout_communautes <- function(lo,
                                           membership,
                                           g = NULL,
-                                          ring_radius = 3.2,
+                                          ring_radius = NULL,
                                           within_scale = 1.18) {
   lo <- as.matrix(lo)
   membership <- suppressWarnings(as.integer(membership))
@@ -57,6 +57,10 @@ simi_etirer_layout_communautes <- function(lo,
   if (length(membership) != nrow(lo) || !any(is.finite(membership))) return(lo)
 
   lo2 <- lo[, 1:2, drop = FALSE]
+  if (is.null(ring_radius) || !is.finite(ring_radius) || ring_radius <= 0) {
+    # Règle proportionnelle au nombre de mots analysés.
+    ring_radius <- max(2.4, 0.045 * nrow(lo2))
+  }
   groups <- sort(unique(membership[is.finite(membership)]))
 
   # Choix du centre de l'étoile : communauté du sommet le plus "central".
@@ -178,12 +182,15 @@ tracer_graphe_similitudes_igraph <- function(g,
     lo_mat <- cbind(lo_mat, rep(0, nrow(lo_mat)))
   }
   if (!is.null(membership)) {
+    n_words <- igraph::vcount(g)
+    ring_radius_auto <- if (isTRUE(halo)) max(3.0, 0.050 * n_words) else max(2.4, 0.042 * n_words)
+    within_scale_auto <- min(1.35, 1.03 + (n_words / 600))
     lo_mat <- simi_etirer_layout_communautes(
       lo_mat,
       membership = membership,
       g = g,
-      ring_radius = if (isTRUE(halo)) 3.5 else 3.0,
-      within_scale = if (isTRUE(halo)) 1.22 else 1.15
+      ring_radius = ring_radius_auto,
+      within_scale = within_scale_auto
     )
   }
   lo_plot <- lo_mat[, 1:2, drop = FALSE]
