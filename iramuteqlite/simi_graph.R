@@ -56,14 +56,8 @@ calculer_largeurs_aretes_simi <- function(w, max_out = 6.5, min_out = 0.8, cap_o
   w <- pmax(w, 0)
   wmax <- max(w, na.rm = TRUE)
   if (!is.finite(wmax) || wmax <= 0) return(rep(1, length(w)))
-
-  widths <- if (wmax <= 1) {
-    # Métriques bornées (jaccard/binom): échelle douce.
-    normaliser_vecteur_simi(w, min_out, max_out)
-  } else {
-    # Cooccurrence: compression log + normalisation pour éviter les "barres".
-    normaliser_vecteur_simi(log1p(w), min_out, max_out)
-  }
+  # Échelle proportionnelle directe à l'indice (sans compression log).
+  widths <- (w / wmax) * max_out
   pmin(pmax(widths, min_out), cap_out)
 }
 
@@ -437,6 +431,7 @@ tracer_graphe_similitudes_plotly <- function(g,
 tracer_graphe_similitudes_visnetwork <- function(g,
                                                 layout = NULL,
                                                 edge_width_by_index = TRUE,
+                                                edge_labels = TRUE,
                                                 vertex_freq = NULL,
                                                 communities = NULL,
                                                 halo = FALSE,
@@ -493,13 +488,15 @@ tracer_graphe_similitudes_visnetwork <- function(g,
     w <- suppressWarnings(as.numeric(edges$weight))
     if (isTRUE(edge_width_by_index)) {
       w[!is.finite(w)] <- 0
-      # Réduction pour éviter des arêtes surdimensionnées.
-      w <- sqrt(pmax(w, 0))
-      edges$width <- as.numeric(normaliser_vecteur_simi(w, 1, 8))
+      edges$width <- as.numeric(calculer_largeurs_aretes_simi(w, max_out = 8, min_out = 1, cap_out = 10))
     } else {
       edges$width <- 1.2
     }
-    edges$title <- paste0(edges$from, " ↔ ", edges$to, "<br>Indice: ", round(edges$weight, 3))
+    if (isTRUE(edge_labels)) {
+      edges$title <- paste0(edges$from, " ↔ ", edges$to, "<br>Indice: ", round(edges$weight, 3))
+    } else {
+      edges$title <- paste0(edges$from, " ↔ ", edges$to)
+    }
     edges$color <- "#4A4A4A"
   } else {
     edges$width <- numeric(0)
