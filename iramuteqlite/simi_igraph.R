@@ -46,6 +46,35 @@ simi_largeurs_aretes_igraph <- function(weight, min_out = 0.35, max_out = 4.2, c
   pmin(pmax(scaled, min_out), cap_out)
 }
 
+simi_etirer_layout_communautes <- function(lo, membership, between_scale = 1.9, within_scale = 1.2) {
+  lo <- as.matrix(lo)
+  membership <- suppressWarnings(as.integer(membership))
+  if (!is.matrix(lo) || nrow(lo) == 0 || ncol(lo) < 2) return(lo)
+  if (length(membership) != nrow(lo) || !any(is.finite(membership))) return(lo)
+
+  lo2 <- lo[, 1:2, drop = FALSE]
+  gcenter <- colMeans(lo2, na.rm = TRUE)
+  groups <- sort(unique(membership[is.finite(membership)]))
+
+  for (k in groups) {
+    idx <- which(membership == k)
+    if (!length(idx)) next
+    c0 <- colMeans(lo2[idx, , drop = FALSE], na.rm = TRUE)
+    dir <- c0 - gcenter
+    if (!all(is.finite(dir)) || sqrt(sum(dir^2)) < 1e-9) {
+      angle <- (as.numeric(k) %% 12) * (2 * pi / 12)
+      dir <- c(cos(angle), sin(angle))
+    }
+    c1 <- gcenter + dir * between_scale
+    lo2[idx, ] <- sweep(lo2[idx, , drop = FALSE], 2, c0, FUN = "-")
+    lo2[idx, ] <- lo2[idx, ] * within_scale
+    lo2[idx, ] <- sweep(lo2[idx, , drop = FALSE], 2, c1, FUN = "+")
+  }
+
+  lo[, 1:2] <- lo2
+  lo
+}
+
 tracer_graphe_similitudes_igraph <- function(g,
                                             layout = NULL,
                                             edge_labels = TRUE,
@@ -87,7 +116,7 @@ tracer_graphe_similitudes_igraph <- function(g,
   vertex_labels[is.na(vertex_labels)] <- ""
 
   if (isTRUE(edge_width_by_index)) {
-    edge_width <- simi_largeurs_aretes_igraph(igraph::E(g)$weight, min_out = 0.35, max_out = 4.2, cap_out = 5.2)
+    edge_width <- simi_largeurs_aretes_igraph(igraph::E(g)$weight, min_out = 0.5, max_out = 8.5, cap_out = 10)
   } else {
     edge_width <- rep(1, igraph::ecount(g))
   }
@@ -101,9 +130,11 @@ tracer_graphe_similitudes_igraph <- function(g,
   mark_groups <- NULL
   mark_col <- NULL
   mark_border <- NULL
+  membership <- NULL
   if (!is.null(communities) && inherits(communities, "communities")) {
     memb <- as.integer(igraph::membership(communities))
     if (length(memb) == igraph::vcount(g) && any(is.finite(memb))) {
+      membership <- memb
       ncom <- max(memb, na.rm = TRUE)
       pal <- grDevices::hcl.colors(ncom, palette = "Dark 3")
       idx <- pmax(1L, pmin(length(pal), memb))
@@ -124,6 +155,9 @@ tracer_graphe_similitudes_igraph <- function(g,
   lo_mat <- as.matrix(lo)
   if (ncol(lo_mat) < 2) {
     lo_mat <- cbind(lo_mat, rep(0, nrow(lo_mat)))
+  }
+  if (!is.null(membership)) {
+    lo_mat <- simi_etirer_layout_communautes(lo_mat, membership = membership, between_scale = 1.9, within_scale = 1.18)
   }
   lo_plot <- lo_mat[, 1:2, drop = FALSE]
   lo_plot <- igraph::norm_coords(lo_plot, xmin = -1, xmax = 1, ymin = -1, ymax = 1)
