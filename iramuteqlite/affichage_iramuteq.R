@@ -32,12 +32,7 @@ ui_resultats_chd_iramuteq <- function() {
     tabPanel(
       "Stats CHD",
       tags$h3("Tableaux statistiques CHD par classe"),
-      uiOutput("ui_tables_stats_chd_iramuteq"),
-      tags$hr(),
-      tags$h3("Statistiques corpus"),
-      uiOutput("ui_table_stats_corpus"),
-      tags$h4("Loi de Zpif"),
-      plotOutput("plot_stats_zipf", height = "500px")
+      uiOutput("ui_tables_stats_chd_iramuteq")
     ),
     tabPanel(
       "Concordancier",

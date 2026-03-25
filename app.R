@@ -1031,13 +1031,16 @@ server <- function(input, output, session) {
       "Nombre de formes" = "Nombre de formes lexicales distinctes (types), différent des hapax.",
       "Nombre de segments de texte" = "Nombre de segments après découpage pour l'analyse.",
       "Nombre d'Hapax" = "Nombre de formes apparaissant une seule fois dans le corpus.",
-      "Loi de Zpif" = "Indicateur de conformité approximative à la loi de Zipf."
+      "Loi de Zipf" = "Indicateur de conformité approximative à la loi de Zipf."
     )
     
     lignes <- lapply(seq_len(nrow(rv$stats_corpus_df)), function(i) {
       metrique <- as.character(rv$stats_corpus_df$Metrique[i])
       valeur <- as.character(rv$stats_corpus_df$Valeur[i])
-      definition <- unname(definitions[[metrique]])
+      definition <- ""
+      if (!is.null(metrique) && length(metrique) > 0 && !is.na(metrique) && metrique %in% names(definitions)) {
+        definition <- unname(definitions[[metrique]])
+      }
       if (is.null(definition) || !nzchar(definition)) definition <- ""
       
       tags$tr(
@@ -1073,13 +1076,13 @@ server <- function(input, output, session) {
     }
     if (is.null(rv$stats_zipf_df) || !is.data.frame(rv$stats_zipf_df) || nrow(rv$stats_zipf_df) < 2) {
       plot.new()
-      text(0.5, 0.5, "Loi de Zpif indisponible : lancez une analyse.", cex = 1.1)
+      text(0.5, 0.5, "Loi de Zipf indisponible : lancez une analyse.", cex = 1.1)
       return(invisible(NULL))
     }
     df <- rv$stats_zipf_df
     if (is.null(df) || nrow(df) < 2) {
       plot.new()
-      text(0.5, 0.5, "Données insuffisantes pour tracer la loi de Zpif.", cex = 1.1)
+      text(0.5, 0.5, "Données insuffisantes pour tracer la loi de Zipf.", cex = 1.1)
       return(invisible(NULL))
     }
     
@@ -1094,7 +1097,7 @@ server <- function(input, output, session) {
       col = grDevices::adjustcolor("#2C7FB8", alpha.f = 0.7),
       xlab = "log(rang)",
       ylab = "log(fréquence)",
-      main = "Loi de Zpif",
+      main = "Loi de Zipf",
       xlim = x_lim,
       ylim = y_lim,
       asp = 1
