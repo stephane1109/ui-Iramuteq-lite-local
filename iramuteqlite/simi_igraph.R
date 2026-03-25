@@ -41,12 +41,8 @@ simi_largeurs_aretes_igraph <- function(weight, min_out = 0.35, max_out = 4.2, c
   w <- pmax(w, 0)
   wmax <- max(w, na.rm = TRUE)
   if (!is.finite(wmax) || wmax <= 0) return(rep(1, length(w)))
-
-  scaled <- if (wmax <= 1) {
-    normaliser_vecteur_simi(w, min_out, max_out)
-  } else {
-    normaliser_vecteur_simi(log1p(w), min_out, max_out)
-  }
+  # Échelle proportionnelle directe à l'indice (sans compression log).
+  scaled <- (w / wmax) * max_out
   pmin(pmax(scaled, min_out), cap_out)
 }
 

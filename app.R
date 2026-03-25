@@ -707,7 +707,7 @@ server <- function(input, output, session) {
         tags$li(paste0("Layout: ", if (is.null(input$simi_layout)) "frutch" else input$simi_layout)),
         tags$li(paste0("Moteur de rendu: ", if (is.null(input$simi_graph_engine)) "igraph" else input$simi_graph_engine)),
         tags$li(paste0("Arbre max: ", if (isTRUE(input$simi_max_tree)) "oui" else "non")),
-        tags$li(paste0("Labels des arêtes: ", if (isTRUE(input$simi_edge_labels)) "oui" else "non")),
+        tags$li(paste0("Score d'indice affiché (arêtes / info-bulles): ", if (isTRUE(input$simi_edge_labels)) "oui" else "non")),
         tags$li(paste0("Largeur des arêtes proportionnelle à l'indice: ", if (isTRUE(input$simi_edge_width_by_index)) "oui" else "non")),
         tags$li(paste0("Texte sommets proportionnel aux fréquences: ", if (isTRUE(input$simi_vertex_text_by_freq)) "oui" else "non")),
         tags$li(paste0("Communautés: ", if (isTRUE(input$simi_communities)) "oui" else "non")),
@@ -1261,6 +1261,7 @@ server <- function(input, output, session) {
       req(identical(input$simi_graph_engine, "visnetwork"))
       req(!is.null(rv$simi_graph), inherits(rv$simi_graph, "igraph"))
 
+      edge_labels_on <- if (is.null(input$simi_edge_labels)) TRUE else isTRUE(input$simi_edge_labels)
       edge_width_by_index_on <- if (is.null(input$simi_edge_width_by_index)) TRUE else isTRUE(input$simi_edge_width_by_index)
       info_txt <- paste0(
         "Méthode: ", rv$simi_method,
@@ -1272,6 +1273,7 @@ server <- function(input, output, session) {
         g = rv$simi_graph,
         layout = rv$simi_layout,
         edge_width_by_index = edge_width_by_index_on,
+        edge_labels = edge_labels_on,
         vertex_freq = rv$simi_vertex_freq,
         communities = rv$simi_communities,
         halo = isTRUE(input$simi_halo),
