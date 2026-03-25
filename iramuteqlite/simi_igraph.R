@@ -48,71 +48,45 @@ simi_largeurs_aretes_igraph <- function(weight, min_out = 0.35, max_out = 4.2, c
 
 simi_etirer_layout_communautes <- function(lo,
                                           membership,
-                                          between_scale = 2.4,
-                                          within_scale = 1.2,
-                                          min_radius = 2.2,
-                                          min_center_dist = 1.35,
-                                          repel_iter = 35,
-                                          repel_strength = 0.11) {
+                                          g = NULL,
+                                          ring_radius = 3.2,
+                                          within_scale = 1.18) {
   lo <- as.matrix(lo)
   membership <- suppressWarnings(as.integer(membership))
   if (!is.matrix(lo) || nrow(lo) == 0 || ncol(lo) < 2) return(lo)
   if (length(membership) != nrow(lo) || !any(is.finite(membership))) return(lo)
 
   lo2 <- lo[, 1:2, drop = FALSE]
-  gcenter <- colMeans(lo2, na.rm = TRUE)
   groups <- sort(unique(membership[is.finite(membership)]))
-  centers0 <- matrix(NA_real_, nrow = length(groups), ncol = 2, dimnames = list(as.character(groups), NULL))
-  for (i in seq_along(groups)) {
-    idx <- which(membership == groups[[i]])
-    if (!length(idx)) next
-    centers0[i, ] <- colMeans(lo2[idx, , drop = FALSE], na.rm = TRUE)
-  }
-  dir <- centers0 - matrix(gcenter, nrow = nrow(centers0), ncol = 2, byrow = TRUE)
-  ang <- suppressWarnings(atan2(dir[, 2], dir[, 1]))
-  if (!all(is.finite(ang))) {
-    bad <- which(!is.finite(ang))
-    ang[bad] <- seq(0, 2 * pi, length.out = length(bad) + 1)[seq_along(bad)]
-  }
-  ord <- order(ang)
-  ang_sorted <- seq(0, 2 * pi, length.out = length(groups) + 1)[seq_len(length(groups))]
-  ang[ord] <- ang_sorted
 
-  radius_base <- suppressWarnings(stats::median(sqrt(rowSums((centers0 - matrix(gcenter, nrow = nrow(centers0), ncol = 2, byrow = TRUE))^2)), na.rm = TRUE))
-  if (!is.finite(radius_base) || is.na(radius_base) || radius_base <= 0) radius_base <- 1
-  radius <- pmax(min_radius, between_scale * radius_base)
-  centers1 <- cbind(gcenter[1] + radius * cos(ang), gcenter[2] + radius * sin(ang))
-
-  if (nrow(centers1) >= 2) {
-    for (iter in seq_len(repel_iter)) {
-      moved <- FALSE
-      for (i in seq_len(nrow(centers1) - 1L)) {
-        for (j in (i + 1L):nrow(centers1)) {
-          dvec <- centers1[j, ] - centers1[i, ]
-          d <- sqrt(sum(dvec^2))
-          if (!is.finite(d) || d < 1e-9) {
-            dvec <- c(1, 0)
-            d <- 1
-          }
-          if (d < min_center_dist) {
-            push <- (min_center_dist - d) * repel_strength
-            unit <- dvec / d
-            centers1[i, ] <- centers1[i, ] - unit * push
-            centers1[j, ] <- centers1[j, ] + unit * push
-            moved <- TRUE
-          }
-        }
-      }
-      if (!moved) break
+  # Choix du centre de l'étoile : communauté du sommet le plus "central".
+  center_group <- groups[[1]]
+  if (!is.null(g) && inherits(g, "igraph") && igraph::vcount(g) == nrow(lo2)) {
+    s <- suppressWarnings(as.numeric(igraph::strength(g, mode = "all", weights = igraph::E(g)$weight)))
+    if (length(s) == nrow(lo2) && any(is.finite(s))) {
+      idx_star <- which.max(replace(s, !is.finite(s), -Inf))
+      center_group <- membership[[idx_star]]
     }
   }
 
-  for (idx_group in seq_along(groups)) {
-    k <- groups[[idx_group]]
+  outer_groups <- setdiff(groups, center_group)
+  n_outer <- length(outer_groups)
+  angle_map <- setNames(rep(0, length(groups)), as.character(groups))
+  if (n_outer > 0) {
+    angles <- seq(0, 2 * pi, length.out = n_outer + 1)[seq_len(n_outer)]
+    angle_map[as.character(outer_groups)] <- angles
+  }
+
+  for (k in groups) {
     idx <- which(membership == k)
     if (!length(idx)) next
     c0 <- colMeans(lo2[idx, , drop = FALSE], na.rm = TRUE)
-    c1 <- centers1[idx_group, ]
+    if (identical(k, center_group)) {
+      c1 <- c(0, 0)
+    } else {
+      ang <- angle_map[[as.character(k)]]
+      c1 <- c(ring_radius * cos(ang), ring_radius * sin(ang))
+    }
     lo2[idx, ] <- sweep(lo2[idx, , drop = FALSE], 2, c0, FUN = "-")
     lo2[idx, ] <- lo2[idx, ] * within_scale
     lo2[idx, ] <- sweep(lo2[idx, , drop = FALSE], 2, c1, FUN = "+")
@@ -207,10 +181,9 @@ tracer_graphe_similitudes_igraph <- function(g,
     lo_mat <- simi_etirer_layout_communautes(
       lo_mat,
       membership = membership,
-      between_scale = if (isTRUE(halo)) 2.9 else 2.1,
-      within_scale = if (isTRUE(halo)) 1.22 else 1.15,
-      min_radius = if (isTRUE(halo)) 2.6 else 1.9,
-      min_center_dist = if (isTRUE(halo)) 1.55 else 1.2
+      g = g,
+      ring_radius = if (isTRUE(halo)) 3.5 else 3.0,
+      within_scale = if (isTRUE(halo)) 1.22 else 1.15
     )
   }
   lo_plot <- lo_mat[, 1:2, drop = FALSE]
