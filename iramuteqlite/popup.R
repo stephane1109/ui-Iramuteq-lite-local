@@ -2,7 +2,7 @@
 # des segments relatifs à une forme sélectionnée dans Stats CHD.
 
 nettoyer_html_vers_texte_popup <- function(x) {
-  txt <- as.character(x %||% "")
+  txt <- as.character(if (is.null(x)) "" else x)
   txt <- gsub("<[^>]+>", "", txt)
   trimws(txt)
 }
@@ -52,7 +52,7 @@ extraire_segments_forme_classe_popup <- function(rv, classe, forme, max_segments
 enregistrer_popup_forme_stats_chd <- function(input, rv, classe, output_id, seuil_p_significativite) {
   observeEvent(input[[paste0(output_id, "_cell_clicked")]], {
     info <- input[[paste0(output_id, "_cell_clicked")]]
-    if (is.null(info$row) || info$row < 1) return(invisible(NULL))
+    if (is.null(info$row)) return(invisible(NULL))
 
     df_affiche <- extraire_stats_chd_classe(
       rv$res_stats_df,
@@ -63,11 +63,28 @@ enregistrer_popup_forme_stats_chd <- function(input, rv, classe, output_id, seui
       seuil_p_significativite = seuil_p_significativite(),
       style = "iramuteq_clone"
     )
-    if (!is.data.frame(df_affiche) || nrow(df_affiche) < info$row || !"forme" %in% names(df_affiche)) {
+    if (!is.data.frame(df_affiche) || !"forme" %in% names(df_affiche) || nrow(df_affiche) == 0) {
       return(invisible(NULL))
     }
 
-    forme_sel <- nettoyer_html_vers_texte_popup(df_affiche$forme[[info$row]])
+    row_idx <- suppressWarnings(as.integer(info$row))
+    if (!is.finite(row_idx) || is.na(row_idx)) return(invisible(NULL))
+    if (row_idx >= 0L && row_idx < nrow(df_affiche)) {
+      row_idx <- row_idx + 1L
+    }
+    if (row_idx < 1L || row_idx > nrow(df_affiche)) return(invisible(NULL))
+
+    forme_sel <- nettoyer_html_vers_texte_popup(df_affiche$forme[[row_idx]])
+
+    col_idx <- suppressWarnings(as.integer(info$col))
+    col_forme <- match("forme", names(df_affiche))
+    if (is.finite(col_idx) && !is.na(col_idx) && !is.na(col_forme)) {
+      if (identical(col_idx, col_forme) || identical(col_idx + 1L, col_forme)) {
+        forme_clic <- nettoyer_html_vers_texte_popup(info$value)
+        if (nzchar(forme_clic)) forme_sel <- forme_clic
+      }
+    }
+
     if (!nzchar(forme_sel)) return(invisible(NULL))
 
     segments_forme <- extraire_segments_forme_classe_popup(rv, classe, forme_sel, max_segments = 300L)
