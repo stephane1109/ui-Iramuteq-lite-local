@@ -119,29 +119,37 @@ construire_graphe_similitudes <- function(dfm_obj,
   }
 
   method <- if (is.null(method) || !nzchar(method)) "cooc" else method
+  if (identical(method, "jaccard")) method <- "Jaccard"
+  if (identical(method, "cooccurrence")) method <- "cooc"
 
   cooc <- t(mat_bin) %*% mat_bin
   diag(cooc) <- 0
 
-  if (identical(method, "jaccard")) {
-    denom <- outer(colSums(mat_bin), colSums(mat_bin), "+") - cooc
-    sim <- ifelse(denom > 0, cooc / denom, 0)
-    diag(sim) <- 0
-  } else if (identical(method, "binom")) {
-    if (exists("binom.sim", mode = "function", inherits = TRUE)) {
-      pmat <- tryCatch(binom.sim(mat_bin), error = function(e) NULL)
-      if (!is.null(pmat)) {
-        sim <- 1 - pmat
-        sim[!is.finite(sim)] <- 0
-        diag(sim) <- 0
-      } else {
-        sim <- cooc / max(cooc, na.rm = TRUE)
+  proxy_disponible <- requireNamespace("proxy", quietly = TRUE)
+  if (!isTRUE(proxy_disponible)) {
+    stop("Le package 'proxy' est requis pour calculer les indices de similarité (cooccurrence + méthodes proxy).")
+  }
+
+  calcul_proxy <- function(x, proxy_method) {
+    sim_proxy <- proxy::simil(x, method = proxy_method, by_rows = FALSE)
+    sim_mat <- as.matrix(sim_proxy)
+    mode(sim_mat) <- "numeric"
+    sim_mat[!is.finite(sim_mat)] <- 0
+    diag(sim_mat) <- 0
+    sim_mat
+  }
+
+  if (identical(method, "cooc")) {
+    sim <- calcul_proxy(
+      mat_bin,
+      function(x, y) {
+        x <- as.numeric(x > 0)
+        y <- as.numeric(y > 0)
+        sum((x == 1) & (y == 1))
       }
-    } else {
-      sim <- cooc / max(cooc, na.rm = TRUE)
-    }
+    )
   } else {
-    sim <- cooc
+    sim <- calcul_proxy(mat_bin, method)
   }
 
   sim[!is.finite(sim)] <- 0
