@@ -471,14 +471,19 @@ ui <- page_navbar(
     "LDA", value = "lda",
     tags$h3("LDA (test)"),
     tags$p("LDA peut être lancé directement après import du corpus."),
+    tags$p("Topic = thème latent (groupe de mots qui co-occurent). Doc = une unité texte du corpus (ligne/segment)."),
     actionButton("ouvrir_param_lda", "Paramètres LDA", class = "btn-primary"),
     tags$br(), tags$br(),
     uiOutput("ui_lda_statut"),
+    tags$h4("Projection des topics (bulle)"),
+    plotOutput("plot_lda_topics_bubble", height = "420px"),
     plotOutput("plot_lda_top_terms", height = "420px"),
     tags$h4("Top termes par topic"),
     tableOutput("table_lda_top_terms"),
     tags$h4("Distribution topics / documents"),
-    tableOutput("table_lda_doc_topics")
+    tableOutput("table_lda_doc_topics"),
+    tags$h4("Segments de texte (doc) et topic dominant"),
+    tableOutput("table_lda_segments")
   ),
 
   ui_panel_similitudes_iramuteq(),

@@ -10,7 +10,10 @@ preparer_dtm_lda <- function(textes,
                              remove_punct = TRUE,
                              remove_symbols = TRUE,
                              retirer_stopwords = FALSE,
-                             stopwords_sup = character()) {
+                             stopwords_sup = character(),
+                             filtrage_morpho = FALSE,
+                             pos_lexique_a_conserver = c("NOM", "VER", "ADJ"),
+                             lexique_path = file.path(getwd(), "dictionnaires", "lexique_fr.csv")) {
   if (!requireNamespace("quanteda", quietly = TRUE)) {
     stop("Le package 'quanteda' est requis pour préparer la matrice terme-document.")
   }
@@ -49,6 +52,39 @@ preparer_dtm_lda <- function(textes,
 
   dtm <- quanteda::dfm(toks)
   dtm <- quanteda::dfm_trim(dtm, min_termfreq = min_termfreq)
+
+  if (isTRUE(filtrage_morpho)) {
+    if (!file.exists(lexique_path)) {
+      stop("Filtrage morphosyntaxique demandé, mais lexique_fr.csv est introuvable.")
+    }
+
+    lexique_df <- tryCatch(
+      utils::read.csv2(lexique_path, stringsAsFactors = FALSE),
+      error = function(e) NULL
+    )
+    if (is.null(lexique_df) || !all(c("c_mot", "c_lemme", "c_morpho") %in% names(lexique_df))) {
+      stop("Le lexique_fr.csv ne contient pas les colonnes attendues (c_mot, c_lemme, c_morpho).")
+    }
+
+    pos_keep <- toupper(trimws(as.character(pos_lexique_a_conserver)))
+    pos_keep <- pos_keep[nzchar(pos_keep)]
+    if (!length(pos_keep)) {
+      stop("Filtrage morphosyntaxique activé mais aucune catégorie POS sélectionnée.")
+    }
+
+    lexique_df$c_morpho <- toupper(trimws(as.character(lexique_df$c_morpho)))
+    lexique_df$c_mot <- tolower(trimws(as.character(lexique_df$c_mot)))
+    lexique_df$c_lemme <- tolower(trimws(as.character(lexique_df$c_lemme)))
+    lexique_filtre <- lexique_df[lexique_df$c_morpho %in% pos_keep, , drop = FALSE]
+
+    vocab_ok <- unique(c(lexique_filtre$c_mot, lexique_filtre$c_lemme))
+    vocab_ok <- vocab_ok[nzchar(vocab_ok)]
+    if (!length(vocab_ok)) {
+      stop("Aucun terme conservé après filtrage morphosyntaxique.")
+    }
+
+    dtm <- quanteda::dfm_select(dtm, pattern = vocab_ok, selection = "keep")
+  }
 
   if (quanteda::nfeat(dtm) == 0) {
     stop("La matrice DTM est vide après filtrage (min_termfreq trop élevé ?).")

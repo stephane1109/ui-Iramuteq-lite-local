@@ -15,12 +15,17 @@ Les options UI sont définies dans `lda/ui_lda_iramuteq.R`.
 
 ## Paramètres utilisateur (onglet LDA, très simplifiés)
 
-Le bouton **Paramètres LDA** permet de modifier uniquement :
+Le bouton **Paramètres LDA** permet de modifier :
 
 - `k` : nombre de thèmes
 - `n_terms` : nombre de mots affichés par thème
+- option de retrait des stopwords
+- option de filtrage morphosyntaxique (`NOM`, `VER`, `ADJ`, etc.)
 
-L'onglet affiche aussi un **graphique** des mots les plus probables par thème (barres par topic), en plus des tableaux.
+L'onglet affiche aussi :
+- un **graphique en bulles** qui projette les topics (position issue d'une projection PCA, taille selon la prévalence moyenne),
+- un **graphique barres** des mots les plus probables par topic,
+- des tables document/topic et un tableau des segments de texte avec topic dominant.
 
 Le LDA peut être lancé directement après **import du corpus**, sans lancer CHD/AFC.
 

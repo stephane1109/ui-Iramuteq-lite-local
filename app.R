@@ -307,7 +307,8 @@ server <- function(input, output, session) {
     parametres_analyse = list(),
     lda_resultat = NULL,
     lda_statut = "Aucun test LDA exécuté.",
-    lda_erreur = NULL
+    lda_erreur = NULL,
+    lda_doc_texts = NULL
   )
   
   app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
@@ -554,7 +555,10 @@ server <- function(input, output, session) {
   capturer_parametres_lda <- function() {
     list(
       lda_k = isolate(input$lda_k %||% 4),
-      lda_n_terms = isolate(input$lda_n_terms %||% 8)
+      lda_n_terms = isolate(input$lda_n_terms %||% 8),
+      lda_retirer_stopwords = isolate(input$lda_retirer_stopwords %||% FALSE),
+      lda_filtrage_morpho = isolate(input$lda_filtrage_morpho %||% FALSE),
+      lda_pos_keep = isolate(input$lda_pos_keep %||% c("NOM", "VER", "ADJ"))
     )
   }
 
@@ -751,6 +755,10 @@ server <- function(input, output, session) {
       return(invisible(NULL))
     }
 
+    if (is.null(names(textes_lda)) || length(names(textes_lda)) != length(textes_lda) || any(!nzchar(names(textes_lda)))) {
+      names(textes_lda) <- paste0("doc_", seq_along(textes_lda))
+    }
+
     res_lda <- tryCatch(
       {
         args_lda <- list(
@@ -761,8 +769,10 @@ server <- function(input, output, session) {
           remove_numbers = FALSE,
           remove_punct = TRUE,
           remove_symbols = TRUE,
-          retirer_stopwords = FALSE,
-          stopwords_sup = character(0)
+          retirer_stopwords = isTRUE(input$lda_retirer_stopwords),
+          stopwords_sup = character(0),
+          filtrage_morpho = isTRUE(input$lda_filtrage_morpho),
+          pos_lexique_a_conserver = as.character(input$lda_pos_keep %||% c("NOM", "VER", "ADJ"))
         )
 
         do.call(lancer_test_lda, args_lda)
@@ -780,6 +790,11 @@ server <- function(input, output, session) {
 
     rv$lda_resultat <- res_lda
     rv$lda_erreur <- NULL
+    rv$lda_doc_texts <- data.frame(
+      doc_id = names(textes_lda),
+      segment_texte = as.character(textes_lda),
+      stringsAsFactors = FALSE
+    )
     rv$lda_statut <- paste0(
       "LDA exécuté avec succès (k=", input$lda_k %||% 4,
       ", documents=", length(textes_lda),
@@ -802,7 +817,18 @@ server <- function(input, output, session) {
 
   output$table_lda_doc_topics <- renderTable({
     req(rv$lda_resultat, rv$lda_resultat$doc_topics)
-    head(rv$lda_resultat$doc_topics, 100)
+    doc_topics <- rv$lda_resultat$doc_topics
+    topic_cols <- grep("^\\d+$|^Topic_", names(doc_topics), value = TRUE)
+    if (!length(topic_cols)) {
+      topic_cols <- setdiff(names(doc_topics), "doc_id")
+    }
+    if (length(topic_cols)) {
+      mat <- as.matrix(doc_topics[, topic_cols, drop = FALSE])
+      dominant_idx <- max.col(mat, ties.method = "first")
+      doc_topics$topic_dominant <- topic_cols[dominant_idx]
+      doc_topics$prob_topic_dominant <- round(mat[cbind(seq_len(nrow(mat)), dominant_idx)], 4)
+    }
+    head(doc_topics, 100)
   }, striped = TRUE, bordered = TRUE, spacing = "xs")
 
   output$plot_lda_top_terms <- renderPlot({
@@ -824,6 +850,61 @@ server <- function(input, output, session) {
       ) +
       ggplot2::theme_minimal(base_size = 12)
   })
+
+  output$plot_lda_topics_bubble <- renderPlot({
+    req(rv$lda_resultat, rv$lda_resultat$topic_term_matrix, rv$lda_resultat$doc_topics)
+    mat_topics <- rv$lda_resultat$topic_term_matrix
+    req(nrow(mat_topics) >= 2, ncol(mat_topics) >= 2)
+
+    coords <- stats::prcomp(mat_topics, center = TRUE, scale. = TRUE)$x[, 1:2, drop = FALSE]
+    docs <- rv$lda_resultat$doc_topics
+    topic_cols <- colnames(docs)[colnames(docs) != "doc_id"]
+    if (length(topic_cols) == nrow(coords)) {
+      rownames(coords) <- topic_cols
+    }
+    prevalence <- colMeans(as.matrix(docs[, topic_cols, drop = FALSE]), na.rm = TRUE)
+
+    df_plot <- data.frame(
+      topic = rownames(coords),
+      x = coords[, 1],
+      y = coords[, 2],
+      prevalence = as.numeric(prevalence[rownames(coords)]),
+      stringsAsFactors = FALSE
+    )
+    df_plot$prevalence[is.na(df_plot$prevalence)] <- 0
+
+    ggplot2::ggplot(df_plot, ggplot2::aes(x = x, y = y, size = prevalence, label = topic, color = topic)) +
+      ggplot2::geom_point(alpha = 0.7) +
+      ggplot2::geom_text(vjust = -0.9, show.legend = FALSE) +
+      ggplot2::scale_size_area(max_size = 20) +
+      ggplot2::labs(
+        title = "Projection des topics (bulle)",
+        subtitle = "Position: projection PCA des distributions de mots ; taille: prévalence moyenne dans les documents",
+        x = "Axe 1",
+        y = "Axe 2",
+        size = "Prévalence"
+      ) +
+      ggplot2::theme_minimal(base_size = 12)
+  })
+
+  output$table_lda_segments <- renderTable({
+    req(rv$lda_resultat, rv$lda_resultat$doc_topics, rv$lda_doc_texts)
+    doc_topics <- rv$lda_resultat$doc_topics
+    topic_cols <- setdiff(names(doc_topics), "doc_id")
+    req(length(topic_cols) > 0)
+
+    mat <- as.matrix(doc_topics[, topic_cols, drop = FALSE])
+    dominant_idx <- max.col(mat, ties.method = "first")
+    seg <- data.frame(
+      doc_id = doc_topics$doc_id,
+      topic_dominant = topic_cols[dominant_idx],
+      prob_topic_dominant = round(mat[cbind(seq_len(nrow(mat)), dominant_idx)], 4),
+      stringsAsFactors = FALSE
+    )
+    seg <- merge(seg, rv$lda_doc_texts, by = "doc_id", all.x = TRUE)
+    seg <- seg[order(seg$prob_topic_dominant, decreasing = TRUE), , drop = FALSE]
+    head(seg, 100)
+  }, striped = TRUE, bordered = TRUE, spacing = "xs")
   
   output$ui_simi_statut <- renderUI({
     seuil_label <- if (is.null(input$simi_seuil) || is.na(input$simi_seuil)) "aucun" else as.character(input$simi_seuil)
