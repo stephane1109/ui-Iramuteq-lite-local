@@ -763,6 +763,18 @@ server <- function(input, output, session) {
       footer = modalButton("Fermer")
     ))
   })
+
+  output$nom_fichier_corpus_sidebar <- renderUI({
+    fichier <- input$fichier_corpus
+    if (is.null(fichier) || is.null(fichier$name) || !nzchar(fichier$name)) {
+      return(tags$p(style = "margin: 8px 0 0 0; color: #6c757d;", "Aucun fichier importé."))
+    }
+    tags$p(
+      style = "margin: 8px 0 0 0;",
+      tags$strong("Fichier importé : "),
+      fichier$name
+    )
+  })
   
   observeEvent(input$fichier_corpus, {
     req(input$fichier_corpus$datapath)
