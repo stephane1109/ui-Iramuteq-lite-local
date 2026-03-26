@@ -129,6 +129,8 @@ source("iramuteqlite/simi.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_graph.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_igraph.R", encoding = "UTF-8", local = TRUE)
 source("iramuteq/select_mots.R", encoding = "UTF-8", local = TRUE)
+source("lda/lda.R", encoding = "UTF-8", local = TRUE)
+source("lda/server_lda.R", encoding = "UTF-8", local = TRUE)
 source("ui.R", encoding = "UTF-8", local = TRUE)
 
 source("iramuteqlite/chd_iramuteq.R", encoding = "UTF-8", local = TRUE)
@@ -303,7 +305,11 @@ server <- function(input, output, session) {
     simi_terms_total = 0L,
     simi_top_terms_requested = 100L,
     
-    parametres_analyse = list()
+    parametres_analyse = list(),
+    lda_resultat = NULL,
+    lda_statut = "Aucun test LDA exécuté.",
+    lda_erreur = NULL,
+    lda_doc_texts = NULL
   )
   
   app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
@@ -547,151 +553,10 @@ server <- function(input, output, session) {
     ))
   }
 
-  journaliser_evenement <- function(message) {
-    if (exists("ajouter_log", mode = "function", inherits = TRUE)) {
-      ajouter_log(rv, message)
-      return(invisible(NULL))
-    }
-    
-    msg <- as.character(message)
-    msg <- msg[!is.na(msg)]
-    msg <- msg[nzchar(msg)]
-    if (!length(msg)) return(invisible(NULL))
-    msg <- paste(msg, collapse = " ")
-    
-    horodatage <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
-    msg_horodate <- paste0("[", horodatage, "] ", msg)
-    
-    precedent <- rv$logs
-    if (is.null(precedent) || !length(precedent) || all(is.na(precedent)) || !any(nzchar(precedent))) {
-      rv$logs <- msg_horodate
-    } else {
-      precedent <- precedent[!is.na(precedent)]
-      precedent <- precedent[nzchar(precedent)]
-      rv$logs <- paste(c(precedent, msg_horodate), collapse = "\n")
-    }
-    
-    message("[IRaMuTeQ-lite] ", msg_horodate)
-    flush.console()
-    
-    invisible(NULL)
+  if (exists("register_lda_module", mode = "function", inherits = TRUE)) {
+    register_lda_module(input = input, output = output, session = session, rv = rv)
   }
-  
-  nav_principal_precedent <- reactiveVal(NULL)
-  observeEvent(input$nav_principal, {
-    nav_actuel <- input$nav_principal
-    nav_precedent <- nav_principal_precedent()
-    nav_principal_precedent(nav_actuel)
-    if (isTRUE(identical(nav_actuel, nav_precedent))) return(invisible(NULL))
-    
-    if (isTRUE(identical(nav_actuel, "similitudes"))) {
-      peupler_termes_similitudes(
-        input = input,
-        session = session,
-        dfm_obj = rv$dfm,
-        preselect_top = TRUE,
-        current_selection = input$simi_terms_selected
-      )
-    }
-  }, ignoreInit = TRUE)
-  
-  observeEvent(input$ouvrir_param_simi, {
-    ouvrir_modal_parametres_similitudes()
-  })
-  
-  observeEvent(input$ouvrir_param_chd, {
-    ouvrir_modal_parametres()
-  })
 
-  observeEvent(input$ouvrir_param_simi, {
-    peupler_termes_similitudes(
-      input = input,
-      session = session,
-      dfm_obj = rv$dfm,
-      preselect_top = TRUE,
-      current_selection = input$simi_terms_selected
-    )
-  }, ignoreInit = TRUE)
-
-  observeEvent(input$simi_top_terms, {
-    peupler_termes_similitudes(
-      input = input,
-      session = session,
-      dfm_obj = rv$dfm,
-      preselect_top = TRUE
-    )
-  }, ignoreInit = TRUE)
-  
-  observeEvent(input$simi_zoom_in, {
-    rv$simi_zoom <- min(3, rv$simi_zoom + 0.2)
-  })
-  
-  observeEvent(input$simi_zoom_out, {
-    rv$simi_zoom <- max(0.6, rv$simi_zoom - 0.2)
-  })
-  
-  observeEvent(input$simi_zoom_reset, {
-    rv$simi_zoom <- 1
-  })
-  
-  observeEvent(input$lancer_simi, {
-    removeModal()
-    
-    if (is.null(rv$dfm) || quanteda::ndoc(rv$dfm) < 2 || quanteda::nfeat(rv$dfm) < 2) {
-      showNotification("Analyse CHD/AFC non disponible: lancez d'abord l'analyse principale pour construire le graphe de similitude.", type = "warning")
-      return(invisible(NULL))
-    }
-
-    if (!exists("fn_construire_simi", mode = "function", inherits = TRUE)) {
-      showNotification("Erreur analyse similitudes: moteur de construction du graphe introuvable (fn_construire_simi).", type = "error")
-      journaliser_evenement("Erreur analyse similitudes: fonction fn_construire_simi introuvable.")
-      return(invisible(NULL))
-    }
-    
-    res_simi <- tryCatch(
-      fn_construire_simi(
-        dfm_obj = rv$dfm,
-        method = input$simi_method,
-        seuil = input$simi_seuil,
-        max_tree = isTRUE(input$simi_max_tree),
-        top_terms = input$simi_top_terms,
-        selected_terms = input$simi_terms_selected,
-        layout_type = input$simi_layout,
-        communities = isTRUE(input$simi_communities),
-        community_method = input$simi_community_method
-      ),
-      error = function(e) e
-    )
-    
-    if (inherits(res_simi, "error")) {
-      showNotification(paste0("Erreur analyse similitudes: ", res_simi$message), type = "error")
-      journaliser_evenement(paste0("Erreur analyse similitudes: ", res_simi$message))
-      return(invisible(NULL))
-    }
-    
-    rv$simi_graph <- res_simi$graph
-    rv$simi_layout <- res_simi$layout
-    rv$simi_vertex_freq <- res_simi$vertex_freq
-    rv$simi_method <- res_simi$method
-    rv$simi_seuil_applique <- res_simi$seuil
-    rv$simi_communities <- res_simi$communities
-    rv$simi_terms_used <- res_simi$n_terms_used
-    rv$simi_terms_total <- res_simi$n_terms_total
-    rv$simi_top_terms_requested <- res_simi$top_terms_requested
-    
-    rv$statut <- paste0(
-      "Graphe de similitudes généré — méthode: ", rv$simi_method,
-      ", sommets: ", igraph::vcount(rv$simi_graph),
-      ", arêtes: ", igraph::ecount(rv$simi_graph)
-    )
-    journaliser_evenement(rv$statut)
-    if (igraph::ecount(rv$simi_graph) == 0) {
-      showNotification("Aucune arête après filtrage. Diminuez le seuil ou augmentez le nombre de termes.", type = "warning")
-    } else {
-      showNotification("Graphe de similitudes généré.", type = "message")
-    }
-  })
-  
   output$ui_simi_statut <- renderUI({
     seuil_label <- if (is.null(input$simi_seuil) || is.na(input$simi_seuil)) "aucun" else as.character(input$simi_seuil)
     n_vertices <- if (!is.null(rv$simi_graph) && inherits(rv$simi_graph, "igraph")) igraph::vcount(rv$simi_graph) else 0
