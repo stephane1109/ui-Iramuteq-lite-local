@@ -131,6 +131,7 @@ source("iramuteqlite/simi_igraph.R", encoding = "UTF-8", local = TRUE)
 source("iramuteq/select_mots.R", encoding = "UTF-8", local = TRUE)
 source("lda/lda.R", encoding = "UTF-8", local = TRUE)
 source("lda/prepa_lda.R", encoding = "UTF-8", local = TRUE)
+source("lda/wordcloud_lda.R", encoding = "UTF-8", local = TRUE)
 source("lda/server_lda.R", encoding = "UTF-8", local = TRUE)
 source("ui.R", encoding = "UTF-8", local = TRUE)
 

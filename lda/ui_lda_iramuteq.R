@@ -85,3 +85,27 @@ ui_controles_dynamiques_lda <- function(defaults = NULL) {
     actionButton("lancer_lda_dyn", "Appliquer et relancer LDA", class = "btn-primary")
   )
 }
+
+ui_panel_lda_iramuteq <- function() {
+  shiny::nav_panel(
+    "LDA", value = "lda",
+    shiny::tags$h3("LDA (test)"),
+    shiny::tags$p("Lancez l'analyse principale (CHD) puis ouvrez les paramètres LDA."),
+    shiny::actionButton("ouvrir_param_lda", "Paramètres LDA", class = "btn-primary"),
+    shiny::tags$br(), shiny::tags$br(),
+    shiny::uiOutput("ui_lda_statut"),
+    shiny::plotOutput("plot_lda_top_terms", height = "420px"),
+    shiny::tags$h4("Nuages de mots par topic"),
+    shiny::uiOutput("ui_lda_wordclouds"),
+    shiny::tags$h4("Paramètres LDA (mise à jour dynamique)"),
+    ui_controles_dynamiques_lda(),
+    shiny::tags$h4("Projection des topics (bulle)"),
+    plotly::plotlyOutput("plot_lda_topics_bubble", height = "520px"),
+    shiny::tags$h4("Carte dynamique topics / documents"),
+    plotly::plotlyOutput("plot_lda_doc_topics_heatmap", height = "420px"),
+    shiny::tags$h4("Top termes par topic"),
+    shiny::tableOutput("table_lda_top_terms"),
+    shiny::tags$h4("Distribution topics / documents"),
+    shiny::tableOutput("table_lda_doc_topics")
+  )
+}
