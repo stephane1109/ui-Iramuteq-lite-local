@@ -48,6 +48,16 @@ if (!exists("ui_form_parametres_similitudes", mode = "function", inherits = TRUE
   }
 }
 
+if (!exists("ui_form_parametres_lda", mode = "function", inherits = TRUE)) {
+  app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
+  if (is.null(app_dir) || !nzchar(app_dir)) app_dir <- getwd()
+  chemin_ui_lda_iramuteq <- file.path(app_dir, "lda", "ui_lda_iramuteq.R")
+
+  if (file.exists(chemin_ui_lda_iramuteq)) {
+    source(chemin_ui_lda_iramuteq, encoding = "UTF-8", local = TRUE)
+  }
+}
+
 if (!exists("ui_aide_huggingface", mode = "function")) {
   if (file.exists("help/help.md")) {
     ui_aide_huggingface <- function() {
@@ -405,6 +415,19 @@ ui <- page_navbar(
     tags$h4("AFC des variables étoilées"), plotOutput("plot_afc_vars", height = "720px"),
     tags$h4("Table des modalités projetées"), tableOutput("table_afc_vars"),
     tags$h4("Valeurs propres"), tableOutput("table_afc_eig")
+  ),
+  nav_panel(
+    "LDA", value = "lda",
+    tags$h3("LDA (test)"),
+    tags$p("LDA peut être lancé directement après import du corpus."),
+    actionButton("ouvrir_param_lda", "Paramètres LDA", class = "btn-primary"),
+    tags$br(), tags$br(),
+    uiOutput("ui_lda_statut"),
+    plotOutput("plot_lda_top_terms", height = "420px"),
+    tags$h4("Top termes par topic"),
+    tableOutput("table_lda_top_terms"),
+    tags$h4("Distribution topics / documents"),
+    tableOutput("table_lda_doc_topics")
   ),
 
   ui_panel_similitudes_iramuteq(),
