@@ -129,7 +129,7 @@ source("iramuteqlite/simi.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_graph.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_igraph.R", encoding = "UTF-8", local = TRUE)
 source("iramuteq/select_mots.R", encoding = "UTF-8", local = TRUE)
-source("iramuteqlite/lda.R", encoding = "UTF-8", local = TRUE)
+source("lda/lda.R", encoding = "UTF-8", local = TRUE)
 source("ui.R", encoding = "UTF-8", local = TRUE)
 
 source("iramuteqlite/chd_iramuteq.R", encoding = "UTF-8", local = TRUE)
@@ -554,18 +554,11 @@ server <- function(input, output, session) {
   capturer_parametres_lda <- function() {
     list(
       lda_k = isolate(input$lda_k %||% 4),
-      lda_n_terms = isolate(input$lda_n_terms %||% 10),
-      lda_iter = isolate(input$lda_iter %||% 1000),
-      lda_burnin = isolate(input$lda_burnin %||% 250),
-      lda_thin = isolate(input$lda_thin %||% 100),
-      lda_seed = isolate(input$lda_seed %||% 1234),
-      lda_alpha = isolate(input$lda_alpha %||% ""),
-      lda_eta = isolate(input$lda_eta %||% 0.1),
+      lda_n_terms = isolate(input$lda_n_terms %||% 8),
       lda_langue = isolate(input$lda_langue %||% "fr"),
       lda_min_termfreq = isolate(input$lda_min_termfreq %||% 5),
       lda_remove_numbers = isolate(input$lda_remove_numbers %||% TRUE),
       lda_remove_punct = isolate(input$lda_remove_punct %||% TRUE),
-      lda_remove_symbols = isolate(input$lda_remove_symbols %||% TRUE),
       lda_stopwords_sup = isolate(input$lda_stopwords_sup %||% "")
     )
   }
@@ -747,38 +740,18 @@ server <- function(input, output, session) {
 
     stopwords_sup <- trimws(unlist(strsplit(as.character(input$lda_stopwords_sup %||% ""), ",", fixed = TRUE)))
     stopwords_sup <- stopwords_sup[nzchar(stopwords_sup)]
-    alpha_saisi <- trimws(as.character(input$lda_alpha %||% ""))
-    alpha_val <- if (nzchar(alpha_saisi)) suppressWarnings(as.numeric(alpha_saisi)) else NULL
-
-    if (!is.null(alpha_val) && (is.na(alpha_val) || alpha_val <= 0)) {
-      rv$lda_erreur <- "Paramètre alpha invalide. Utilisez une valeur numérique > 0."
-      rv$lda_statut <- "Test LDA impossible."
-      showNotification(rv$lda_erreur, type = "error")
-      return(invisible(NULL))
-    }
-
     res_lda <- tryCatch(
       {
         args_lda <- list(
           textes = as.character(textes_lda),
           k = as.integer(input$lda_k %||% 4),
-          seed = as.integer(input$lda_seed %||% 1234),
-          iter = as.integer(input$lda_iter %||% 1000),
-          burnin = as.integer(input$lda_burnin %||% 250),
-          thin = as.integer(input$lda_thin %||% 100),
-          eta = as.numeric(input$lda_eta %||% 0.1),
-          n_terms = as.integer(input$lda_n_terms %||% 10),
+          n_terms = as.integer(input$lda_n_terms %||% 8),
           langue = as.character(input$lda_langue %||% "fr"),
           min_termfreq = as.integer(input$lda_min_termfreq %||% 5),
           remove_numbers = isTRUE(input$lda_remove_numbers),
           remove_punct = isTRUE(input$lda_remove_punct),
-          remove_symbols = isTRUE(input$lda_remove_symbols),
           stopwords_sup = stopwords_sup
         )
-
-        if (!is.null(alpha_val)) {
-          args_lda$alpha <- alpha_val
-        }
 
         do.call(lancer_test_lda, args_lda)
       },
@@ -819,6 +792,26 @@ server <- function(input, output, session) {
     req(rv$lda_resultat, rv$lda_resultat$doc_topics)
     head(rv$lda_resultat$doc_topics, 100)
   }, striped = TRUE, bordered = TRUE, spacing = "xs")
+
+  output$plot_lda_top_terms <- renderPlot({
+    req(rv$lda_resultat, rv$lda_resultat$top_terms)
+    termes <- rv$lda_resultat$top_terms
+    req(is.data.frame(termes), nrow(termes) > 0, "prob" %in% names(termes))
+
+    termes$topic <- as.factor(termes$topic)
+    termes$term <- stats::reorder(termes$term, termes$prob)
+
+    ggplot2::ggplot(termes, ggplot2::aes(x = term, y = prob, fill = topic)) +
+      ggplot2::geom_col(show.legend = FALSE) +
+      ggplot2::coord_flip() +
+      ggplot2::facet_wrap(~topic, scales = "free_y") +
+      ggplot2::labs(
+        title = "Top mots par thème (LDA)",
+        x = "Mot",
+        y = "Probabilité du mot dans le thème"
+      ) +
+      ggplot2::theme_minimal(base_size = 12)
+  })
   
   output$ui_simi_statut <- renderUI({
     seuil_label <- if (is.null(input$simi_seuil) || is.na(input$simi_seuil)) "aucun" else as.character(input$simi_seuil)
