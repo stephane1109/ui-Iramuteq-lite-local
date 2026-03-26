@@ -402,7 +402,6 @@ ui <- page_navbar(
     tableOutput("table_annotation_dict")
   ),
   nav_panel("CHD", value = "resultats_chd", ui_resultats_chd_iramuteq()),
-  ui_panel_lda_iramuteq(),
   nav_panel(
     "AFC", value = "afc",
     tags$h3("AFC"), uiOutput("ui_afc_statut"), uiOutput("ui_afc_erreurs"),
@@ -420,6 +419,7 @@ ui <- page_navbar(
     tags$h4("Table des modalités projetées"), tableOutput("table_afc_vars"),
     tags$h4("Valeurs propres"), tableOutput("table_afc_eig")
   ),
+  ui_panel_lda_iramuteq(),
   ui_panel_similitudes_iramuteq(),
 
   nav_panel("Aide", value = "aide", ui_aide_huggingface()),
