@@ -224,6 +224,10 @@ register_lda_module <- function(input, output, session, rv) {
       ggplot2::theme_minimal(base_size = 12)
   })
 
+  if (exists("register_lda_wordcloud_outputs", mode = "function", inherits = TRUE)) {
+    register_lda_wordcloud_outputs(output = output, rv = rv)
+  }
+
   output$plot_lda_topics_bubble <- plotly::renderPlotly({
     req(rv$lda_resultat, rv$lda_resultat$topic_term_matrix, rv$lda_resultat$doc_topics)
     mat_topics <- rv$lda_resultat$topic_term_matrix
