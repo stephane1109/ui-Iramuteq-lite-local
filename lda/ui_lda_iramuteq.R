@@ -8,12 +8,12 @@ ui_form_parametres_lda <- function(defaults = NULL) {
 
   tagList(
     tags$p(
-      "Version très simple: choisissez seulement le nombre de thèmes.",
+      "Choisissez seulement le nombre de thèmes.",
       style = "color:#444; margin-bottom:10px;"
     ),
     numericInput("lda_k", "Nombre de thèmes (topics)", value = valeur_defaut("lda_k", 4), min = 2, step = 1),
     tags$p(
-      "k = nombre de thèmes latents recherchés dans le corpus (plus k est grand, plus les thèmes sont fins).",
+      "k = nombre de thèmes latents recherchés dans le corpus",
       style = "color:#c00; font-size:0.9em; margin-top:-8px; margin-bottom:10px;"
     ),
     numericInput("lda_n_terms", "Mots affichés par thème", value = valeur_defaut("lda_n_terms", 8), min = 3, step = 1),
