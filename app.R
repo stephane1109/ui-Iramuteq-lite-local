@@ -129,6 +129,7 @@ source("iramuteqlite/simi.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_graph.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_igraph.R", encoding = "UTF-8", local = TRUE)
 source("iramuteq/select_mots.R", encoding = "UTF-8", local = TRUE)
+source("iramuteqlite/lda.R", encoding = "UTF-8", local = TRUE)
 source("ui.R", encoding = "UTF-8", local = TRUE)
 
 source("iramuteqlite/chd_iramuteq.R", encoding = "UTF-8", local = TRUE)
@@ -303,7 +304,10 @@ server <- function(input, output, session) {
     simi_terms_total = 0L,
     simi_top_terms_requested = 100L,
     
-    parametres_analyse = list()
+    parametres_analyse = list(),
+    lda_resultat = NULL,
+    lda_statut = "Aucun test LDA exécuté.",
+    lda_erreur = NULL
   )
   
   app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
@@ -547,6 +551,40 @@ server <- function(input, output, session) {
     ))
   }
 
+  capturer_parametres_lda <- function() {
+    list(
+      lda_k = isolate(input$lda_k %||% 4),
+      lda_n_terms = isolate(input$lda_n_terms %||% 10),
+      lda_iter = isolate(input$lda_iter %||% 1000),
+      lda_burnin = isolate(input$lda_burnin %||% 250),
+      lda_thin = isolate(input$lda_thin %||% 100),
+      lda_seed = isolate(input$lda_seed %||% 1234),
+      lda_alpha = isolate(input$lda_alpha %||% ""),
+      lda_eta = isolate(input$lda_eta %||% 0.1),
+      lda_langue = isolate(input$lda_langue %||% "fr"),
+      lda_min_termfreq = isolate(input$lda_min_termfreq %||% 5),
+      lda_remove_numbers = isolate(input$lda_remove_numbers %||% TRUE),
+      lda_remove_punct = isolate(input$lda_remove_punct %||% TRUE),
+      lda_remove_symbols = isolate(input$lda_remove_symbols %||% TRUE),
+      lda_stopwords_sup = isolate(input$lda_stopwords_sup %||% "")
+    )
+  }
+
+  ouvrir_modal_parametres_lda <- function() {
+    defaults <- capturer_parametres_lda()
+
+    showModal(modalDialog(
+      title = "Paramètres LDA",
+      easyClose = TRUE,
+      size = "m",
+      ui_form_parametres_lda(defaults = defaults),
+      footer = tagList(
+        modalButton("Fermer"),
+        actionButton("lancer_lda", "Lancer le test LDA", class = "btn-primary")
+      )
+    ))
+  }
+
   journaliser_evenement <- function(message) {
     if (exists("ajouter_log", mode = "function", inherits = TRUE)) {
       ajouter_log(rv, message)
@@ -601,6 +639,10 @@ server <- function(input, output, session) {
   
   observeEvent(input$ouvrir_param_chd, {
     ouvrir_modal_parametres()
+  })
+
+  observeEvent(input$ouvrir_param_lda, {
+    ouvrir_modal_parametres_lda()
   })
 
   observeEvent(input$ouvrir_param_simi, {
@@ -691,6 +733,92 @@ server <- function(input, output, session) {
       showNotification("Graphe de similitudes généré.", type = "message")
     }
   })
+
+  observeEvent(input$lancer_lda, {
+    removeModal()
+
+    textes_lda <- rv$textes_indexation
+    if (is.null(textes_lda) || !length(textes_lda)) {
+      rv$lda_erreur <- "Aucun texte disponible pour LDA. Lancez d'abord l'analyse principale."
+      rv$lda_statut <- "Test LDA impossible."
+      showNotification(rv$lda_erreur, type = "warning")
+      return(invisible(NULL))
+    }
+
+    stopwords_sup <- trimws(unlist(strsplit(as.character(input$lda_stopwords_sup %||% ""), ",", fixed = TRUE)))
+    stopwords_sup <- stopwords_sup[nzchar(stopwords_sup)]
+    alpha_saisi <- trimws(as.character(input$lda_alpha %||% ""))
+    alpha_val <- if (nzchar(alpha_saisi)) suppressWarnings(as.numeric(alpha_saisi)) else NULL
+
+    if (!is.null(alpha_val) && (is.na(alpha_val) || alpha_val <= 0)) {
+      rv$lda_erreur <- "Paramètre alpha invalide. Utilisez une valeur numérique > 0."
+      rv$lda_statut <- "Test LDA impossible."
+      showNotification(rv$lda_erreur, type = "error")
+      return(invisible(NULL))
+    }
+
+    res_lda <- tryCatch(
+      {
+        args_lda <- list(
+          textes = as.character(textes_lda),
+          k = as.integer(input$lda_k %||% 4),
+          seed = as.integer(input$lda_seed %||% 1234),
+          iter = as.integer(input$lda_iter %||% 1000),
+          burnin = as.integer(input$lda_burnin %||% 250),
+          thin = as.integer(input$lda_thin %||% 100),
+          eta = as.numeric(input$lda_eta %||% 0.1),
+          n_terms = as.integer(input$lda_n_terms %||% 10),
+          langue = as.character(input$lda_langue %||% "fr"),
+          min_termfreq = as.integer(input$lda_min_termfreq %||% 5),
+          remove_numbers = isTRUE(input$lda_remove_numbers),
+          remove_punct = isTRUE(input$lda_remove_punct),
+          remove_symbols = isTRUE(input$lda_remove_symbols),
+          stopwords_sup = stopwords_sup
+        )
+
+        if (!is.null(alpha_val)) {
+          args_lda$alpha <- alpha_val
+        }
+
+        do.call(lancer_test_lda, args_lda)
+      },
+      error = function(e) e
+    )
+
+    if (inherits(res_lda, "error")) {
+      rv$lda_resultat <- NULL
+      rv$lda_erreur <- conditionMessage(res_lda)
+      rv$lda_statut <- "Échec du test LDA."
+      showNotification(paste("Erreur LDA:", rv$lda_erreur), type = "error", duration = 8)
+      return(invisible(NULL))
+    }
+
+    rv$lda_resultat <- res_lda
+    rv$lda_erreur <- NULL
+    rv$lda_statut <- paste0(
+      "LDA exécuté avec succès (k=", input$lda_k %||% 4,
+      ", documents=", length(textes_lda),
+      ", termes=", ncol(res_lda$dtm), ")."
+    )
+    showNotification("Test LDA terminé.", type = "message")
+  })
+
+  output$ui_lda_statut <- renderUI({
+    if (!is.null(rv$lda_erreur) && nzchar(rv$lda_erreur)) {
+      return(tags$div(style = "color:#b30000; font-weight:600;", paste("Statut:", rv$lda_statut, "-", rv$lda_erreur)))
+    }
+    tags$div(style = "color:#1e5aa8; font-weight:600;", paste("Statut:", rv$lda_statut))
+  })
+
+  output$table_lda_top_terms <- renderTable({
+    req(rv$lda_resultat, rv$lda_resultat$top_terms)
+    head(rv$lda_resultat$top_terms, 100)
+  }, striped = TRUE, bordered = TRUE, spacing = "xs")
+
+  output$table_lda_doc_topics <- renderTable({
+    req(rv$lda_resultat, rv$lda_resultat$doc_topics)
+    head(rv$lda_resultat$doc_topics, 100)
+  }, striped = TRUE, bordered = TRUE, spacing = "xs")
   
   output$ui_simi_statut <- renderUI({
     seuil_label <- if (is.null(input$simi_seuil) || is.na(input$simi_seuil)) "aucun" else as.character(input$simi_seuil)

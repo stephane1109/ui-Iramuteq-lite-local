@@ -3,7 +3,7 @@ required_packages <- c(
   "igraph", "dplyr", "remotes", "rgexf", "Matrix", "factoextra", "FactoMineR",
   "ggplot2", "plotly", "visNetwork", "DT", "jsonlite", "sna", "intergraph",
   "shinyFiles",
-  "colorspace", "rgl", "reticulate"
+  "colorspace", "rgl", "reticulate", "topicmodels"
 )
 
 installed_packages <- rownames(installed.packages())
