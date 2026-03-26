@@ -232,6 +232,44 @@ ui_form_parametres_analyse <- function(defaults = NULL) {
   )
 }
 
+ui_form_parametres_lda <- function(defaults = NULL) {
+  valeur_defaut <- function(id, fallback) {
+    if (is.null(defaults) || is.null(defaults[[id]]) || (length(defaults[[id]]) == 1 && is.na(defaults[[id]]))) {
+      return(fallback)
+    }
+    defaults[[id]]
+  }
+
+  tagList(
+    tags$div(class = "sidebar-section-title", "Paramètres LDA"),
+    numericInput("lda_k", "Nombre de topics (k)", value = valeur_defaut("lda_k", 4), min = 2, step = 1),
+    numericInput("lda_n_terms", "Top termes par topic", value = valeur_defaut("lda_n_terms", 10), min = 3, step = 1),
+    numericInput("lda_iter", "Nombre d'itérations", value = valeur_defaut("lda_iter", 1000), min = 100, step = 100),
+    numericInput("lda_burnin", "Burn-in", value = valeur_defaut("lda_burnin", 250), min = 0, step = 50),
+    numericInput("lda_thin", "Thin", value = valeur_defaut("lda_thin", 100), min = 1, step = 10),
+    numericInput("lda_seed", "Seed", value = valeur_defaut("lda_seed", 1234), min = 1, step = 1),
+    textInput("lda_alpha", "Alpha (laisser vide = 50/k)", value = valeur_defaut("lda_alpha", "")),
+    numericInput("lda_eta", "Eta (delta)", value = valeur_defaut("lda_eta", 0.1), min = 0.001, step = 0.01),
+    tags$hr(),
+    tags$div(class = "sidebar-section-title", "Préparation DTM"),
+    selectInput(
+      "lda_langue",
+      "Langue stopwords",
+      choices = c("fr", "en", "es", "de", "it", "pt"),
+      selected = valeur_defaut("lda_langue", "fr")
+    ),
+    numericInput("lda_min_termfreq", "Fréquence minimale des termes", value = valeur_defaut("lda_min_termfreq", 5), min = 1, step = 1),
+    checkboxInput("lda_remove_numbers", "Supprimer les chiffres", value = valeur_defaut("lda_remove_numbers", TRUE)),
+    checkboxInput("lda_remove_punct", "Supprimer la ponctuation", value = valeur_defaut("lda_remove_punct", TRUE)),
+    checkboxInput("lda_remove_symbols", "Supprimer les symboles", value = valeur_defaut("lda_remove_symbols", TRUE)),
+    textInput(
+      "lda_stopwords_sup",
+      "Stopwords supplémentaires (séparés par des virgules)",
+      value = valeur_defaut("lda_stopwords_sup", "")
+    )
+  )
+}
+
 if (!exists("REGEX_CARACTERES_A_SUPPRIMER", inherits = TRUE)) {
   app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
   if (is.null(app_dir) || !nzchar(app_dir)) app_dir <- getwd()
@@ -399,6 +437,19 @@ ui <- page_navbar(
     tableOutput("table_annotation_dict")
   ),
   nav_panel("CHD", value = "resultats_chd", ui_resultats_chd_iramuteq()),
+  nav_panel(
+    "LDA", value = "lda",
+    tags$h3("LDA (test)"),
+    tags$p("Lancez l'analyse principale (CHD) puis ouvrez les paramètres LDA."),
+    actionButton("ouvrir_param_lda", "Paramètres LDA", class = "btn-primary"),
+    tags$br(), tags$br(),
+    uiOutput("ui_lda_statut"),
+    plotOutput("plot_lda_top_terms", height = "420px"),
+    tags$h4("Top termes par topic"),
+    tableOutput("table_lda_top_terms"),
+    tags$h4("Distribution topics / documents"),
+    tableOutput("table_lda_doc_topics")
+  ),
   nav_panel(
     "AFC", value = "afc",
     tags$h3("AFC"), uiOutput("ui_afc_statut"), uiOutput("ui_afc_erreurs"),
