@@ -48,7 +48,8 @@ if (!exists("ui_form_parametres_similitudes", mode = "function", inherits = TRUE
   }
 }
 
-if (!exists("ui_form_parametres_lda", mode = "function", inherits = TRUE)) {
+if (!exists("ui_form_parametres_lda", mode = "function", inherits = TRUE) ||
+    !exists("ui_controles_dynamiques_lda", mode = "function", inherits = TRUE)) {
   app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
   if (is.null(app_dir) || !nzchar(app_dir)) app_dir <- getwd()
   chemin_ui_lda_iramuteq <- file.path(app_dir, "lda", "ui_lda_iramuteq.R")
@@ -409,14 +410,11 @@ ui <- page_navbar(
     uiOutput("ui_lda_statut"),
     plotOutput("plot_lda_top_terms", height = "420px"),
     tags$h4("Paramètres LDA (mise à jour dynamique)"),
-    tags$div(
-      style = "display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:10px;",
-      tags$div(style = "min-width:220px;", numericInput("lda_k_dyn", "Nombre de topics (k)", value = 4, min = 2, step = 1)),
-      tags$div(style = "min-width:220px;", numericInput("lda_n_terms_dyn", "Mots affichés / topic", value = 8, min = 3, step = 1)),
-      actionButton("lancer_lda_dyn", "Appliquer et relancer LDA", class = "btn-primary")
-    ),
+    ui_controles_dynamiques_lda(),
     tags$h4("Projection des topics (bulle)"),
     plotlyOutput("plot_lda_topics_bubble", height = "520px"),
+    tags$h4("Carte dynamique topics / documents"),
+    plotlyOutput("plot_lda_doc_topics_heatmap", height = "420px"),
     tags$h4("Top termes par topic"),
     tableOutput("table_lda_top_terms"),
     tags$h4("Distribution topics / documents"),

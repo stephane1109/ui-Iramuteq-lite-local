@@ -129,21 +129,25 @@ register_lda_module <- function(input, output, session, rv) {
 
   output$table_lda_top_terms <- renderTable({
     req(rv$lda_resultat, rv$lda_resultat$top_terms)
-    head(rv$lda_resultat$top_terms, 100)
+    termes <- rv$lda_resultat$top_terms
+    if ("prob" %in% names(termes)) {
+      termes$prob <- signif(as.numeric(termes$prob), 6)
+    }
+    head(termes, 100)
   }, striped = TRUE, bordered = TRUE, spacing = "xs")
 
   output$table_lda_doc_topics <- renderTable({
     req(rv$lda_resultat, rv$lda_resultat$doc_topics, rv$lda_doc_texts)
     doc_topics <- rv$lda_resultat$doc_topics
-    doc_topics <- merge(doc_topics, rv$lda_doc_texts, by = "doc_id", all.x = TRUE, sort = FALSE)
-    if ("segment_texte" %in% names(doc_topics)) {
-      doc_topics$doc_id <- ifelse(
-        nzchar(as.character(doc_topics$segment_texte)),
-        as.character(doc_topics$segment_texte),
-        as.character(doc_topics$doc_id)
-      )
-      doc_topics$segment_texte <- NULL
+    segments_ref <- rv$lda_doc_texts
+    seg_lookup <- setNames(as.character(segments_ref$segment_texte), as.character(segments_ref$doc_id))
+    seg <- unname(seg_lookup[as.character(doc_topics$doc_id)])
+    if (anyNA(seg)) {
+      idx_text <- suppressWarnings(as.integer(gsub("^text", "", as.character(doc_topics$doc_id))))
+      idx_ok <- !is.na(idx_text) & idx_text >= 1 & idx_text <= nrow(segments_ref)
+      seg[idx_ok & is.na(seg)] <- as.character(segments_ref$segment_texte[idx_text[idx_ok & is.na(seg)]])
     }
+    doc_topics$doc_id <- ifelse(!is.na(seg) & nzchar(seg), seg, as.character(doc_topics$doc_id))
     topic_cols <- grep("^\\d+$|^Topic_", names(doc_topics), value = TRUE)
     if (!length(topic_cols)) {
       topic_cols <- setdiff(names(doc_topics), "doc_id")
@@ -156,6 +160,47 @@ register_lda_module <- function(input, output, session, rv) {
     }
     head(doc_topics, 100)
   }, striped = TRUE, bordered = TRUE, spacing = "xs")
+
+  output$plot_lda_doc_topics_heatmap <- plotly::renderPlotly({
+    req(rv$lda_resultat, rv$lda_resultat$doc_topics, rv$lda_doc_texts)
+    doc_topics <- rv$lda_resultat$doc_topics
+    topic_cols <- grep("^\\d+$|^Topic_", names(doc_topics), value = TRUE)
+    if (!length(topic_cols)) topic_cols <- setdiff(names(doc_topics), "doc_id")
+    req(length(topic_cols) > 0)
+
+    segments_ref <- rv$lda_doc_texts
+    seg_lookup <- setNames(as.character(segments_ref$segment_texte), as.character(segments_ref$doc_id))
+    y_labels <- unname(seg_lookup[as.character(doc_topics$doc_id)])
+    if (anyNA(y_labels)) {
+      idx_text <- suppressWarnings(as.integer(gsub("^text", "", as.character(doc_topics$doc_id))))
+      idx_ok <- !is.na(idx_text) & idx_text >= 1 & idx_text <= nrow(segments_ref)
+      y_labels[idx_ok & is.na(y_labels)] <- as.character(segments_ref$segment_texte[idx_text[idx_ok & is.na(y_labels)]])
+    }
+    y_labels[is.na(y_labels) | !nzchar(y_labels)] <- as.character(doc_topics$doc_id[is.na(y_labels) | !nzchar(y_labels)])
+    y_labels <- substr(y_labels, 1, 90)
+
+    z <- as.matrix(doc_topics[, topic_cols, drop = FALSE])
+    z <- round(z, 4)
+
+    plotly::plot_ly(
+      x = topic_cols,
+      y = y_labels,
+      z = z,
+      type = "heatmap",
+      colorscale = "Blues",
+      hovertemplate = paste0(
+        "Document: %{y}<br>",
+        "Topic: %{x}<br>",
+        "Probabilité: %{z}<extra></extra>"
+      )
+    ) %>%
+      plotly::layout(
+        title = "Distribution topics / documents (interactive)",
+        xaxis = list(title = "Topics"),
+        yaxis = list(title = "Segments de texte", automargin = TRUE)
+      ) %>%
+      plotly::config(displaylogo = FALSE)
+  })
 
   output$plot_lda_top_terms <- renderPlot({
     req(rv$lda_resultat, rv$lda_resultat$top_terms)

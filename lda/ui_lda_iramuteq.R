@@ -45,3 +45,25 @@ ui_form_parametres_lda <- function(defaults = NULL) {
     )
   )
 }
+
+ui_controles_dynamiques_lda <- function(defaults = NULL) {
+  valeur_defaut <- function(id, fallback) {
+    if (is.null(defaults) || is.null(defaults[[id]]) || (length(defaults[[id]]) == 1 && is.na(defaults[[id]]))) {
+      return(fallback)
+    }
+    defaults[[id]]
+  }
+
+  tags$div(
+    style = "display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:10px;",
+    tags$div(
+      style = "min-width:220px;",
+      numericInput("lda_k_dyn", "Nombre de topics (k)", value = valeur_defaut("lda_k_dyn", 4), min = 2, step = 1)
+    ),
+    tags$div(
+      style = "min-width:220px;",
+      numericInput("lda_n_terms_dyn", "Mots affichés / topic", value = valeur_defaut("lda_n_terms_dyn", 8), min = 3, step = 1)
+    ),
+    actionButton("lancer_lda_dyn", "Appliquer et relancer LDA", class = "btn-primary")
+  )
+}
