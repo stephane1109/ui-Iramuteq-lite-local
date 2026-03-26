@@ -472,6 +472,15 @@ ui <- page_navbar(
     tags$h3("LDA (test)"),
     tags$p("LDA peut être lancé directement après import du corpus."),
     tags$p("Topic = thème latent (groupe de mots qui co-occurent). Doc = une unité texte du corpus (ligne/segment)."),
+    tags$details(
+      tags$summary("Définition des paramètres LDA"),
+      tags$ul(
+        tags$li(tags$b("k : "), "nombre de thèmes recherchés par le modèle."),
+        tags$li(tags$b("n_terms : "), "nombre de mots affichés pour décrire chaque thème."),
+        tags$li(tags$b("Retirer stopwords : "), "supprime les mots-outils très fréquents."),
+        tags$li(tags$b("Filtrage morphosyntaxique : "), "conserve seulement les catégories POS sélectionnées (NOM, VER, ADJ...).")
+      )
+    ),
     actionButton("ouvrir_param_lda", "Paramètres LDA", class = "btn-primary"),
     tags$br(), tags$br(),
     uiOutput("ui_lda_statut"),
