@@ -23,6 +23,10 @@ preparer_dtm_lda <- function(textes,
   }
 
   textes <- as.character(textes)
+  if (is.null(names(textes)) || length(names(textes)) != length(textes) || any(!nzchar(names(textes)))) {
+    names(textes) <- paste0("doc_", seq_along(textes))
+  }
+
   textes <- textes[!is.na(textes)]
   textes <- trimws(textes)
   textes <- textes[nzchar(textes)]
