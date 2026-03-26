@@ -1,36 +1,5 @@
 register_lda_module <- function(input, output, session, rv) {
-  capturer_parametres_lda <- function() {
-    list(
-      lda_k = isolate(input$lda_k %||% 4),
-      lda_n_terms = isolate(input$lda_n_terms %||% 8),
-      lda_retirer_stopwords = isolate(input$lda_retirer_stopwords %||% FALSE),
-      lda_filtrage_morpho = isolate(input$lda_filtrage_morpho %||% FALSE),
-      lda_pos_keep = isolate(input$lda_pos_keep %||% c("NOM", "VER", "ADJ"))
-    )
-  }
-
-  ouvrir_modal_parametres_lda <- function() {
-    defaults <- capturer_parametres_lda()
-
-    showModal(modalDialog(
-      title = "Paramètres LDA",
-      easyClose = TRUE,
-      size = "m",
-      ui_form_parametres_lda(defaults = defaults),
-      footer = tagList(
-        modalButton("Fermer"),
-        actionButton("lancer_lda", "Lancer le test LDA", class = "btn-primary")
-      )
-    ))
-  }
-
-  observeEvent(input$ouvrir_param_lda, {
-    ouvrir_modal_parametres_lda()
-  })
-
-  observeEvent(input$lancer_lda, {
-    removeModal()
-
+  executer_test_lda <- function(k, n_terms) {
     lire_textes_corpus_lda <- function() {
       if (!is.null(rv$textes_indexation) && length(rv$textes_indexation)) {
         return(as.character(rv$textes_indexation))
@@ -65,8 +34,8 @@ register_lda_module <- function(input, output, session, rv) {
       {
         args_lda <- list(
           textes = as.character(textes_lda),
-          k = as.integer(input$lda_k %||% 4),
-          n_terms = as.integer(input$lda_n_terms %||% 8),
+          k = as.integer(k %||% 4),
+          n_terms = as.integer(n_terms %||% 8),
           min_termfreq = 1L,
           remove_numbers = FALSE,
           remove_punct = TRUE,
@@ -98,11 +67,57 @@ register_lda_module <- function(input, output, session, rv) {
       stringsAsFactors = FALSE
     )
     rv$lda_statut <- paste0(
-      "LDA exécuté avec succès (k=", input$lda_k %||% 4,
+      "LDA exécuté avec succès (k=", as.integer(k %||% 4),
       ", documents=", length(textes_lda),
       ", termes=", ncol(res_lda$dtm), ")."
     )
+    updateNumericInput(session, "lda_k_dyn", value = as.integer(k %||% 4))
+    updateNumericInput(session, "lda_n_terms_dyn", value = as.integer(n_terms %||% 8))
     showNotification("Test LDA terminé.", type = "message")
+  }
+
+  capturer_parametres_lda <- function() {
+    list(
+      lda_k = isolate(input$lda_k_dyn %||% input$lda_k %||% 4),
+      lda_n_terms = isolate(input$lda_n_terms_dyn %||% input$lda_n_terms %||% 8),
+      lda_retirer_stopwords = isolate(input$lda_retirer_stopwords %||% FALSE),
+      lda_filtrage_morpho = isolate(input$lda_filtrage_morpho %||% FALSE),
+      lda_pos_keep = isolate(input$lda_pos_keep %||% c("NOM", "VER", "ADJ"))
+    )
+  }
+
+  ouvrir_modal_parametres_lda <- function() {
+    defaults <- capturer_parametres_lda()
+
+    showModal(modalDialog(
+      title = "Paramètres LDA",
+      easyClose = TRUE,
+      size = "m",
+      ui_form_parametres_lda(defaults = defaults),
+      footer = tagList(
+        modalButton("Fermer"),
+        actionButton("lancer_lda", "Lancer le test LDA", class = "btn-primary")
+      )
+    ))
+  }
+
+  observeEvent(input$ouvrir_param_lda, {
+    ouvrir_modal_parametres_lda()
+  })
+
+  observeEvent(input$lancer_lda, {
+    removeModal()
+    executer_test_lda(
+      k = as.integer(input$lda_k %||% input$lda_k_dyn %||% 4),
+      n_terms = as.integer(input$lda_n_terms %||% input$lda_n_terms_dyn %||% 8)
+    )
+  })
+
+  observeEvent(input$lancer_lda_dyn, {
+    executer_test_lda(
+      k = as.integer(input$lda_k_dyn %||% input$lda_k %||% 4),
+      n_terms = as.integer(input$lda_n_terms_dyn %||% input$lda_n_terms %||% 8)
+    )
   })
 
   output$ui_lda_statut <- renderUI({
@@ -118,8 +133,17 @@ register_lda_module <- function(input, output, session, rv) {
   }, striped = TRUE, bordered = TRUE, spacing = "xs")
 
   output$table_lda_doc_topics <- renderTable({
-    req(rv$lda_resultat, rv$lda_resultat$doc_topics)
+    req(rv$lda_resultat, rv$lda_resultat$doc_topics, rv$lda_doc_texts)
     doc_topics <- rv$lda_resultat$doc_topics
+    doc_topics <- merge(doc_topics, rv$lda_doc_texts, by = "doc_id", all.x = TRUE, sort = FALSE)
+    if ("segment_texte" %in% names(doc_topics)) {
+      doc_topics$doc_id <- ifelse(
+        nzchar(as.character(doc_topics$segment_texte)),
+        as.character(doc_topics$segment_texte),
+        as.character(doc_topics$doc_id)
+      )
+      doc_topics$segment_texte <- NULL
+    }
     topic_cols <- grep("^\\d+$|^Topic_", names(doc_topics), value = TRUE)
     if (!length(topic_cols)) {
       topic_cols <- setdiff(names(doc_topics), "doc_id")
@@ -153,7 +177,7 @@ register_lda_module <- function(input, output, session, rv) {
       ggplot2::theme_minimal(base_size = 12)
   })
 
-  output$plot_lda_topics_bubble <- renderPlot({
+  output$plot_lda_topics_bubble <- plotly::renderPlotly({
     req(rv$lda_resultat, rv$lda_resultat$topic_term_matrix, rv$lda_resultat$doc_topics)
     mat_topics <- rv$lda_resultat$topic_term_matrix
     req(nrow(mat_topics) >= 2, ncol(mat_topics) >= 2)
@@ -175,18 +199,42 @@ register_lda_module <- function(input, output, session, rv) {
     )
     df_plot$prevalence[is.na(df_plot$prevalence)] <- 0
 
-    ggplot2::ggplot(df_plot, ggplot2::aes(x = x, y = y, size = prevalence, label = topic, color = topic)) +
+    pad_ratio <- 0.20
+
+    x_span <- diff(range(df_plot$x, na.rm = TRUE))
+    y_span <- diff(range(df_plot$y, na.rm = TRUE))
+    x_pad <- ifelse(is.finite(x_span) && x_span > 0, x_span * pad_ratio, 0.5)
+    y_pad <- ifelse(is.finite(y_span) && y_span > 0, y_span * pad_ratio, 0.5)
+    x_limits <- c(min(df_plot$x, na.rm = TRUE) - x_pad, max(df_plot$x, na.rm = TRUE) + x_pad)
+    y_limits <- c(min(df_plot$y, na.rm = TRUE) - y_pad, max(df_plot$y, na.rm = TRUE) + y_pad)
+
+    bubble_size_max <- 32
+
+    p <- ggplot2::ggplot(df_plot, ggplot2::aes(
+      x = x, y = y, size = prevalence, label = topic, color = topic,
+      text = paste0(
+        "Topic: ", topic,
+        "<br>Prévalence: ", round(prevalence, 4),
+        "<br>Axe 1: ", round(x, 4),
+        "<br>Axe 2: ", round(y, 4)
+      )
+    )) +
       ggplot2::geom_point(alpha = 0.7) +
       ggplot2::geom_text(vjust = -0.9, show.legend = FALSE) +
-      ggplot2::scale_size_area(max_size = 20) +
+      ggplot2::scale_size_area(max_size = bubble_size_max) +
+      ggplot2::coord_cartesian(xlim = x_limits, ylim = y_limits, clip = "off") +
       ggplot2::labs(
         title = "Projection des topics (bulle)",
-        subtitle = "Position: projection PCA des distributions de mots ; taille: prévalence moyenne dans les documents",
+        subtitle = "Position: projection PCA des distributions de mots ; taille: prévalence moyenne dans les documents (zoom/drag interactif disponible)",
         x = "Axe 1",
         y = "Axe 2",
         size = "Prévalence"
       ) +
-      ggplot2::theme_minimal(base_size = 12)
+      ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::theme(plot.margin = grid::unit(c(8, 20, 8, 8), "pt"))
+
+    plotly::ggplotly(p, tooltip = "text") %>%
+      plotly::config(displaylogo = FALSE)
   })
 
   output$table_lda_segments <- renderTable({
