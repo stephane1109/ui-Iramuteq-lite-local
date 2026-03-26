@@ -1,24 +1,23 @@
 register_lda_module <- function(input, output, session, rv) {
   executer_test_lda <- function(k, n_terms) {
-    lire_textes_corpus_lda <- function() {
-      if (!is.null(rv$textes_indexation) && length(rv$textes_indexation)) {
-        return(as.character(rv$textes_indexation))
-      }
-
+    lire_textes_corpus_lda <- function(segment_size) {
       datapath <- tryCatch(input$fichier_corpus$datapath, error = function(e) NULL)
       if (is.null(datapath) || !nzchar(datapath) || !file.exists(datapath)) {
         return(character(0))
       }
 
-      lignes <- tryCatch(readLines(datapath, warn = FALSE, encoding = "UTF-8"), error = function(e) character(0))
-      if (!length(lignes)) return(character(0))
+      if (!exists("preparer_textes_lda_depuis_fichier", mode = "function", inherits = TRUE)) {
+        stop("Fonction de préparation LDA introuvable (preparer_textes_lda_depuis_fichier).")
+      }
 
-      lignes <- trimws(gsub("\r", "", lignes, fixed = TRUE))
-      lignes <- lignes[nzchar(lignes)]
-      lignes
+      preparer_textes_lda_depuis_fichier(
+        chemin_fichier = datapath,
+        segment_size = segment_size
+      )
     }
 
-    textes_lda <- lire_textes_corpus_lda()
+    segment_size_lda <- as.integer(input$lda_segment_size_dyn %||% input$lda_segment_size %||% 40)
+    textes_lda <- lire_textes_corpus_lda(segment_size = segment_size_lda)
     if (is.null(textes_lda) || !length(textes_lda)) {
       rv$lda_erreur <- "Aucun texte disponible pour LDA. Importez d'abord un fichier corpus."
       rv$lda_statut <- "Test LDA impossible."
@@ -68,11 +67,13 @@ register_lda_module <- function(input, output, session, rv) {
     )
     rv$lda_statut <- paste0(
       "LDA exécuté avec succès (k=", as.integer(k %||% 4),
-      ", documents=", length(textes_lda),
+      ", segments=", length(textes_lda),
+      ", taille_segment=", as.integer(segment_size_lda),
       ", termes=", ncol(res_lda$dtm), ")."
     )
     updateNumericInput(session, "lda_k_dyn", value = as.integer(k %||% 4))
     updateNumericInput(session, "lda_n_terms_dyn", value = as.integer(n_terms %||% 8))
+    updateNumericInput(session, "lda_segment_size_dyn", value = as.integer(segment_size_lda %||% 40))
     showNotification("Test LDA terminé.", type = "message")
   }
 
@@ -82,7 +83,8 @@ register_lda_module <- function(input, output, session, rv) {
       lda_n_terms = isolate(input$lda_n_terms_dyn %||% input$lda_n_terms %||% 8),
       lda_retirer_stopwords = isolate(input$lda_retirer_stopwords %||% FALSE),
       lda_filtrage_morpho = isolate(input$lda_filtrage_morpho %||% FALSE),
-      lda_pos_keep = isolate(input$lda_pos_keep %||% c("NOM", "VER", "ADJ"))
+      lda_pos_keep = isolate(input$lda_pos_keep %||% c("NOM", "VER", "ADJ")),
+      lda_segment_size = isolate(input$lda_segment_size_dyn %||% input$lda_segment_size %||% 40)
     )
   }
 
