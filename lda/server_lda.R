@@ -1,6 +1,6 @@
 register_lda_module <- function(input, output, session, rv) {
-  executer_test_lda <- function(k, n_terms) {
-    lire_textes_corpus_lda <- function(segment_size) {
+  executer_test_lda <- function(k, n_terms, segment_size = NULL, segmenter_sur_ponctuation_forte = NULL) {
+    lire_textes_corpus_lda <- function(segment_size, segmenter_sur_ponctuation_forte) {
       datapath <- tryCatch(input$fichier_corpus$datapath, error = function(e) NULL)
       if (is.null(datapath) || !nzchar(datapath) || !file.exists(datapath)) {
         return(character(0))
@@ -12,12 +12,21 @@ register_lda_module <- function(input, output, session, rv) {
 
       preparer_textes_lda_depuis_fichier(
         chemin_fichier = datapath,
-        segment_size = segment_size
+        segment_size = segment_size,
+        segmenter_sur_ponctuation_forte = segmenter_sur_ponctuation_forte
       )
     }
 
-    segment_size_lda <- as.integer(input$lda_segment_size_dyn %||% input$lda_segment_size %||% 40)
-    textes_lda <- lire_textes_corpus_lda(segment_size = segment_size_lda)
+    segment_size_lda <- as.integer(segment_size %||% input$lda_segment_size_dyn %||% input$lda_segment_size %||% 40)
+    segmenter_sur_ponctuation_forte_lda <- isTRUE(
+      segmenter_sur_ponctuation_forte %||%
+        input$lda_segmenter_sur_ponctuation_forte_dyn %||%
+        input$lda_segmenter_sur_ponctuation_forte
+    )
+    textes_lda <- lire_textes_corpus_lda(
+      segment_size = segment_size_lda,
+      segmenter_sur_ponctuation_forte = segmenter_sur_ponctuation_forte_lda
+    )
     if (is.null(textes_lda) || !length(textes_lda)) {
       rv$lda_erreur <- "Aucun texte disponible pour LDA. Importez d'abord un fichier corpus."
       rv$lda_statut <- "Test LDA impossible."
@@ -69,11 +78,17 @@ register_lda_module <- function(input, output, session, rv) {
       "LDA exécuté avec succès (k=", as.integer(k %||% 4),
       ", segments=", length(textes_lda),
       ", taille_segment=", as.integer(segment_size_lda),
+      ", ponctuation_forte=", ifelse(segmenter_sur_ponctuation_forte_lda, "oui", "non"),
       ", termes=", ncol(res_lda$dtm), ")."
     )
     updateNumericInput(session, "lda_k_dyn", value = as.integer(k %||% 4))
     updateNumericInput(session, "lda_n_terms_dyn", value = as.integer(n_terms %||% 8))
     updateNumericInput(session, "lda_segment_size_dyn", value = as.integer(segment_size_lda %||% 40))
+    updateCheckboxInput(
+      session,
+      "lda_segmenter_sur_ponctuation_forte_dyn",
+      value = isTRUE(segmenter_sur_ponctuation_forte_lda)
+    )
     showNotification("Test LDA terminé.", type = "message")
   }
 
@@ -84,7 +99,13 @@ register_lda_module <- function(input, output, session, rv) {
       lda_retirer_stopwords = isolate(input$lda_retirer_stopwords %||% FALSE),
       lda_filtrage_morpho = isolate(input$lda_filtrage_morpho %||% FALSE),
       lda_pos_keep = isolate(input$lda_pos_keep %||% c("NOM", "VER", "ADJ")),
-      lda_segment_size = isolate(input$lda_segment_size_dyn %||% input$lda_segment_size %||% 40)
+      lda_segment_size = isolate(input$lda_segment_size_dyn %||% input$lda_segment_size %||% 40),
+      lda_segmenter_sur_ponctuation_forte = isolate(
+        input$lda_segmenter_sur_ponctuation_forte_dyn %||% input$lda_segmenter_sur_ponctuation_forte %||% TRUE
+      ),
+      lda_segmenter_sur_ponctuation_forte_dyn = isolate(
+        input$lda_segmenter_sur_ponctuation_forte_dyn %||% input$lda_segmenter_sur_ponctuation_forte %||% TRUE
+      )
     )
   }
 
@@ -111,14 +132,22 @@ register_lda_module <- function(input, output, session, rv) {
     removeModal()
     executer_test_lda(
       k = as.integer(input$lda_k %||% input$lda_k_dyn %||% 4),
-      n_terms = as.integer(input$lda_n_terms %||% input$lda_n_terms_dyn %||% 8)
+      n_terms = as.integer(input$lda_n_terms %||% input$lda_n_terms_dyn %||% 8),
+      segment_size = as.integer(input$lda_segment_size %||% input$lda_segment_size_dyn %||% 40),
+      segmenter_sur_ponctuation_forte = isTRUE(
+        input$lda_segmenter_sur_ponctuation_forte %||% input$lda_segmenter_sur_ponctuation_forte_dyn
+      )
     )
   })
 
   observeEvent(input$lancer_lda_dyn, {
     executer_test_lda(
       k = as.integer(input$lda_k_dyn %||% input$lda_k %||% 4),
-      n_terms = as.integer(input$lda_n_terms_dyn %||% input$lda_n_terms %||% 8)
+      n_terms = as.integer(input$lda_n_terms_dyn %||% input$lda_n_terms %||% 8),
+      segment_size = as.integer(input$lda_segment_size_dyn %||% input$lda_segment_size %||% 40),
+      segmenter_sur_ponctuation_forte = isTRUE(
+        input$lda_segmenter_sur_ponctuation_forte_dyn %||% input$lda_segmenter_sur_ponctuation_forte
+      )
     )
   })
 

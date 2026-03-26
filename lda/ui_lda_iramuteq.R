@@ -18,6 +18,11 @@ ui_form_parametres_lda <- function(defaults = NULL) {
     ),
     numericInput("lda_n_terms", "Mots affichés par thème", value = valeur_defaut("lda_n_terms", 8), min = 3, step = 1),
     numericInput("lda_segment_size", "Taille des segments LDA (en mots)", value = valeur_defaut("lda_segment_size", 40), min = 5, step = 1),
+    checkboxInput(
+      "lda_segmenter_sur_ponctuation_forte",
+      "Segmenter à partir de la ponctuation forte (. ! ?)",
+      value = valeur_defaut("lda_segmenter_sur_ponctuation_forte", TRUE)
+    ),
     tags$p(
       "n_terms = nombre de mots les plus représentatifs affichés pour chaque thème.",
       style = "color:#c00; font-size:0.9em; margin-top:-8px; margin-bottom:10px;"
@@ -68,6 +73,14 @@ ui_controles_dynamiques_lda <- function(defaults = NULL) {
     tags$div(
       style = "min-width:220px;",
       numericInput("lda_segment_size_dyn", "Taille segment LDA", value = valeur_defaut("lda_segment_size_dyn", 40), min = 5, step = 1)
+    ),
+    tags$div(
+      style = "min-width:320px; padding-bottom:6px;",
+      checkboxInput(
+        "lda_segmenter_sur_ponctuation_forte_dyn",
+        "Segmentation par ponctuation forte (. ! ?)",
+        value = valeur_defaut("lda_segmenter_sur_ponctuation_forte_dyn", TRUE)
+      )
     ),
     actionButton("lancer_lda_dyn", "Appliquer et relancer LDA", class = "btn-primary")
   )
