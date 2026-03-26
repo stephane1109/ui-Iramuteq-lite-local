@@ -554,12 +554,7 @@ server <- function(input, output, session) {
   capturer_parametres_lda <- function() {
     list(
       lda_k = isolate(input$lda_k %||% 4),
-      lda_n_terms = isolate(input$lda_n_terms %||% 8),
-      lda_langue = isolate(input$lda_langue %||% "fr"),
-      lda_min_termfreq = isolate(input$lda_min_termfreq %||% 5),
-      lda_remove_numbers = isolate(input$lda_remove_numbers %||% TRUE),
-      lda_remove_punct = isolate(input$lda_remove_punct %||% TRUE),
-      lda_stopwords_sup = isolate(input$lda_stopwords_sup %||% "")
+      lda_n_terms = isolate(input$lda_n_terms %||% 8)
     )
   }
 
@@ -730,27 +725,44 @@ server <- function(input, output, session) {
   observeEvent(input$lancer_lda, {
     removeModal()
 
-    textes_lda <- rv$textes_indexation
+    lire_textes_corpus_lda <- function() {
+      if (!is.null(rv$textes_indexation) && length(rv$textes_indexation)) {
+        return(as.character(rv$textes_indexation))
+      }
+
+      datapath <- tryCatch(input$fichier_corpus$datapath, error = function(e) NULL)
+      if (is.null(datapath) || !nzchar(datapath) || !file.exists(datapath)) {
+        return(character(0))
+      }
+
+      lignes <- tryCatch(readLines(datapath, warn = FALSE, encoding = "UTF-8"), error = function(e) character(0))
+      if (!length(lignes)) return(character(0))
+
+      lignes <- trimws(gsub("\r", "", lignes, fixed = TRUE))
+      lignes <- lignes[nzchar(lignes)]
+      lignes
+    }
+
+    textes_lda <- lire_textes_corpus_lda()
     if (is.null(textes_lda) || !length(textes_lda)) {
-      rv$lda_erreur <- "Aucun texte disponible pour LDA. Lancez d'abord l'analyse principale."
+      rv$lda_erreur <- "Aucun texte disponible pour LDA. Importez d'abord un fichier corpus."
       rv$lda_statut <- "Test LDA impossible."
       showNotification(rv$lda_erreur, type = "warning")
       return(invisible(NULL))
     }
 
-    stopwords_sup <- trimws(unlist(strsplit(as.character(input$lda_stopwords_sup %||% ""), ",", fixed = TRUE)))
-    stopwords_sup <- stopwords_sup[nzchar(stopwords_sup)]
     res_lda <- tryCatch(
       {
         args_lda <- list(
           textes = as.character(textes_lda),
           k = as.integer(input$lda_k %||% 4),
           n_terms = as.integer(input$lda_n_terms %||% 8),
-          langue = as.character(input$lda_langue %||% "fr"),
-          min_termfreq = as.integer(input$lda_min_termfreq %||% 5),
-          remove_numbers = isTRUE(input$lda_remove_numbers),
-          remove_punct = isTRUE(input$lda_remove_punct),
-          stopwords_sup = stopwords_sup
+          min_termfreq = 1L,
+          remove_numbers = FALSE,
+          remove_punct = TRUE,
+          remove_symbols = TRUE,
+          retirer_stopwords = FALSE,
+          stopwords_sup = character(0)
         )
 
         do.call(lancer_test_lda, args_lda)

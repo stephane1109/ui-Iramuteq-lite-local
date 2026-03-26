@@ -467,6 +467,19 @@ ui <- page_navbar(
     tags$h4("Table des modalités projetées"), tableOutput("table_afc_vars"),
     tags$h4("Valeurs propres"), tableOutput("table_afc_eig")
   ),
+  nav_panel(
+    "LDA", value = "lda",
+    tags$h3("LDA (test)"),
+    tags$p("LDA peut être lancé directement après import du corpus."),
+    actionButton("ouvrir_param_lda", "Paramètres LDA", class = "btn-primary"),
+    tags$br(), tags$br(),
+    uiOutput("ui_lda_statut"),
+    plotOutput("plot_lda_top_terms", height = "420px"),
+    tags$h4("Top termes par topic"),
+    tableOutput("table_lda_top_terms"),
+    tags$h4("Distribution topics / documents"),
+    tableOutput("table_lda_doc_topics")
+  ),
 
   ui_panel_similitudes_iramuteq(),
 

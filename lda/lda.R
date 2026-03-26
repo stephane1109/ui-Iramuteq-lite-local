@@ -5,10 +5,11 @@
 
 preparer_dtm_lda <- function(textes,
                              langue = "fr",
-                             min_termfreq = 5,
+                             min_termfreq = 1,
                              remove_numbers = TRUE,
                              remove_punct = TRUE,
                              remove_symbols = TRUE,
+                             retirer_stopwords = FALSE,
                              stopwords_sup = character()) {
   if (!requireNamespace("quanteda", quietly = TRUE)) {
     stop("Le package 'quanteda' est requis pour préparer la matrice terme-document.")
@@ -35,8 +36,16 @@ preparer_dtm_lda <- function(textes,
     remove_symbols = remove_symbols
   )
 
-  stopwords_final <- unique(c(quanteda::stopwords(langue), stopwords_sup))
-  toks <- quanteda::tokens_remove(toks, pattern = stopwords_final)
+  stopwords_final <- unique(as.character(stopwords_sup))
+  stopwords_final <- stopwords_final[nzchar(trimws(stopwords_final))]
+
+  if (isTRUE(retirer_stopwords)) {
+    stopwords_final <- unique(c(quanteda::stopwords(langue), stopwords_final))
+  }
+
+  if (length(stopwords_final)) {
+    toks <- quanteda::tokens_remove(toks, pattern = stopwords_final)
+  }
 
   dtm <- quanteda::dfm(toks)
   dtm <- quanteda::dfm_trim(dtm, min_termfreq = min_termfreq)
