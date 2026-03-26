@@ -306,6 +306,8 @@ ui <- page_navbar(
     open = "always",
     title = "Résultats",
     actionButton("menu_importer_fichier_sidebar", "Importer un fichier texte", class = "btn-primary"),
+    tags$div(style = "margin-top:8px;"),
+    actionButton("ouvrir_param_lda", "Paramètres LDA", class = "btn-outline-primary"),
     uiOutput("nom_fichier_corpus_sidebar"),
     tags$hr(style = "margin-top: 10px; margin-bottom: 10px;"),
     downloadButton("dl_zip", "Télécharger les résultats")
