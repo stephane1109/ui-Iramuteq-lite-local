@@ -42,7 +42,7 @@ importer_textes_bruts_lda <- function(chemin_fichier) {
   lignes
 }
 
-segmenter_textes_lda <- function(textes, segment_size = 40L) {
+segmenter_textes_lda <- function(textes, segment_size = 40L, segmenter_sur_ponctuation_forte = FALSE) {
   textes <- as.character(textes)
   if (!length(textes)) return(character(0))
 
@@ -60,22 +60,42 @@ segmenter_textes_lda <- function(textes, segment_size = 40L) {
   out <- character(0)
   out_ids <- character(0)
 
+  construire_blocs <- function(txt) {
+    txt <- gsub("[\r\n]+", " ", txt, perl = TRUE)
+    txt <- trimws(gsub("\\s+", " ", txt, perl = TRUE))
+    if (!nzchar(txt)) return(character(0))
+
+    if (!isTRUE(segmenter_sur_ponctuation_forte)) {
+      return(txt)
+    }
+
+    blocs <- unlist(strsplit(txt, "(?<=[\\.!\\?])\\s+", perl = TRUE), use.names = FALSE)
+    blocs <- trimws(blocs)
+    blocs[nzchar(blocs)]
+  }
+
   for (i in seq_along(textes)) {
     txt <- trimws(textes[[i]])
     if (!nzchar(txt)) next
 
-    mots <- unlist(strsplit(txt, "\\s+", perl = TRUE), use.names = FALSE)
-    mots <- mots[nzchar(mots)]
-    if (!length(mots)) next
+    blocs <- construire_blocs(txt)
+    if (!length(blocs)) next
 
-    starts <- seq.int(1L, length(mots), by = segment_size)
-    for (j in seq_along(starts)) {
-      s <- starts[[j]]
-      e <- min(length(mots), s + segment_size - 1L)
-      seg <- paste(mots[s:e], collapse = " ")
-      if (!nzchar(seg)) next
-      out <- c(out, seg)
-      out_ids <- c(out_ids, paste0(ids_base[[i]], "_seg", j))
+    j <- 0L
+    for (bloc in blocs) {
+      mots <- unlist(strsplit(bloc, "\\s+", perl = TRUE), use.names = FALSE)
+      mots <- mots[nzchar(mots)]
+      if (!length(mots)) next
+
+      starts <- seq.int(1L, length(mots), by = segment_size)
+      for (s in starts) {
+        e <- min(length(mots), s + segment_size - 1L)
+        seg <- paste(mots[s:e], collapse = " ")
+        if (!nzchar(seg)) next
+        j <- j + 1L
+        out <- c(out, seg)
+        out_ids <- c(out_ids, paste0(ids_base[[i]], "_seg", j))
+      }
     }
   }
 
@@ -83,8 +103,12 @@ segmenter_textes_lda <- function(textes, segment_size = 40L) {
   out
 }
 
-preparer_textes_lda_depuis_fichier <- function(chemin_fichier, segment_size = 40L) {
+preparer_textes_lda_depuis_fichier <- function(chemin_fichier, segment_size = 40L, segmenter_sur_ponctuation_forte = FALSE) {
   textes <- importer_textes_bruts_lda(chemin_fichier)
   if (!length(textes)) return(character(0))
-  segmenter_textes_lda(textes, segment_size = segment_size)
+  segmenter_textes_lda(
+    textes,
+    segment_size = segment_size,
+    segmenter_sur_ponctuation_forte = isTRUE(segmenter_sur_ponctuation_forte)
+  )
 }
