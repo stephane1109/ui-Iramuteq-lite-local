@@ -232,58 +232,6 @@ ui_form_parametres_analyse <- function(defaults = NULL) {
   )
 }
 
-ui_form_parametres_lda <- function(defaults = NULL) {
-  valeur_defaut <- function(id, fallback) {
-    if (is.null(defaults) || is.null(defaults[[id]]) || (length(defaults[[id]]) == 1 && is.na(defaults[[id]]))) {
-      return(fallback)
-    }
-    defaults[[id]]
-  }
-
-  tagList(
-    tags$div(class = "sidebar-section-title", "Paramètres LDA"),
-    numericInput("lda_k", "Nombre de topics (k)", value = valeur_defaut("lda_k", 4), min = 2, step = 1),
-    tags$p("Définit le nombre de thèmes latents à extraire du corpus.", style = "color:#c00; font-size:0.9em; margin-top:-8px; margin-bottom:10px;"),
-    numericInput("lda_n_terms", "Top termes par topic", value = valeur_defaut("lda_n_terms", 10), min = 3, step = 1),
-    tags$p("Indique combien de mots représentatifs afficher pour chaque thème.", style = "color:#c00; font-size:0.9em; margin-top:-8px; margin-bottom:10px;"),
-    numericInput("lda_iter", "Nombre d'itérations", value = valeur_defaut("lda_iter", 1000), min = 100, step = 100),
-    tags$p("Contrôle la durée d'entraînement du modèle Gibbs (plus grand = plus stable, plus long).", style = "color:#c00; font-size:0.9em; margin-top:-8px; margin-bottom:10px;"),
-    numericInput("lda_burnin", "Burn-in", value = valeur_defaut("lda_burnin", 250), min = 0, step = 50),
-    tags$p("Fixe le nombre d'itérations initiales ignorées avant d'échantillonner le modèle.", style = "color:#c00; font-size:0.9em; margin-top:-8px; margin-bottom:10px;"),
-    numericInput("lda_thin", "Thin", value = valeur_defaut("lda_thin", 100), min = 1, step = 10),
-    tags$p("Conserve un échantillon toutes les N itérations pour réduire l'autocorrélation.", style = "color:#c00; font-size:0.9em; margin-top:-8px; margin-bottom:10px;"),
-    numericInput("lda_seed", "Seed", value = valeur_defaut("lda_seed", 1234), min = 1, step = 1),
-    tags$p("Rend les résultats reproductibles en fixant la graine aléatoire.", style = "color:#c00; font-size:0.9em; margin-top:-8px; margin-bottom:10px;"),
-    textInput("lda_alpha", "Alpha (laisser vide = 50/k)", value = valeur_defaut("lda_alpha", "")),
-    tags$p("Règle la concentration des thèmes par document (vide = valeur automatique 50/k).", style = "color:#c00; font-size:0.9em; margin-top:-8px; margin-bottom:10px;"),
-    numericInput("lda_eta", "Eta (delta)", value = valeur_defaut("lda_eta", 0.1), min = 0.001, step = 0.01),
-    tags$p("Règle la concentration des mots par thème (plus bas = thèmes plus spécialisés).", style = "color:#c00; font-size:0.9em; margin-top:-8px; margin-bottom:10px;"),
-    tags$hr(),
-    tags$div(class = "sidebar-section-title", "Préparation DTM"),
-    selectInput(
-      "lda_langue",
-      "Langue stopwords",
-      choices = c("fr", "en", "es", "de", "it", "pt"),
-      selected = valeur_defaut("lda_langue", "fr")
-    ),
-    tags$p("Choisit la langue de la liste de stopwords retirés avant la vectorisation.", style = "color:#c00; font-size:0.9em; margin-top:-8px; margin-bottom:10px;"),
-    numericInput("lda_min_termfreq", "Fréquence minimale des termes", value = valeur_defaut("lda_min_termfreq", 5), min = 1, step = 1),
-    tags$p("Supprime les termes trop rares en imposant une fréquence minimale dans le corpus.", style = "color:#c00; font-size:0.9em; margin-top:-8px; margin-bottom:10px;"),
-    checkboxInput("lda_remove_numbers", "Supprimer les chiffres", value = valeur_defaut("lda_remove_numbers", TRUE)),
-    tags$p("Retire les nombres des textes avant la construction de la matrice termes-documents.", style = "color:#c00; font-size:0.9em; margin-top:-8px; margin-bottom:10px;"),
-    checkboxInput("lda_remove_punct", "Supprimer la ponctuation", value = valeur_defaut("lda_remove_punct", TRUE)),
-    tags$p("Retire les signes de ponctuation pour ne conserver que les unités lexicales utiles.", style = "color:#c00; font-size:0.9em; margin-top:-8px; margin-bottom:10px;"),
-    checkboxInput("lda_remove_symbols", "Supprimer les symboles", value = valeur_defaut("lda_remove_symbols", TRUE)),
-    tags$p("Retire les symboles spéciaux (€, %, etc.) pendant le nettoyage du corpus.", style = "color:#c00; font-size:0.9em; margin-top:-8px; margin-bottom:10px;"),
-    textInput(
-      "lda_stopwords_sup",
-      "Stopwords supplémentaires (séparés par des virgules)",
-      value = valeur_defaut("lda_stopwords_sup", "")
-    ),
-    tags$p("Permet d'ajouter votre propre liste de mots à exclure en plus des stopwords standards.", style = "color:#c00; font-size:0.9em; margin-top:-8px; margin-bottom:10px;")
-  )
-}
-
 if (!exists("REGEX_CARACTERES_A_SUPPRIMER", inherits = TRUE)) {
   app_dir <- tryCatch(shiny::getShinyOption("appDir"), error = function(e) NULL)
   if (is.null(app_dir) || !nzchar(app_dir)) app_dir <- getwd()
