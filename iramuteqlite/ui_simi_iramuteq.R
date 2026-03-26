@@ -11,8 +11,36 @@ ui_form_parametres_similitudes <- function() {
       "Méthode de calcul",
       choices = c(
         "Cooccurrence" = "cooc",
-        "Jaccard" = "jaccard",
-        "Binomiale" = "binom"
+        "Braun-Blanquet" = "Braun-Blanquet",
+        "Chi-squared" = "Chi-squared",
+        "Correlation" = "correlation",
+        "Cosine" = "cosine",
+        "Cramer" = "Cramer",
+        "Dice" = "Dice",
+        "eDice" = "eDice",
+        "eJaccard" = "eJaccard",
+        "Fager" = "Fager",
+        "Faith" = "Faith",
+        "Gower" = "Gower",
+        "Hamman" = "Hamman",
+        "Jaccard" = "Jaccard",
+        "Kulczynski1" = "Kulczynski1",
+        "Kulczynski2" = "Kulczynski2",
+        "Michael" = "Michael",
+        "Mountford" = "Mountford",
+        "Mozley" = "Mozley",
+        "Ochiai" = "Ochiai",
+        "Pearson" = "Pearson",
+        "Phi" = "Phi",
+        "Phi-squared" = "Phi-squared",
+        "Russel" = "Russel",
+        "Simple matching" = "simple matching",
+        "Simpson" = "Simpson",
+        "Stiles" = "Stiles",
+        "Tanimoto" = "Tanimoto",
+        "Tschuprow" = "Tschuprow",
+        "Yule" = "Yule",
+        "Yule2" = "Yule2"
       ),
       selected = "cooc"
     ),
@@ -120,7 +148,7 @@ ui_panel_similitudes_iramuteq <- function() {
       style = "background:#f8fbff; border:1px solid #d9e2ef; border-radius:6px; padding:10px;",
       "Fonctionnement: le graphe est construit à partir du DFM de l'analyse principale. ",
       "On conserve les N mots les plus fréquents (Top termes), puis on calcule les liens selon l'indice choisi ",
-      "(cooccurrence / jaccard / binom). Le seuil supprime les arêtes trop faibles."
+      "(cooccurrence + indices du package proxy). Le seuil supprime les arêtes trop faibles."
     ),
     tags$div(
       style = "display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:center;",
