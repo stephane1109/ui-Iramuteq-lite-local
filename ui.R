@@ -408,6 +408,8 @@ ui <- page_navbar(
     tags$br(), tags$br(),
     uiOutput("ui_lda_statut"),
     plotOutput("plot_lda_top_terms", height = "420px"),
+    tags$h4("Projection des topics (bulle)"),
+    plotOutput("plot_lda_topics_bubble", height = "460px"),
     tags$h4("Top termes par topic"),
     tableOutput("table_lda_top_terms"),
     tags$h4("Distribution topics / documents"),
