@@ -89,7 +89,7 @@ ui_controles_dynamiques_lda <- function(defaults = NULL) {
 ui_panel_lda_iramuteq <- function() {
   bslib::nav_panel(
     "LDA", value = "lda",
-    shiny::tags$h3("LDA (test)"),
+    shiny::tags$h3("LDA"),
     shiny::tags$p("Lancez l'analyse principale (CHD) puis ouvrez les paramètres LDA."),
     shiny::actionButton("ouvrir_param_lda", "Paramètres LDA", class = "btn-primary"),
     shiny::tags$br(), shiny::tags$br(),
