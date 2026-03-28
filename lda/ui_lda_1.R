@@ -34,6 +34,61 @@ charger_corpus <- function(chemin_fichier) {
   return(texte)
 }
 
+
+
+#' Construit une liste de stopwords via quanteda, avec gestion d'erreur claire.
+#' @param activer Stopwords activés ou non.
+#' @param stopwords_ajoutes Chaîne optionnelle de mots séparés par virgule.
+#' @return Liste de mots vides normalisés.
+construire_stopwords_quanteda <- function(activer, stopwords_ajoutes = "") {
+  if (!isTRUE(activer)) {
+    return(character(0))
+  }
+
+  if (!requireNamespace("quanteda", quietly = TRUE)) {
+    stop("Le package 'quanteda' est requis pour l'option stopwords mais n'est pas installé.")
+  }
+
+  stopwords_base <- tryCatch(
+    quanteda::stopwords(language = "fr", source = "snowball"),
+    error = function(e) {
+      stop(sprintf("Impossible de récupérer les stopwords quanteda (fr): %s", conditionMessage(e)))
+    }
+  )
+
+  stopwords_plus <- character(0)
+  if (nzchar(trimws(stopwords_ajoutes))) {
+    stopwords_plus <- trimws(unlist(strsplit(stopwords_ajoutes, ",", fixed = TRUE)))
+    stopwords_plus <- stopwords_plus[nzchar(stopwords_plus)]
+  }
+
+  unique(c(stopwords_base, stopwords_plus))
+}
+
+
+#' Charge les catégories morphosyntaxiques disponibles depuis lexique_fr.csv.
+#' @param chemin_lexique Chemin du lexique français.
+#' @return Vecteur de catégories (majuscules) pour l'UI.
+charger_categories_morpho <- function(chemin_lexique = file.path("dictionnaires", "lexique_fr.csv")) {
+  if (!file.exists(chemin_lexique)) {
+    return(character(0))
+  }
+
+  lexique <- tryCatch(
+    read.csv2(chemin_lexique, stringsAsFactors = FALSE, encoding = "UTF-8"),
+    error = function(e) NULL
+  )
+
+  if (is.null(lexique) || !"c_morpho" %in% names(lexique)) {
+    return(character(0))
+  }
+
+  categories <- unique(toupper(trimws(as.character(lexique$c_morpho))))
+  categories <- categories[nzchar(categories)]
+  sort(categories)
+}
+
+CATEGORIES_MORPHO_DISPONIBLES <- charger_categories_morpho()
 #' Exécute un script Python de manière robuste et renvoie l'erreur éventuelle.
 #' @param python_exec Exécutable Python.
 #' @param script_path Chemin du script Python.
@@ -135,6 +190,30 @@ ui <- fluidPage(
         max = 50,
         step = 1
       ),
+      hr(),
+      checkboxInput(
+        inputId = "utiliser_stopwords_quanteda",
+        label = "Activer les stopwords via quanteda",
+        value = TRUE
+      ),
+      textInput(
+        inputId = "stopwords_supplementaires",
+        label = "Stopwords additionnels (séparés par des virgules)",
+        value = ""
+      ),
+      checkboxInput(
+        inputId = "activer_filtre_morpho",
+        label = "Filtrer par catégories morphosyntaxiques (lexique_fr)",
+        value = FALSE
+      ),
+      selectizeInput(
+        inputId = "categories_morpho",
+        label = "Catégories morphosyntaxiques autorisées",
+        choices = CATEGORIES_MORPHO_DISPONIBLES,
+        selected = c("NOM", "VER", "ADJ"),
+        multiple = TRUE,
+        options = list(placeholder = "Sélectionnez une ou plusieurs catégories")
+      ),
       actionButton("lancer", "Lancer l'analyse LDA", class = "btn-primary")
     ),
     mainPanel(
@@ -182,13 +261,28 @@ server <- function(input, output, session) {
       dossier_images <- file.path("lda", paste0("wordclouds_", prefixe_fichier))
       dir.create(dossier_images, recursive = TRUE, showWarnings = FALSE)
 
+      stopwords_quanteda <- construire_stopwords_quanteda(
+        activer = input$utiliser_stopwords_quanteda,
+        stopwords_ajoutes = input$stopwords_supplementaires
+      )
+
+      categories_morpho_actives <- if (isTRUE(input$activer_filtre_morpho)) {
+        as.list(tolower(input$categories_morpho %||% character(0)))
+      } else {
+        list()
+      }
+
       donnees_entree <- list(
         corpus_texte = texte_corpus,
         mode_unite = input$mode_unite,
         longueur_min_segment = as.integer(input$longueur_min_segment),
         nb_topics = as.integer(input$nb_topics),
         nb_mots_par_topic = as.integer(input$nb_mots_par_topic),
-        random_state = 42
+        random_state = 42,
+        stopwords_personnalises = as.list(stopwords_quanteda),
+        stopwords_supplementaires = as.list(trimws(unlist(strsplit(input$stopwords_supplementaires, ",", fixed = TRUE)))),
+        categories_morpho = categories_morpho_actives,
+        chemin_lexique_fr = normalizePath(file.path("dictionnaires", "lexique_fr.csv"), mustWork = FALSE)
       )
 
       write_json(donnees_entree, path = fichier_entree, auto_unbox = TRUE, pretty = TRUE)
@@ -306,4 +400,6 @@ server <- function(input, output, session) {
   })
 }
 
-shinyApp(ui = ui, server = server)
+if (sys.nframe() == 0) {
+  shinyApp(ui = ui, server = server)
+}

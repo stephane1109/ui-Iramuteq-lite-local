@@ -7,6 +7,7 @@ calcule un modèle LDA et écrit un JSON de sortie exploitable par Shiny.
 """
 
 import argparse
+import csv
 import json
 import os
 import re
@@ -135,23 +136,92 @@ def supprimer_accents(texte: str) -> str:
     return "".join(c for c in normalise if not unicodedata.combining(c))
 
 
-def tokeniser_francais(texte: str) -> List[str]:
+def tokeniser_francais(texte: str, stopwords_actifs: set = None, mots_autorises: set = None) -> List[str]:
     """Tokenise un texte avec des règles simples et filtre les mots vides."""
     texte = texte.lower()
     texte = supprimer_accents(texte)
     texte = re.sub(r"[^a-z\s']", " ", texte)
     candidats = re.findall(r"[a-z']{2,}", texte)
 
+    if stopwords_actifs is None:
+        stopwords_actifs = MOTS_VIDES_FR
+
     tokens = []
     for mot in candidats:
         mot_propre = mot.strip("'")
         if not mot_propre:
             continue
-        if mot_propre in MOTS_VIDES_FR:
+        if mot_propre in stopwords_actifs:
+            continue
+        if mots_autorises is not None and len(mots_autorises) > 0 and mot_propre not in mots_autorises:
             continue
         tokens.append(mot_propre)
 
     return tokens
+
+
+
+
+def construire_stopwords(donnees: Dict) -> set:
+    """Construit l'ensemble final de stopwords (internes + fournis par R/quanteda)."""
+    stopwords_final = set(MOTS_VIDES_FR)
+
+    stopwords_personnalises = donnees.get("stopwords_personnalises", [])
+    if isinstance(stopwords_personnalises, list):
+        for mot in stopwords_personnalises:
+            if isinstance(mot, str) and mot.strip():
+                mot_norm = supprimer_accents(mot.strip().lower())
+                stopwords_final.add(mot_norm)
+
+    stopwords_supplementaires = donnees.get("stopwords_supplementaires", [])
+    if isinstance(stopwords_supplementaires, list):
+        for mot in stopwords_supplementaires:
+            if isinstance(mot, str) and mot.strip():
+                mot_norm = supprimer_accents(mot.strip().lower())
+                stopwords_final.add(mot_norm)
+
+    return stopwords_final
+
+
+def charger_lexique_morpho(chemin_lexique: str) -> Dict[str, str]:
+    """Charge le lexique français et retourne un mapping mot_normalise -> catégorie morpho."""
+    lexique = {}
+    if not chemin_lexique:
+        return lexique
+
+    if not os.path.exists(chemin_lexique):
+        return lexique
+
+    with open(chemin_lexique, "r", encoding="utf-8") as flux:
+        lecteur = csv.DictReader(flux, delimiter=";")
+        for ligne in lecteur:
+            mot = (ligne.get("c_mot") or "").strip()
+            morpho = (ligne.get("c_morpho") or "").strip().lower()
+            if not mot or not morpho:
+                continue
+            mot_norm = supprimer_accents(mot.lower())
+            lexique[mot_norm] = morpho
+
+    return lexique
+
+
+def construire_filtre_morpho(donnees: Dict) -> set:
+    """Construit l'ensemble des mots autorisés selon les catégories morphosyntaxiques sélectionnées."""
+    categories = donnees.get("categories_morpho", [])
+    if not isinstance(categories, list):
+        return set()
+
+    categories_norm = {str(c).strip().lower() for c in categories if str(c).strip()}
+    if not categories_norm:
+        return set()
+
+    chemin_lexique = donnees.get("chemin_lexique_fr", "")
+    lexique = charger_lexique_morpho(chemin_lexique)
+    if not lexique:
+        return set()
+
+    mots_autorises = {mot for mot, cat in lexique.items() if cat in categories_norm}
+    return mots_autorises
 
 
 def extraire_topics(
@@ -209,15 +279,24 @@ def analyser_lda(donnees: Dict) -> Dict:
         )
 
     textes_unites = [u.texte for u in unites]
+    stopwords_actifs = construire_stopwords(donnees)
+    mots_autorises = construire_filtre_morpho(donnees)
+
+    def tokeniser_avec_stopwords(texte: str) -> List[str]:
+        return tokeniser_francais(
+            texte,
+            stopwords_actifs=stopwords_actifs,
+            mots_autorises=mots_autorises,
+        )
 
     vectoriseur = CountVectorizer(
-        tokenizer=tokeniser_francais,
+        tokenizer=tokeniser_avec_stopwords,
         preprocessor=None,
         lowercase=False,
         token_pattern=None,
         min_df=1,
         max_df=0.95,
-        stop_words="english",
+        stop_words=None,
     )
 
     matrice_doc_termes = vectoriseur.fit_transform(textes_unites)
@@ -262,6 +341,9 @@ def analyser_lda(donnees: Dict) -> Dict:
             "nb_topics": nb_topics,
             "nb_mots_par_topic": nb_mots_par_topic,
             "vocabulaire_taille": len(noms_termes),
+            "nb_stopwords_actifs": len(stopwords_actifs),
+            "filtre_morpho_actif": len(mots_autorises) > 0,
+            "nb_mots_autorises_morpho": len(mots_autorises),
         },
         "topics": topics,
         "unites": detail_unites,
