@@ -129,10 +129,10 @@ source("iramuteqlite/simi.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_graph.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_igraph.R", encoding = "UTF-8", local = TRUE)
 source("iramuteq/select_mots.R", encoding = "UTF-8", local = TRUE)
-source("lda/lda.R", encoding = "UTF-8", local = TRUE)
-source("lda/prepa_lda.R", encoding = "UTF-8", local = TRUE)
-source("lda/wordcloud_lda.R", encoding = "UTF-8", local = TRUE)
-source("lda/server_lda.R", encoding = "UTF-8", local = TRUE)
+# Nouveau pipeline LDA (R/Shiny + Python) :
+# on remplace les anciens scripts R (lda.R, prepa_lda.R, wordcloud_lda.R, server_lda.R)
+# par l'interface/passerelle unique ui_lda_1.R.
+source("lda/ui_lda_1.R", encoding = "UTF-8", local = TRUE)
 source("ui.R", encoding = "UTF-8", local = TRUE)
 
 source("iramuteqlite/chd_iramuteq.R", encoding = "UTF-8", local = TRUE)
