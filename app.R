@@ -129,6 +129,26 @@ source("iramuteqlite/simi.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_graph.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_igraph.R", encoding = "UTF-8", local = TRUE)
 source("iramuteq/select_mots.R", encoding = "UTF-8", local = TRUE)
+
+# Déclaration explicite des scripts Python LDA (utilisés ensuite par le module serveur LDA).
+LDA_PY_SCRIPT <- normalizePath(file.path("lda", "lda.py"), winslash = "/", mustWork = FALSE)
+LDA_WORDCLOUD_PY_SCRIPT <- normalizePath(file.path("lda", "wordcloud_lda.py"), winslash = "/", mustWork = FALSE)
+
+verifier_scripts_python_lda <- function() {
+  manquants <- c()
+  if (!file.exists(LDA_PY_SCRIPT)) manquants <- c(manquants, LDA_PY_SCRIPT)
+  if (!file.exists(LDA_WORDCLOUD_PY_SCRIPT)) manquants <- c(manquants, LDA_WORDCLOUD_PY_SCRIPT)
+  if (length(manquants)) {
+    warning(
+      paste0(
+        "Scripts Python LDA introuvables: ",
+        paste(manquants, collapse = " ; ")
+      )
+    )
+  }
+}
+
+verifier_scripts_python_lda()
 # Pipeline LDA Python (nouveau) + module serveur historique (compatibilité UI existante).
 # ui_lda_1.R expose le pipeline Python ; les scripts ci-dessous réactivent les observeEvent
 # attendus par les boutons/contrôles de l'onglet LDA actuel (ouvrir_param_lda, lancer_lda, etc.).

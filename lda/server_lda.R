@@ -125,8 +125,8 @@ register_lda_module <- function(input, output, session, rv) {
     }
 
     python_exec <- trouver_python_lda()
-    script_lda <- normalizePath("lda/lda.py", mustWork = TRUE)
-    script_wc <- normalizePath("lda/wordcloud_lda.py", mustWork = TRUE)
+    script_lda <- if (exists("LDA_PY_SCRIPT", inherits = TRUE)) get("LDA_PY_SCRIPT", inherits = TRUE) else normalizePath("lda/lda.py", mustWork = TRUE)
+    script_wc <- if (exists("LDA_WORDCLOUD_PY_SCRIPT", inherits = TRUE)) get("LDA_WORDCLOUD_PY_SCRIPT", inherits = TRUE) else normalizePath("lda/wordcloud_lda.py", mustWork = TRUE)
 
     prefixe <- format(Sys.time(), "%Y%m%d_%H%M%S")
     entree <- tempfile(pattern = paste0("entree_lda_app_", prefixe, "_"), tmpdir = "lda", fileext = ".json")
