@@ -149,12 +149,8 @@ verifier_scripts_python_lda <- function() {
 }
 
 verifier_scripts_python_lda()
-# Pipeline LDA Python (nouveau) + module serveur historique (compatibilité UI existante).
-# ui_lda_1.R expose le pipeline Python ; les scripts ci-dessous réactivent les observeEvent
-# attendus par les boutons/contrôles de l'onglet LDA actuel (ouvrir_param_lda, lancer_lda, etc.).
+# Pipeline LDA Python piloté par l'app (app.R + server_lda.R).
 source("lda/ui_lda_1.R", encoding = "UTF-8", local = TRUE)
-source("lda/lda.R", encoding = "UTF-8", local = TRUE)
-source("lda/prepa_lda.R", encoding = "UTF-8", local = TRUE)
 source("lda/wordcloud_lda.R", encoding = "UTF-8", local = TRUE)
 source("lda/server_lda.R", encoding = "UTF-8", local = TRUE)
 source("ui.R", encoding = "UTF-8", local = TRUE)
