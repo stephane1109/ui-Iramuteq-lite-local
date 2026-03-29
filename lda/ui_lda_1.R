@@ -38,9 +38,8 @@ charger_corpus <- function(chemin_fichier) {
 
 #' Construit une liste de stopwords via quanteda, avec gestion d'erreur claire.
 #' @param activer Stopwords activés ou non.
-#' @param stopwords_ajoutes Chaîne optionnelle de mots séparés par virgule.
 #' @return Liste de mots vides normalisés.
-construire_stopwords_quanteda <- function(activer, stopwords_ajoutes = "") {
+construire_stopwords_quanteda <- function(activer) {
   if (!isTRUE(activer)) {
     return(character(0))
   }
@@ -55,14 +54,7 @@ construire_stopwords_quanteda <- function(activer, stopwords_ajoutes = "") {
       stop(sprintf("Impossible de récupérer les stopwords quanteda (fr): %s", conditionMessage(e)))
     }
   )
-
-  stopwords_plus <- character(0)
-  if (nzchar(trimws(stopwords_ajoutes))) {
-    stopwords_plus <- trimws(unlist(strsplit(stopwords_ajoutes, ",", fixed = TRUE)))
-    stopwords_plus <- stopwords_plus[nzchar(stopwords_plus)]
-  }
-
-  unique(c(stopwords_base, stopwords_plus))
+  unique(stopwords_base)
 }
 
 
@@ -196,11 +188,6 @@ ui <- fluidPage(
         label = "Activer les stopwords via quanteda",
         value = TRUE
       ),
-      textInput(
-        inputId = "stopwords_supplementaires",
-        label = "Stopwords additionnels (séparés par des virgules)",
-        value = ""
-      ),
       checkboxInput(
         inputId = "activer_filtre_morpho",
         label = "Filtrer par catégories morphosyntaxiques (lexique_fr)",
@@ -262,8 +249,7 @@ server <- function(input, output, session) {
       dir.create(dossier_images, recursive = TRUE, showWarnings = FALSE)
 
       stopwords_quanteda <- construire_stopwords_quanteda(
-        activer = input$utiliser_stopwords_quanteda,
-        stopwords_ajoutes = input$stopwords_supplementaires
+        activer = input$utiliser_stopwords_quanteda
       )
 
       categories_morpho_actives <- if (isTRUE(input$activer_filtre_morpho)) {
@@ -280,7 +266,6 @@ server <- function(input, output, session) {
         nb_mots_par_topic = as.integer(input$nb_mots_par_topic),
         random_state = 42,
         stopwords_personnalises = as.list(stopwords_quanteda),
-        stopwords_supplementaires = as.list(trimws(unlist(strsplit(input$stopwords_supplementaires, ",", fixed = TRUE)))),
         categories_morpho = categories_morpho_actives,
         chemin_lexique_fr = normalizePath(file.path("dictionnaires", "lexique_fr.csv"), mustWork = FALSE)
       )

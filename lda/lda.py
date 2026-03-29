@@ -173,13 +173,6 @@ def construire_stopwords(donnees: Dict) -> set:
                 mot_norm = supprimer_accents(mot.strip().lower())
                 stopwords_final.add(mot_norm)
 
-    stopwords_supplementaires = donnees.get("stopwords_supplementaires", [])
-    if isinstance(stopwords_supplementaires, list):
-        for mot in stopwords_supplementaires:
-            if isinstance(mot, str) and mot.strip():
-                mot_norm = supprimer_accents(mot.strip().lower())
-                stopwords_final.add(mot_norm)
-
     return stopwords_final
 
 
