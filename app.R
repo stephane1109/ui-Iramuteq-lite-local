@@ -129,6 +129,10 @@ source("iramuteqlite/simi.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_graph.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_igraph.R", encoding = "UTF-8", local = TRUE)
 source("iramuteq/select_mots.R", encoding = "UTF-8", local = TRUE)
+# Pipeline LDA Python (nouveau) + module serveur historique (compatibilité UI existante).
+# ui_lda_1.R expose le pipeline Python ; les scripts ci-dessous réactivent les observeEvent
+# attendus par les boutons/contrôles de l'onglet LDA actuel (ouvrir_param_lda, lancer_lda, etc.).
+source("lda/ui_lda_1.R", encoding = "UTF-8", local = TRUE)
 source("lda/lda.R", encoding = "UTF-8", local = TRUE)
 source("lda/prepa_lda.R", encoding = "UTF-8", local = TRUE)
 source("lda/wordcloud_lda.R", encoding = "UTF-8", local = TRUE)
