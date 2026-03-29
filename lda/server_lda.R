@@ -1,95 +1,204 @@
 register_lda_module <- function(input, output, session, rv) {
-  executer_test_lda <- function(k, n_terms, segment_size = NULL, segmenter_sur_ponctuation_forte = NULL) {
-    lire_textes_corpus_lda <- function(segment_size, segmenter_sur_ponctuation_forte) {
-      datapath <- tryCatch(input$fichier_corpus$datapath, error = function(e) NULL)
-      if (is.null(datapath) || !nzchar(datapath) || !file.exists(datapath)) {
-        return(character(0))
-      }
+  trouver_python_lda <- function() {
+    candidats <- c(Sys.which("python3"), Sys.which("python"))
+    candidats <- candidats[nzchar(candidats)]
+    if (!length(candidats)) stop("Aucun interpréteur Python trouvé (python3/python).")
+    candidats[[1]]
+  }
 
-      if (!exists("preparer_textes_lda_depuis_fichier", mode = "function", inherits = TRUE)) {
-        stop("Fonction de préparation LDA introuvable (preparer_textes_lda_depuis_fichier).")
-      }
+  construire_stopwords_fr_quanteda <- function(activer) {
+    if (!isTRUE(activer)) return(character(0))
+    if (!requireNamespace("quanteda", quietly = TRUE)) {
+      stop("Le package quanteda est requis pour retirer les stopwords.")
+    }
+    unique(quanteda::stopwords(language = "fr", source = "snowball"))
+  }
 
-      preparer_textes_lda_depuis_fichier(
-        chemin_fichier = datapath,
-        segment_size = segment_size,
-        segmenter_sur_ponctuation_forte = segmenter_sur_ponctuation_forte
+  lire_corpus_brut <- function() {
+    datapath <- tryCatch(input$fichier_corpus$datapath, error = function(e) NULL)
+    if (is.null(datapath) || !nzchar(datapath) || !file.exists(datapath)) {
+      return("")
+    }
+    lignes <- readLines(datapath, warn = FALSE, encoding = "UTF-8")
+    paste(lignes, collapse = "\n")
+  }
+
+  convertir_resultat_python <- function(res_lda_json, res_wc_json) {
+    topics <- res_lda_json$topics
+    unites <- res_lda_json$unites
+
+    top_terms <- data.frame(topic = character(0), term = character(0), prob = numeric(0), stringsAsFactors = FALSE)
+    for (t in topics) {
+      if (is.null(t$mots) || !length(t$mots)) next
+      poids <- vapply(t$mots, function(m) as.numeric(m$poids %||% 0), numeric(1))
+      somme <- sum(poids)
+      prob <- if (somme > 0) poids / somme else poids
+      df_t <- data.frame(
+        topic = paste0("Topic_", t$topic),
+        term = vapply(t$mots, function(m) as.character(m$mot %||% ""), character(1)),
+        prob = prob,
+        stringsAsFactors = FALSE
       )
+      top_terms <- rbind(top_terms, df_t)
     }
 
-    segment_size_lda <- as.integer(segment_size %||% input$lda_segment_size_dyn %||% input$lda_segment_size %||% 40)
-    segmenter_sur_ponctuation_forte_lda <- isTRUE(
-      segmenter_sur_ponctuation_forte %||%
-        input$lda_segmenter_sur_ponctuation_forte_dyn %||%
-        input$lda_segmenter_sur_ponctuation_forte
+    # Matrice topic-terme (pour les graphes/tableaux existants)
+    termes_uniques <- unique(top_terms$term)
+    topics_uniques <- unique(top_terms$topic)
+    mat <- matrix(0, nrow = length(topics_uniques), ncol = length(termes_uniques))
+    rownames(mat) <- topics_uniques
+    colnames(mat) <- termes_uniques
+    if (nrow(top_terms) > 0) {
+      for (i in seq_len(nrow(top_terms))) {
+        mat[top_terms$topic[i], top_terms$term[i]] <- as.numeric(top_terms$prob[i])
+      }
+    }
+
+    # Distribution topics / unités
+    doc_topics <- data.frame(doc_id = character(0), stringsAsFactors = FALSE)
+    if (!is.null(unites) && length(unites) > 0) {
+      if (is.data.frame(unites)) {
+        unites_df <- unites
+      } else {
+        unites_df <- as.data.frame(unites, stringsAsFactors = FALSE)
+      }
+
+      if ("identifiant" %in% names(unites_df)) {
+        doc_topics <- data.frame(doc_id = as.character(unites_df$identifiant), stringsAsFactors = FALSE)
+      }
+
+      if ("distribution_topics" %in% names(unites_df)) {
+        dists <- unites_df$distribution_topics
+        if (is.list(dists) && length(dists) > 0) {
+          max_k <- max(vapply(dists, length, integer(1)))
+          for (k in seq_len(max_k)) {
+            colk <- vapply(dists, function(x) as.numeric(x[[k]] %||% NA_real_), numeric(1))
+            doc_topics[[paste0("Topic_", k)]] <- colk
+          }
+        }
+      }
+    }
+
+    # Segments textuels
+    doc_texts <- data.frame(doc_id = character(0), segment_texte = character(0), stringsAsFactors = FALSE)
+    if (!is.null(unites) && length(unites) > 0) {
+      if (is.data.frame(unites)) {
+        unites_df <- unites
+      } else {
+        unites_df <- as.data.frame(unites, stringsAsFactors = FALSE)
+      }
+      if (all(c("identifiant", "texte") %in% names(unites_df))) {
+        doc_texts <- data.frame(
+          doc_id = as.character(unites_df$identifiant),
+          segment_texte = as.character(unites_df$texte),
+          stringsAsFactors = FALSE
+        )
+      }
+    }
+
+    wordcloud_images <- character(0)
+    if (!is.null(res_wc_json$fichiers) && length(res_wc_json$fichiers) > 0) {
+      fichiers_df <- as.data.frame(res_wc_json$fichiers, stringsAsFactors = FALSE)
+      if ("image" %in% names(fichiers_df)) {
+        wordcloud_images <- as.character(fichiers_df$image)
+      }
+    }
+
+    list(
+      top_terms = top_terms,
+      topic_term_matrix = mat,
+      doc_topics = doc_topics,
+      doc_texts = doc_texts,
+      wordcloud_images = wordcloud_images,
+      meta = res_lda_json$meta %||% list(),
+      brut = res_lda_json
     )
-    textes_lda <- lire_textes_corpus_lda(
-      segment_size = segment_size_lda,
-      segmenter_sur_ponctuation_forte = segmenter_sur_ponctuation_forte_lda
-    )
-    if (is.null(textes_lda) || !length(textes_lda)) {
+  }
+
+  executer_test_lda <- function(k, n_terms, segment_size = NULL, segmenter_sur_ponctuation_forte = NULL) {
+    corpus <- lire_corpus_brut()
+    if (!nzchar(trimws(corpus))) {
       rv$lda_erreur <- "Aucun texte disponible pour LDA. Importez d'abord un fichier corpus."
       rv$lda_statut <- "Test LDA impossible."
       showNotification(rv$lda_erreur, type = "warning")
       return(invisible(NULL))
     }
 
-    if (is.null(names(textes_lda)) || length(names(textes_lda)) != length(textes_lda) || any(!nzchar(names(textes_lda)))) {
-      names(textes_lda) <- paste0("doc_", seq_along(textes_lda))
+    python_exec <- trouver_python_lda()
+    script_lda <- if (exists("LDA_PY_SCRIPT", inherits = TRUE)) get("LDA_PY_SCRIPT", inherits = TRUE) else normalizePath("lda/lda.py", mustWork = TRUE)
+    script_wc <- if (exists("LDA_WORDCLOUD_PY_SCRIPT", inherits = TRUE)) get("LDA_WORDCLOUD_PY_SCRIPT", inherits = TRUE) else normalizePath("lda/wordcloud_lda.py", mustWork = TRUE)
+
+    prefixe <- format(Sys.time(), "%Y%m%d_%H%M%S")
+    entree <- tempfile(pattern = paste0("entree_lda_app_", prefixe, "_"), tmpdir = "lda", fileext = ".json")
+    sortie_lda <- tempfile(pattern = paste0("sortie_lda_app_", prefixe, "_"), tmpdir = "lda", fileext = ".json")
+    sortie_wc <- tempfile(pattern = paste0("sortie_wc_app_", prefixe, "_"), tmpdir = "lda", fileext = ".json")
+    dossier_images <- file.path("lda", paste0("wordclouds_app_", prefixe))
+    dir.create(dossier_images, recursive = TRUE, showWarnings = FALSE)
+
+    stopwords_fr <- construire_stopwords_fr_quanteda(isTRUE(input$lda_retirer_stopwords))
+    categories <- if (isTRUE(input$lda_filtrage_morpho)) {
+      as.list(tolower(as.character(input$lda_pos_keep %||% c("NOM", "VER", "ADJ"))))
+    } else {
+      list()
     }
 
-    res_lda <- tryCatch(
-      {
-        args_lda <- list(
-          textes = as.character(textes_lda),
-          k = as.integer(k %||% 4),
-          n_terms = as.integer(n_terms %||% 8),
-          min_termfreq = 1L,
-          remove_numbers = FALSE,
-          remove_punct = TRUE,
-          remove_symbols = TRUE,
-          retirer_stopwords = isTRUE(input$lda_retirer_stopwords),
-          stopwords_sup = character(0),
-          filtrage_morpho = isTRUE(input$lda_filtrage_morpho),
-          pos_lexique_a_conserver = as.character(input$lda_pos_keep %||% c("NOM", "VER", "ADJ"))
-        )
+    # On mappe le contrôle historique "taille segment en mots" vers une longueur minimale caractères.
+    longueur_min_segment <- max(10L, as.integer(segment_size %||% input$lda_segment_size_dyn %||% input$lda_segment_size %||% 40) * 4L)
 
-        do.call(lancer_test_lda, args_lda)
-      },
-      error = function(e) e
+    payload <- list(
+      corpus_texte = corpus,
+      mode_unite = "segment",
+      longueur_min_segment = as.integer(longueur_min_segment),
+      nb_topics = as.integer(k %||% 4),
+      nb_mots_par_topic = as.integer(n_terms %||% 8),
+      random_state = 42,
+      stopwords_personnalises = as.list(stopwords_fr),
+      categories_morpho = categories,
+      chemin_lexique_fr = normalizePath(file.path("dictionnaires", "lexique_fr.csv"), mustWork = FALSE)
     )
 
-    if (inherits(res_lda, "error")) {
-      rv$lda_resultat <- NULL
-      rv$lda_erreur <- conditionMessage(res_lda)
-      rv$lda_statut <- "Échec du test LDA."
-      showNotification(paste("Erreur LDA:", rv$lda_erreur), type = "error", duration = 8)
-      return(invisible(NULL))
+    jsonlite::write_json(payload, entree, auto_unbox = TRUE, pretty = TRUE)
+
+    logs_lda <- system2(python_exec, args = c(script_lda, "--input", entree, "--output", sortie_lda), stdout = TRUE, stderr = TRUE)
+    if (!file.exists(sortie_lda)) {
+      stop("lda.py n'a pas produit de sortie JSON.")
+    }
+    res_lda <- jsonlite::fromJSON(sortie_lda, simplifyVector = FALSE)
+    if (!isTRUE(res_lda$succes)) {
+      stop(as.character(res_lda$erreur %||% "Erreur inconnue dans lda.py"))
     }
 
-    rv$lda_resultat <- res_lda
+    logs_wc <- system2(
+      python_exec,
+      args = c(script_wc, "--input", sortie_lda, "--output", sortie_wc, "--output-dir", dossier_images, "--prefix", "nuage_lda"),
+      stdout = TRUE,
+      stderr = TRUE
+    )
+
+    res_wc <- list(succes = FALSE, fichiers = list())
+    if (file.exists(sortie_wc)) {
+      res_wc <- jsonlite::fromJSON(sortie_wc, simplifyVector = FALSE)
+    }
+
+    conv <- convertir_resultat_python(res_lda, res_wc)
+
+    rv$lda_resultat <- list(
+      top_terms = conv$top_terms,
+      topic_term_matrix = conv$topic_term_matrix,
+      doc_topics = conv$doc_topics,
+      wordcloud_images = conv$wordcloud_images,
+      meta = conv$meta,
+      logs_lda = logs_lda,
+      logs_wordcloud = logs_wc
+    )
+    rv$lda_doc_texts <- conv$doc_texts
     rv$lda_erreur <- NULL
-    rv$lda_doc_texts <- data.frame(
-      doc_id = names(textes_lda),
-      segment_texte = as.character(textes_lda),
-      stringsAsFactors = FALSE
-    )
-    rv$lda_statut <- paste0(
-      "LDA exécuté avec succès (k=", as.integer(k %||% 4),
-      ", segments=", length(textes_lda),
-      ", taille_segment=", as.integer(segment_size_lda),
-      ", ponctuation_forte=", ifelse(segmenter_sur_ponctuation_forte_lda, "oui", "non"),
-      ", termes=", ncol(res_lda$dtm), ")."
-    )
+    rv$lda_statut <- paste0("LDA Python exécuté (k=", as.integer(k %||% 4), ", unités=", nrow(conv$doc_texts), ").")
+
     updateNumericInput(session, "lda_k_dyn", value = as.integer(k %||% 4))
     updateNumericInput(session, "lda_n_terms_dyn", value = as.integer(n_terms %||% 8))
-    updateNumericInput(session, "lda_segment_size_dyn", value = as.integer(segment_size_lda %||% 40))
-    updateCheckboxInput(
-      session,
-      "lda_segmenter_sur_ponctuation_forte_dyn",
-      value = isTRUE(segmenter_sur_ponctuation_forte_lda)
-    )
-    showNotification("Test LDA terminé.", type = "message")
+    updateNumericInput(session, "lda_segment_size_dyn", value = as.integer(segment_size %||% input$lda_segment_size_dyn %||% 40))
+    showNotification("LDA Python terminé.", type = "message")
   }
 
   capturer_parametres_lda <- function() {
