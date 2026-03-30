@@ -11,6 +11,15 @@ ui_form_parametres_lda <- function(defaults = NULL) {
       "Choisissez seulement le nombre de thèmes.",
       style = "color:#444; margin-bottom:10px;"
     ),
+    radioButtons(
+      "lda_mode_unite",
+      "Unité d'analyse",
+      choices = c(
+        "Document (chaque entrée commence par ****)" = "document",
+        "Segment de texte (ponctuation / unités)" = "segment"
+      ),
+      selected = valeur_defaut("lda_mode_unite", "segment")
+    ),
     numericInput("lda_k", "Nombre de thèmes (topics)", value = valeur_defaut("lda_k", 4), min = 2, step = 1),
     tags$p(
       "k = nombre de thèmes latents recherchés dans le corpus",
@@ -29,7 +38,7 @@ ui_form_parametres_lda <- function(defaults = NULL) {
     ),
     checkboxInput("lda_retirer_stopwords", "Retirer les stopwords", value = valeur_defaut("lda_retirer_stopwords", FALSE)),
     tags$p(
-      "Stopwords = mots-outils fréquents (quanteda::stopwords(langue) + liste additionnelle) retirés avant le modèle.",
+      "Stopwords = mots-outils fréquents retirés via quanteda::stopwords('fr').",
       style = "color:#c00; font-size:0.9em; margin-top:-8px; margin-bottom:10px;"
     ),
     checkboxInput("lda_filtrage_morpho", "Filtrer par catégories morphosyntaxiques", value = valeur_defaut("lda_filtrage_morpho", FALSE)),
@@ -62,6 +71,16 @@ ui_controles_dynamiques_lda <- function(defaults = NULL) {
 
   tags$div(
     style = "display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:10px;",
+    tags$div(
+      style = "min-width:320px;",
+      radioButtons(
+        "lda_mode_unite_dyn",
+        "Unité",
+        choices = c("Document (****)" = "document", "Segment" = "segment"),
+        selected = valeur_defaut("lda_mode_unite_dyn", "segment"),
+        inline = TRUE
+      )
+    ),
     tags$div(
       style = "min-width:220px;",
       numericInput("lda_k_dyn", "Nombre de topics (k)", value = valeur_defaut("lda_k_dyn", 4), min = 2, step = 1)

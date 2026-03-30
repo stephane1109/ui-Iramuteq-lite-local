@@ -1,4 +1,11 @@
+if (!exists("%||%", mode = "function", inherits = TRUE)) {
+  `%||%` <- function(x, y) {
+    if (is.null(x) || length(x) == 0) y else x
+  }
+}
+
 register_lda_module <- function(input, output, session, rv) {
+  # Module LDA piloté par lda.py / wordcloud_lda.py (sans dépendance à lda.R).
   trouver_python_lda <- function() {
     candidats <- c(Sys.which("python3"), Sys.which("python"))
     candidats <- candidats[nzchar(candidats)]
