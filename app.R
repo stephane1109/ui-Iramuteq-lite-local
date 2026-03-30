@@ -129,10 +129,29 @@ source("iramuteqlite/simi.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_graph.R", encoding = "UTF-8", local = TRUE)
 source("iramuteqlite/simi_igraph.R", encoding = "UTF-8", local = TRUE)
 source("iramuteq/select_mots.R", encoding = "UTF-8", local = TRUE)
-source("lda/lda.R", encoding = "UTF-8", local = TRUE)
-source("lda/prepa_lda.R", encoding = "UTF-8", local = TRUE)
+
+# Déclaration explicite des scripts Python LDA (utilisés ensuite par le module serveur LDA).
+LDA_PY_SCRIPT <- normalizePath(file.path("lda", "lda.py"), winslash = "/", mustWork = FALSE)
+LDA_WORDCLOUD_PY_SCRIPT <- normalizePath(file.path("lda", "wordcloud_lda.py"), winslash = "/", mustWork = FALSE)
+
+verifier_scripts_python_lda <- function() {
+  manquants <- c()
+  if (!file.exists(LDA_PY_SCRIPT)) manquants <- c(manquants, LDA_PY_SCRIPT)
+  if (!file.exists(LDA_WORDCLOUD_PY_SCRIPT)) manquants <- c(manquants, LDA_WORDCLOUD_PY_SCRIPT)
+  if (length(manquants)) {
+    warning(
+      paste0(
+        "Scripts Python LDA introuvables: ",
+        paste(manquants, collapse = " ; ")
+      )
+    )
+  }
+}
+
+verifier_scripts_python_lda()
+# Pipeline LDA Python piloté par l'app (app.R + server_lda.R).
 source("lda/wordcloud_lda.R", encoding = "UTF-8", local = TRUE)
-source("lda/server_lda.R", encoding = "UTF-8", local = TRUE)
+source("lda/server_lda_1.R", encoding = "UTF-8", local = TRUE)
 source("ui.R", encoding = "UTF-8", local = TRUE)
 
 source("iramuteqlite/chd_iramuteq.R", encoding = "UTF-8", local = TRUE)
