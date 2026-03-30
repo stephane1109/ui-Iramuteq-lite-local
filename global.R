@@ -78,6 +78,87 @@ if (length(packages_manquants) > 0) {
   )
 }
 
+# Dépendances Python requises pour le pipeline LDA.
+packages_python_lda <- c(
+  sklearn = "scikit-learn",
+  wordcloud = "wordcloud",
+  matplotlib = "matplotlib"
+)
+
+trouver_python_global <- function() {
+  # Priorité au Python configuré par reticulate (quand disponible)
+  py_reticulate <- ""
+  if (requireNamespace("reticulate", quietly = TRUE)) {
+    py_reticulate <- tryCatch(reticulate::py_config()$python, error = function(e) "")
+  }
+
+  candidats <- c(
+    py_reticulate,
+    Sys.getenv("RETICULATE_PYTHON", unset = ""),
+    Sys.which("python3"),
+    Sys.which("python")
+  )
+  candidats <- unique(candidats[nzchar(candidats)])
+  if (!length(candidats)) return("")
+  candidats[[1]]
+}
+
+module_python_disponible <- function(python_exec, module_name) {
+  if (!nzchar(python_exec)) return(FALSE)
+  out <- suppressWarnings(system2(python_exec, args = c("-c", sprintf("import %s", module_name)), stdout = TRUE, stderr = TRUE))
+  status <- attr(out, "status")
+  if (is.null(status)) status <- 0L
+  as.integer(status) == 0L
+}
+
+installer_packages_python_lda <- function() {
+  python_exec <- trouver_python_global()
+  if (!nzchar(python_exec)) {
+    message("Python non trouvé: installation auto des dépendances LDA ignorée.")
+    return(invisible(FALSE))
+  }
+
+  manquants <- names(packages_python_lda)[!vapply(names(packages_python_lda), function(m) module_python_disponible(python_exec, m), logical(1))]
+  if (!length(manquants)) return(invisible(TRUE))
+
+  paquets <- unname(unlist(packages_python_lda[manquants]))
+  message("Installation des dépendances Python LDA: ", paste(paquets, collapse = ", "))
+
+  # Tentative prioritaire via reticulate (environnement Shiny/R)
+  installe <- FALSE
+  if (requireNamespace("reticulate", quietly = TRUE)) {
+    installe <- tryCatch({
+      reticulate::use_python(python_exec, required = FALSE)
+      reticulate::py_install(packages = paquets, pip = TRUE)
+      TRUE
+    }, error = function(e) {
+      message("reticulate::py_install a échoué: ", conditionMessage(e))
+      FALSE
+    })
+  }
+
+  # Fallback direct pip si reticulate n'a pas abouti.
+  if (!isTRUE(installe)) {
+    logs <- suppressWarnings(system2(python_exec, args = c("-m", "pip", "install", "--user", paquets), stdout = TRUE, stderr = TRUE))
+    message(paste(logs, collapse = "\n"))
+  }
+
+  echec <- names(packages_python_lda)[!vapply(names(packages_python_lda), function(m) module_python_disponible(python_exec, m), logical(1))]
+  if (length(echec)) {
+    message("Échec installation dépendances Python LDA: ", paste(unname(unlist(packages_python_lda[echec])), collapse = ", "))
+    return(invisible(FALSE))
+  }
+
+  invisible(TRUE)
+}
+
+
+# Tentative d'installation auto des dépendances Python LDA au démarrage.
+tryCatch(
+  installer_packages_python_lda(),
+  error = function(e) message("Installation Python LDA ignorée: ", conditionMessage(e))
+)
+
 installer_environnement_application <- function(envname = NULL) {
   configurer_librairie_utilisateur()
   cran_repo <- trimws(Sys.getenv("R_CRAN_MIRROR", unset = "https://cloud.r-project.org"))

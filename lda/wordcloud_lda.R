@@ -68,7 +68,29 @@ render_lda_wordcloud_topic <- function(mat_local, idx) {
 
 register_lda_wordcloud_outputs <- function(output, rv) {
   output$ui_lda_wordclouds <- shiny::renderUI({
-    shiny::req(rv$lda_resultat, rv$lda_resultat$topic_term_matrix)
+    shiny::req(rv$lda_resultat)
+
+    images_python <- rv$lda_resultat$wordcloud_images %||% character(0)
+    images_python <- as.character(images_python)
+    images_python <- images_python[file.exists(images_python)]
+
+    if (length(images_python) > 0) {
+      blocs <- lapply(seq_along(images_python), function(i) {
+        chemin <- normalizePath(images_python[[i]], winslash = "/", mustWork = FALSE)
+        uri <- paste0("file:///", chemin)
+        shiny::tags$div(
+          style = "margin-bottom: 16px; border: 1px solid #eee; border-radius: 8px; padding: 10px;",
+          shiny::tags$h5(paste0("Topic_", i), style = "margin-top: 0;"),
+          shiny::tags$img(src = uri, style = "max-width: 100%; height: auto;"),
+          shiny::tags$br(),
+          shiny::tags$a(href = uri, target = "_blank", "Ouvrir l'image")
+        )
+      })
+      return(shiny::tagList(blocs))
+    }
+
+    # Fallback historique: rendu R si aucune image Python n'est disponible.
+    shiny::req(rv$lda_resultat$topic_term_matrix)
     mat_topics <- rv$lda_resultat$topic_term_matrix
     shiny::req(nrow(mat_topics) > 0, ncol(mat_topics) > 0)
     ui_lda_wordclouds_blocks(mat_topics)
@@ -76,6 +98,14 @@ register_lda_wordcloud_outputs <- function(output, rv) {
 
   shiny::observeEvent(rv$lda_resultat, {
     shiny::req(rv$lda_resultat, rv$lda_resultat$topic_term_matrix)
+
+    images_python <- rv$lda_resultat$wordcloud_images %||% character(0)
+    images_python <- as.character(images_python)
+    images_python <- images_python[file.exists(images_python)]
+    if (length(images_python) > 0) {
+      return(invisible(NULL))
+    }
+
     mat_topics <- rv$lda_resultat$topic_term_matrix
     shiny::req(nrow(mat_topics) > 0, ncol(mat_topics) > 0)
 
