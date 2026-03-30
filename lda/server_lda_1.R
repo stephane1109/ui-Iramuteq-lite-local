@@ -1,9 +1,31 @@
+if (!exists("%||%", mode = "function", inherits = TRUE)) {
+  `%||%` <- function(x, y) {
+    if (is.null(x) || length(x) == 0) y else x
+  }
+}
+
 register_lda_module <- function(input, output, session, rv) {
+  # Module LDA piloté par lda.py / wordcloud_lda.py (sans dépendance à lda.R).
   trouver_python_lda <- function() {
     candidats <- c(Sys.which("python3"), Sys.which("python"))
     candidats <- candidats[nzchar(candidats)]
     if (!length(candidats)) stop("Aucun interpréteur Python trouvé (python3/python).")
     candidats[[1]]
+  }
+
+  executer_commande_python <- function(python_exec, args, etiquette) {
+    logs <- suppressWarnings(system2(python_exec, args = args, stdout = TRUE, stderr = TRUE))
+    statut <- as.integer(attr(logs, "status") %||% 0L)
+    if (!identical(statut, 0L)) {
+      stop(
+        paste0(
+          etiquette,
+          " a échoué (code ", statut, ").\nLogs Python:\n",
+          paste(logs, collapse = "\n")
+        )
+      )
+    }
+    logs
   }
 
   construire_stopwords_fr_quanteda <- function(activer) {
@@ -131,6 +153,9 @@ register_lda_module <- function(input, output, session, rv) {
       }
 
       python_exec <- trouver_python_lda()
+      if (exists("installer_packages_python_lda", mode = "function", inherits = TRUE)) {
+        installer_packages_python_lda()
+      }
       script_lda <- if (exists("LDA_PY_SCRIPT", inherits = TRUE)) get("LDA_PY_SCRIPT", inherits = TRUE) else normalizePath("lda/lda.py", mustWork = TRUE)
       script_wc <- if (exists("LDA_WORDCLOUD_PY_SCRIPT", inherits = TRUE)) get("LDA_WORDCLOUD_PY_SCRIPT", inherits = TRUE) else normalizePath("lda/wordcloud_lda.py", mustWork = TRUE)
 
@@ -164,20 +189,23 @@ register_lda_module <- function(input, output, session, rv) {
 
       jsonlite::write_json(payload, entree, auto_unbox = TRUE, pretty = TRUE)
 
-      logs_lda <- system2(python_exec, args = c(script_lda, "--input", entree, "--output", sortie_lda), stdout = TRUE, stderr = TRUE)
+      logs_lda <- executer_commande_python(
+        python_exec,
+        args = c(script_lda, "--input", entree, "--output", sortie_lda),
+        etiquette = "lda.py"
+      )
       if (!file.exists(sortie_lda)) {
-        stop("lda.py n'a pas produit de sortie JSON.")
+        stop(paste0("lda.py n'a pas produit de sortie JSON.\nLogs Python:\n", paste(logs_lda, collapse = "\n")))
       }
       res_lda <- jsonlite::fromJSON(sortie_lda, simplifyVector = FALSE)
       if (!isTRUE(res_lda$succes)) {
         stop(as.character(res_lda$erreur %||% "Erreur inconnue dans lda.py"))
       }
 
-      logs_wc <- system2(
+      logs_wc <- executer_commande_python(
         python_exec,
         args = c(script_wc, "--input", sortie_lda, "--output", sortie_wc, "--output-dir", dossier_images, "--prefix", "nuage_lda"),
-        stdout = TRUE,
-        stderr = TRUE
+        etiquette = "wordcloud_lda.py"
       )
 
       res_wc <- list(succes = FALSE, fichiers = list())
