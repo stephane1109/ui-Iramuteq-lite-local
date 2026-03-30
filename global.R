@@ -86,8 +86,19 @@ packages_python_lda <- c(
 )
 
 trouver_python_global <- function() {
-  candidats <- c(Sys.which("python3"), Sys.which("python"))
-  candidats <- candidats[nzchar(candidats)]
+  # Priorité au Python configuré par reticulate (quand disponible)
+  py_reticulate <- ""
+  if (requireNamespace("reticulate", quietly = TRUE)) {
+    py_reticulate <- tryCatch(reticulate::py_config()$python, error = function(e) "")
+  }
+
+  candidats <- c(
+    py_reticulate,
+    Sys.getenv("RETICULATE_PYTHON", unset = ""),
+    Sys.which("python3"),
+    Sys.which("python")
+  )
+  candidats <- unique(candidats[nzchar(candidats)])
   if (!length(candidats)) return("")
   candidats[[1]]
 }
@@ -113,16 +124,34 @@ installer_packages_python_lda <- function() {
   paquets <- unname(unlist(packages_python_lda[manquants]))
   message("Installation des dépendances Python LDA: ", paste(paquets, collapse = ", "))
 
-  logs <- suppressWarnings(system2(python_exec, args = c("-m", "pip", "install", "--user", paquets), stdout = TRUE, stderr = TRUE))
+  # Tentative prioritaire via reticulate (environnement Shiny/R)
+  installe <- FALSE
+  if (requireNamespace("reticulate", quietly = TRUE)) {
+    installe <- tryCatch({
+      reticulate::use_python(python_exec, required = FALSE)
+      reticulate::py_install(packages = paquets, pip = TRUE)
+      TRUE
+    }, error = function(e) {
+      message("reticulate::py_install a échoué: ", conditionMessage(e))
+      FALSE
+    })
+  }
+
+  # Fallback direct pip si reticulate n'a pas abouti.
+  if (!isTRUE(installe)) {
+    logs <- suppressWarnings(system2(python_exec, args = c("-m", "pip", "install", "--user", paquets), stdout = TRUE, stderr = TRUE))
+    message(paste(logs, collapse = "\n"))
+  }
+
   echec <- names(packages_python_lda)[!vapply(names(packages_python_lda), function(m) module_python_disponible(python_exec, m), logical(1))]
   if (length(echec)) {
     message("Échec installation dépendances Python LDA: ", paste(unname(unlist(packages_python_lda[echec])), collapse = ", "))
-    message(paste(logs, collapse = "\n"))
     return(invisible(FALSE))
   }
 
   invisible(TRUE)
 }
+
 
 # Tentative d'installation auto des dépendances Python LDA au démarrage.
 tryCatch(
