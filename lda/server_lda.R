@@ -115,94 +115,109 @@ register_lda_module <- function(input, output, session, rv) {
     )
   }
 
-  executer_test_lda <- function(k, n_terms, segment_size = NULL, segmenter_sur_ponctuation_forte = NULL) {
-    corpus <- lire_corpus_brut()
-    if (!nzchar(trimws(corpus))) {
-      rv$lda_erreur <- "Aucun texte disponible pour LDA. Importez d'abord un fichier corpus."
-      rv$lda_statut <- "Test LDA impossible."
-      showNotification(rv$lda_erreur, type = "warning")
-      return(invisible(NULL))
-    }
+  executer_test_lda <- function(k, n_terms, segment_size = NULL, segmenter_sur_ponctuation_forte = NULL, mode_unite = NULL) {
+    tryCatch({
+      corpus <- lire_corpus_brut()
+      if (!nzchar(trimws(corpus))) {
+        rv$lda_erreur <- "Aucun texte disponible pour LDA. Importez d'abord un fichier corpus."
+        rv$lda_statut <- "Test LDA impossible."
+        showNotification(rv$lda_erreur, type = "warning")
+        return(invisible(NULL))
+      }
 
-    python_exec <- trouver_python_lda()
-    script_lda <- if (exists("LDA_PY_SCRIPT", inherits = TRUE)) get("LDA_PY_SCRIPT", inherits = TRUE) else normalizePath("lda/lda.py", mustWork = TRUE)
-    script_wc <- if (exists("LDA_WORDCLOUD_PY_SCRIPT", inherits = TRUE)) get("LDA_WORDCLOUD_PY_SCRIPT", inherits = TRUE) else normalizePath("lda/wordcloud_lda.py", mustWork = TRUE)
+      mode_unite_lda <- as.character(mode_unite %||% input$lda_mode_unite_dyn %||% input$lda_mode_unite %||% "segment")
+      if (!mode_unite_lda %in% c("document", "segment")) {
+        mode_unite_lda <- "segment"
+      }
 
-    prefixe <- format(Sys.time(), "%Y%m%d_%H%M%S")
-    entree <- tempfile(pattern = paste0("entree_lda_app_", prefixe, "_"), tmpdir = "lda", fileext = ".json")
-    sortie_lda <- tempfile(pattern = paste0("sortie_lda_app_", prefixe, "_"), tmpdir = "lda", fileext = ".json")
-    sortie_wc <- tempfile(pattern = paste0("sortie_wc_app_", prefixe, "_"), tmpdir = "lda", fileext = ".json")
-    dossier_images <- file.path("lda", paste0("wordclouds_app_", prefixe))
-    dir.create(dossier_images, recursive = TRUE, showWarnings = FALSE)
+      python_exec <- trouver_python_lda()
+      script_lda <- if (exists("LDA_PY_SCRIPT", inherits = TRUE)) get("LDA_PY_SCRIPT", inherits = TRUE) else normalizePath("lda/lda.py", mustWork = TRUE)
+      script_wc <- if (exists("LDA_WORDCLOUD_PY_SCRIPT", inherits = TRUE)) get("LDA_WORDCLOUD_PY_SCRIPT", inherits = TRUE) else normalizePath("lda/wordcloud_lda.py", mustWork = TRUE)
 
-    stopwords_fr <- construire_stopwords_fr_quanteda(isTRUE(input$lda_retirer_stopwords))
-    categories <- if (isTRUE(input$lda_filtrage_morpho)) {
-      as.list(tolower(as.character(input$lda_pos_keep %||% c("NOM", "VER", "ADJ"))))
-    } else {
-      list()
-    }
+      prefixe <- format(Sys.time(), "%Y%m%d_%H%M%S")
+      entree <- tempfile(pattern = paste0("entree_lda_app_", prefixe, "_"), tmpdir = "lda", fileext = ".json")
+      sortie_lda <- tempfile(pattern = paste0("sortie_lda_app_", prefixe, "_"), tmpdir = "lda", fileext = ".json")
+      sortie_wc <- tempfile(pattern = paste0("sortie_wc_app_", prefixe, "_"), tmpdir = "lda", fileext = ".json")
+      dossier_images <- file.path("lda", paste0("wordclouds_app_", prefixe))
+      dir.create(dossier_images, recursive = TRUE, showWarnings = FALSE)
 
-    # On mappe le contrôle historique "taille segment en mots" vers une longueur minimale caractères.
-    longueur_min_segment <- max(10L, as.integer(segment_size %||% input$lda_segment_size_dyn %||% input$lda_segment_size %||% 40) * 4L)
+      stopwords_fr <- construire_stopwords_fr_quanteda(isTRUE(input$lda_retirer_stopwords))
+      categories <- if (isTRUE(input$lda_filtrage_morpho)) {
+        as.list(tolower(as.character(input$lda_pos_keep %||% c("NOM", "VER", "ADJ"))))
+      } else {
+        list()
+      }
 
-    payload <- list(
-      corpus_texte = corpus,
-      mode_unite = "segment",
-      longueur_min_segment = as.integer(longueur_min_segment),
-      nb_topics = as.integer(k %||% 4),
-      nb_mots_par_topic = as.integer(n_terms %||% 8),
-      random_state = 42,
-      stopwords_personnalises = as.list(stopwords_fr),
-      categories_morpho = categories,
-      chemin_lexique_fr = normalizePath(file.path("dictionnaires", "lexique_fr.csv"), mustWork = FALSE)
-    )
+      longueur_min_segment <- max(10L, as.integer(segment_size %||% input$lda_segment_size_dyn %||% input$lda_segment_size %||% 40) * 4L)
 
-    jsonlite::write_json(payload, entree, auto_unbox = TRUE, pretty = TRUE)
+      payload <- list(
+        corpus_texte = corpus,
+        mode_unite = mode_unite_lda,
+        longueur_min_segment = as.integer(longueur_min_segment),
+        nb_topics = as.integer(k %||% 4),
+        nb_mots_par_topic = as.integer(n_terms %||% 8),
+        random_state = 42,
+        stopwords_personnalises = as.list(stopwords_fr),
+        categories_morpho = categories,
+        chemin_lexique_fr = normalizePath(file.path("dictionnaires", "lexique_fr.csv"), mustWork = FALSE)
+      )
 
-    logs_lda <- system2(python_exec, args = c(script_lda, "--input", entree, "--output", sortie_lda), stdout = TRUE, stderr = TRUE)
-    if (!file.exists(sortie_lda)) {
-      stop("lda.py n'a pas produit de sortie JSON.")
-    }
-    res_lda <- jsonlite::fromJSON(sortie_lda, simplifyVector = FALSE)
-    if (!isTRUE(res_lda$succes)) {
-      stop(as.character(res_lda$erreur %||% "Erreur inconnue dans lda.py"))
-    }
+      jsonlite::write_json(payload, entree, auto_unbox = TRUE, pretty = TRUE)
 
-    logs_wc <- system2(
-      python_exec,
-      args = c(script_wc, "--input", sortie_lda, "--output", sortie_wc, "--output-dir", dossier_images, "--prefix", "nuage_lda"),
-      stdout = TRUE,
-      stderr = TRUE
-    )
+      logs_lda <- system2(python_exec, args = c(script_lda, "--input", entree, "--output", sortie_lda), stdout = TRUE, stderr = TRUE)
+      if (!file.exists(sortie_lda)) {
+        stop("lda.py n'a pas produit de sortie JSON.")
+      }
+      res_lda <- jsonlite::fromJSON(sortie_lda, simplifyVector = FALSE)
+      if (!isTRUE(res_lda$succes)) {
+        stop(as.character(res_lda$erreur %||% "Erreur inconnue dans lda.py"))
+      }
 
-    res_wc <- list(succes = FALSE, fichiers = list())
-    if (file.exists(sortie_wc)) {
-      res_wc <- jsonlite::fromJSON(sortie_wc, simplifyVector = FALSE)
-    }
+      logs_wc <- system2(
+        python_exec,
+        args = c(script_wc, "--input", sortie_lda, "--output", sortie_wc, "--output-dir", dossier_images, "--prefix", "nuage_lda"),
+        stdout = TRUE,
+        stderr = TRUE
+      )
 
-    conv <- convertir_resultat_python(res_lda, res_wc)
+      res_wc <- list(succes = FALSE, fichiers = list())
+      if (file.exists(sortie_wc)) {
+        res_wc <- jsonlite::fromJSON(sortie_wc, simplifyVector = FALSE)
+      }
 
-    rv$lda_resultat <- list(
-      top_terms = conv$top_terms,
-      topic_term_matrix = conv$topic_term_matrix,
-      doc_topics = conv$doc_topics,
-      wordcloud_images = conv$wordcloud_images,
-      meta = conv$meta,
-      logs_lda = logs_lda,
-      logs_wordcloud = logs_wc
-    )
-    rv$lda_doc_texts <- conv$doc_texts
-    rv$lda_erreur <- NULL
-    rv$lda_statut <- paste0("LDA Python exécuté (k=", as.integer(k %||% 4), ", unités=", nrow(conv$doc_texts), ").")
+      conv <- convertir_resultat_python(res_lda, res_wc)
 
-    updateNumericInput(session, "lda_k_dyn", value = as.integer(k %||% 4))
-    updateNumericInput(session, "lda_n_terms_dyn", value = as.integer(n_terms %||% 8))
-    updateNumericInput(session, "lda_segment_size_dyn", value = as.integer(segment_size %||% input$lda_segment_size_dyn %||% 40))
-    showNotification("LDA Python terminé.", type = "message")
+      rv$lda_resultat <- list(
+        top_terms = conv$top_terms,
+        topic_term_matrix = conv$topic_term_matrix,
+        doc_topics = conv$doc_topics,
+        wordcloud_images = conv$wordcloud_images,
+        meta = conv$meta,
+        logs_lda = logs_lda,
+        logs_wordcloud = logs_wc
+      )
+      rv$lda_doc_texts <- conv$doc_texts
+      rv$lda_erreur <- NULL
+      rv$lda_statut <- paste0("LDA Python exécuté (mode=", mode_unite_lda, ", k=", as.integer(k %||% 4), ", unités=", nrow(conv$doc_texts), ").")
+
+      updateRadioButtons(session, "lda_mode_unite_dyn", selected = mode_unite_lda)
+      updateNumericInput(session, "lda_k_dyn", value = as.integer(k %||% 4))
+      updateNumericInput(session, "lda_n_terms_dyn", value = as.integer(n_terms %||% 8))
+      updateNumericInput(session, "lda_segment_size_dyn", value = as.integer(segment_size %||% input$lda_segment_size_dyn %||% 40))
+      showNotification("LDA Python terminé.", type = "message")
+      invisible(NULL)
+    }, error = function(e) {
+      rv$lda_erreur <- conditionMessage(e)
+      rv$lda_statut <- "Échec du LDA Python."
+      showNotification(paste("Erreur LDA:", conditionMessage(e)), type = "error", duration = 8)
+      invisible(NULL)
+    })
   }
+
 
   capturer_parametres_lda <- function() {
     list(
+      lda_mode_unite = isolate(input$lda_mode_unite_dyn %||% input$lda_mode_unite %||% "segment"),
       lda_k = isolate(input$lda_k_dyn %||% input$lda_k %||% 4),
       lda_n_terms = isolate(input$lda_n_terms_dyn %||% input$lda_n_terms %||% 8),
       lda_retirer_stopwords = isolate(input$lda_retirer_stopwords %||% FALSE),
@@ -239,25 +254,39 @@ register_lda_module <- function(input, output, session, rv) {
 
   observeEvent(input$lancer_lda, {
     removeModal()
-    executer_test_lda(
+    tryCatch({
+      executer_test_lda(
       k = as.integer(input$lda_k %||% input$lda_k_dyn %||% 4),
       n_terms = as.integer(input$lda_n_terms %||% input$lda_n_terms_dyn %||% 8),
       segment_size = as.integer(input$lda_segment_size %||% input$lda_segment_size_dyn %||% 40),
       segmenter_sur_ponctuation_forte = isTRUE(
         input$lda_segmenter_sur_ponctuation_forte %||% input$lda_segmenter_sur_ponctuation_forte_dyn
+      ),
+      mode_unite = as.character(input$lda_mode_unite %||% input$lda_mode_unite_dyn %||% "segment")
       )
-    )
+    }, error = function(e) {
+      rv$lda_erreur <- conditionMessage(e)
+      rv$lda_statut <- "Échec du LDA Python."
+      showNotification(paste("Erreur LDA:", conditionMessage(e)), type = "error", duration = 8)
+    })
   })
 
   observeEvent(input$lancer_lda_dyn, {
-    executer_test_lda(
+    tryCatch({
+      executer_test_lda(
       k = as.integer(input$lda_k_dyn %||% input$lda_k %||% 4),
       n_terms = as.integer(input$lda_n_terms_dyn %||% input$lda_n_terms %||% 8),
       segment_size = as.integer(input$lda_segment_size_dyn %||% input$lda_segment_size %||% 40),
       segmenter_sur_ponctuation_forte = isTRUE(
         input$lda_segmenter_sur_ponctuation_forte_dyn %||% input$lda_segmenter_sur_ponctuation_forte
+      ),
+      mode_unite = as.character(input$lda_mode_unite_dyn %||% input$lda_mode_unite %||% "segment")
       )
-    )
+    }, error = function(e) {
+      rv$lda_erreur <- conditionMessage(e)
+      rv$lda_statut <- "Échec du LDA Python."
+      showNotification(paste("Erreur LDA:", conditionMessage(e)), type = "error", duration = 8)
+    })
   })
 
   output$ui_lda_statut <- renderUI({
