@@ -13,53 +13,19 @@ register_lda_module <- function(input, output, session, rv) {
     candidats[[1]]
   }
 
-  verifier_module_python <- function(python_exec, module_name) {
-    code <- system2(
-      python_exec,
-      args = c("-c", sprintf("import %s", module_name)),
-      stdout = TRUE,
-      stderr = TRUE
-    )
-    as.integer(attr(code, "status") %||% 0L) == 0L
-  }
-
-  installer_dependances_python_lda <- function(python_exec) {
-    modules_requis <- list(
-      sklearn = "scikit-learn",
-      wordcloud = "wordcloud",
-      matplotlib = "matplotlib"
-    )
-
-    manquants <- names(modules_requis)[!vapply(names(modules_requis), function(m) verifier_module_python(python_exec, m), logical(1))]
-    if (!length(manquants)) {
-      return(invisible(NULL))
-    }
-
-    paquets <- unname(unlist(modules_requis[manquants]))
-    showNotification(
-      paste0("Installation automatique des dépendances Python manquantes: ", paste(paquets, collapse = ", ")),
-      type = "message",
-      duration = 6
-    )
-
-    logs_install <- system2(
-      python_exec,
-      args = c("-m", "pip", "install", "--user", paquets),
-      stdout = TRUE,
-      stderr = TRUE
-    )
-
-    echec <- names(modules_requis)[!vapply(names(modules_requis), function(m) verifier_module_python(python_exec, m), logical(1))]
-    if (length(echec)) {
+  executer_commande_python <- function(python_exec, args, etiquette) {
+    logs <- suppressWarnings(system2(python_exec, args = args, stdout = TRUE, stderr = TRUE))
+    statut <- as.integer(attr(logs, "status") %||% 0L)
+    if (!identical(statut, 0L)) {
       stop(
         paste0(
-          "Impossible d'installer automatiquement les dépendances Python: ",
-          paste(unname(unlist(modules_requis[echec])), collapse = ", "),
-          "\nLogs pip:\n",
-          paste(logs_install, collapse = "\n")
+          etiquette,
+          " a échoué (code ", statut, ").\nLogs Python:\n",
+          paste(logs, collapse = "\n")
         )
       )
     }
+    logs
   }
 
   construire_stopwords_fr_quanteda <- function(activer) {
@@ -187,7 +153,9 @@ register_lda_module <- function(input, output, session, rv) {
       }
 
       python_exec <- trouver_python_lda()
-      installer_dependances_python_lda(python_exec)
+      if (exists("installer_packages_python_lda", mode = "function", inherits = TRUE)) {
+        installer_packages_python_lda()
+      }
       script_lda <- if (exists("LDA_PY_SCRIPT", inherits = TRUE)) get("LDA_PY_SCRIPT", inherits = TRUE) else normalizePath("lda/lda.py", mustWork = TRUE)
       script_wc <- if (exists("LDA_WORDCLOUD_PY_SCRIPT", inherits = TRUE)) get("LDA_WORDCLOUD_PY_SCRIPT", inherits = TRUE) else normalizePath("lda/wordcloud_lda.py", mustWork = TRUE)
 
@@ -221,7 +189,11 @@ register_lda_module <- function(input, output, session, rv) {
 
       jsonlite::write_json(payload, entree, auto_unbox = TRUE, pretty = TRUE)
 
-      logs_lda <- system2(python_exec, args = c(script_lda, "--input", entree, "--output", sortie_lda), stdout = TRUE, stderr = TRUE)
+      logs_lda <- executer_commande_python(
+        python_exec,
+        args = c(script_lda, "--input", entree, "--output", sortie_lda),
+        etiquette = "lda.py"
+      )
       if (!file.exists(sortie_lda)) {
         stop(paste0("lda.py n'a pas produit de sortie JSON.\nLogs Python:\n", paste(logs_lda, collapse = "\n")))
       }
@@ -230,11 +202,10 @@ register_lda_module <- function(input, output, session, rv) {
         stop(as.character(res_lda$erreur %||% "Erreur inconnue dans lda.py"))
       }
 
-      logs_wc <- system2(
+      logs_wc <- executer_commande_python(
         python_exec,
         args = c(script_wc, "--input", sortie_lda, "--output", sortie_wc, "--output-dir", dossier_images, "--prefix", "nuage_lda"),
-        stdout = TRUE,
-        stderr = TRUE
+        etiquette = "wordcloud_lda.py"
       )
 
       res_wc <- list(succes = FALSE, fichiers = list())
